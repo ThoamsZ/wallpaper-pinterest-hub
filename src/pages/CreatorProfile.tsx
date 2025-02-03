@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import Header from "@/components/Header";
 import WallpaperGrid from "@/components/WallpaperGrid";
@@ -15,6 +15,7 @@ type Wallpaper = Database['public']['Tables']['wallpapers']['Row'];
 const CreatorProfile = () => {
   const { creatorCode } = useParams();
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const [activeTab, setActiveTab] = useState("wallpapers");
   const [selectedCollection, setSelectedCollection] = useState<string | null>(null);
 
@@ -90,7 +91,7 @@ const CreatorProfile = () => {
     enabled: !!creatorData?.id,
   });
 
-  const { data: collections = [], isLoading: isCollectionsLoading, refetch: refetchCollections } = useQuery({
+  const { data: collections = [], isLoading: isCollectionsLoading } = useQuery({
     queryKey: ['creator-collections', creatorData?.id],
     queryFn: async () => {
       const { data, error } = await supabase
@@ -149,6 +150,10 @@ const CreatorProfile = () => {
         .eq('id', session.user.id);
 
       if (updateError) throw updateError;
+
+      // Invalidate both current-user and liked-collections queries
+      await queryClient.invalidateQueries({ queryKey: ['current-user'] });
+      await queryClient.invalidateQueries({ queryKey: ['liked-collections'] });
 
       toast({
         title: isLiked ? "Collection removed from likes" : "Collection liked",
