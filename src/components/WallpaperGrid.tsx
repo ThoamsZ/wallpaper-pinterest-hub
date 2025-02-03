@@ -180,7 +180,7 @@ const WallpaperGrid = () => {
           >
             <div className="relative group overflow-hidden rounded-lg">
               <img
-                src={wallpaper.url}
+                src={wallpaper.compressed_url}
                 alt={`Wallpaper ${wallpaper.id}`}
                 loading="lazy"
                 className={`w-full object-cover transition-transform duration-300 ${
