@@ -1,6 +1,6 @@
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Heart } from "lucide-react";
+import { Heart, Download, X } from "lucide-react";
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
@@ -18,28 +18,6 @@ interface WallpaperModalProps {
 
 const WallpaperModal = ({ wallpaper, isOpen, onClose, onLike, isLiked }: WallpaperModalProps) => {
   const [isDownloading, setIsDownloading] = useState(false);
-  const [downloadCount, setDownloadCount] = useState(0);
-
-  useEffect(() => {
-    const fetchDownloadCount = async () => {
-      if (!wallpaper) return;
-      
-      const { data: { session } } = await supabase.auth.getSession();
-      if (session) {
-        const { data: userData } = await supabase
-          .from('users')
-          .select('download_count')
-          .eq('id', session.user.id)
-          .single();
-        
-        if (userData) {
-          setDownloadCount(userData.download_count || 0);
-        }
-      }
-    };
-
-    fetchDownloadCount();
-  }, [wallpaper]);
 
   const handleDownload = async () => {
     if (!wallpaper) return;
@@ -137,49 +115,44 @@ const WallpaperModal = ({ wallpaper, isOpen, onClose, onLike, isLiked }: Wallpap
   if (!wallpaper) return null;
 
   return (
-    <Dialog open={isOpen} onOpenChange={() => onClose()}>
+    <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="max-w-[90vw] max-h-[90vh] p-0 overflow-hidden">
-        <div className="relative flex flex-col items-center">
+        <div className="relative">
           <img
             src={wallpaper.url}
             alt={`Wallpaper ${wallpaper.id}`}
-            className="w-full h-auto max-h-[75vh] object-contain"
+            className="w-full h-auto max-h-[90vh] object-contain"
           />
-          <div className="absolute top-4 right-12 flex gap-2">
+          <div className="absolute right-4 top-4">
             <Button
               variant="secondary"
               size="icon"
-              className={`${isLiked ? 'bg-red-100 hover:bg-red-200' : ''}`}
-              onClick={() => onLike(wallpaper.id)}
+              className="rounded-full bg-black/20 hover:bg-black/30 border-0"
+              onClick={onClose}
             >
-              <Heart className={`${isLiked ? 'fill-red-500 text-red-500' : ''}`} />
+              <X className="h-4 w-4 text-white" />
             </Button>
           </div>
-          <div className="w-full p-6 bg-background space-y-4">
-            {wallpaper.tags && wallpaper.tags.length > 0 && (
-              <div className="flex flex-wrap gap-2">
-                {wallpaper.tags.map((tag, index) => (
-                  <span
-                    key={index}
-                    className="px-3 py-1.5 bg-secondary/20 text-secondary-foreground rounded-md text-sm"
-                  >
-                    {tag}
-                  </span>
-                ))}
-              </div>
-            )}
-            <div className="text-center text-sm text-gray-500">
-              Downloads today: {downloadCount}/3
-            </div>
-            <div className="flex justify-center pt-2">
-              <Button 
-                onClick={handleDownload} 
-                disabled={isDownloading}
-                className="w-full max-w-md"
-              >
-                {isDownloading ? "Downloading..." : "Download"}
-              </Button>
-            </div>
+          <div className="absolute left-0 right-0 bottom-[15%] flex justify-center gap-4">
+            <Button
+              variant="secondary"
+              size="icon"
+              className={`rounded-full bg-black/20 hover:bg-black/30 border-0 ${
+                isLiked ? 'bg-red-500/20 hover:bg-red-500/30' : ''
+              }`}
+              onClick={() => onLike(wallpaper.id)}
+            >
+              <Heart className={`h-4 w-4 text-white ${isLiked ? 'fill-white' : ''}`} />
+            </Button>
+            <Button
+              variant="secondary"
+              size="icon"
+              className="rounded-full bg-black/20 hover:bg-black/30 border-0"
+              onClick={handleDownload}
+              disabled={isDownloading}
+            >
+              <Download className="h-4 w-4 text-white" />
+            </Button>
           </div>
         </div>
       </DialogContent>
