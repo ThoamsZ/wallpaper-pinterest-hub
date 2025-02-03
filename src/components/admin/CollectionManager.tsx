@@ -18,6 +18,17 @@ import {
   SheetTitle,
   SheetTrigger,
 } from "@/components/ui/sheet";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import { useQuery } from "@tanstack/react-query";
 import { Image, Trash, Download, Heart } from "lucide-react";
 
@@ -125,6 +136,15 @@ export const CollectionManager = () => {
 
   const createCollection = async () => {
     try {
+      if (!newCollectionName.trim()) {
+        toast({
+          title: "Error",
+          description: "Collection name cannot be empty",
+          variant: "destructive",
+        });
+        return;
+      }
+
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) throw new Error("Not authenticated");
 
@@ -145,6 +165,30 @@ export const CollectionManager = () => {
 
       setNewCollectionName("");
       setNewCollectionDesc("");
+      refetchCollections();
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+      });
+    }
+  };
+
+  const deleteCollection = async (collectionId: string) => {
+    try {
+      const { error } = await supabase
+        .from('collections')
+        .delete()
+        .eq('id', collectionId);
+
+      if (error) throw error;
+
+      toast({
+        title: "Success",
+        description: "Collection deleted successfully",
+      });
+      
       refetchCollections();
     } catch (error: any) {
       toast({
@@ -361,7 +405,36 @@ export const CollectionManager = () => {
         {collections.map((collection: Collection) => (
           <Card key={collection.id} className="cursor-pointer hover:shadow-lg transition-shadow">
             <CardHeader>
-              <CardTitle>{collection.name}</CardTitle>
+              <CardTitle className="flex justify-between items-center">
+                <span>{collection.name}</span>
+                <AlertDialog>
+                  <AlertDialogTrigger asChild>
+                    <Button variant="ghost" size="icon" className="h-8 w-8">
+                      <Trash className="h-4 w-4" />
+                    </Button>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>Delete Collection</AlertDialogTitle>
+                      <AlertDialogDescription>
+                        Are you sure you want to delete this collection? This action cannot be undone.
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel>Cancel</AlertDialogCancel>
+                      <AlertDialogAction
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          deleteCollection(collection.id);
+                        }}
+                        className="bg-red-500 hover:bg-red-600"
+                      >
+                        Delete
+                      </AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
+              </CardTitle>
             </CardHeader>
             <CardContent>
               <p className="text-sm text-muted-foreground mb-4">
