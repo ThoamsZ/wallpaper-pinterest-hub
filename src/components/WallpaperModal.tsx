@@ -1,4 +1,4 @@
-import { Dialog, DialogContent, DialogClose } from "@/components/ui/dialog";
+import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Heart, Download } from "lucide-react";
 import { useState } from "react";
@@ -127,8 +127,8 @@ const WallpaperModal = ({ wallpaper, isOpen, onClose, onLike, isLiked }: Wallpap
             <Button
               variant="secondary"
               size="icon"
-              className={`rounded-full bg-black/20 hover:bg-black/30 border-0 h-14 w-14 ${
-                isLiked ? 'bg-red-500/20 hover:bg-red-500/30' : ''
+              className={`rounded-full bg-black/50 hover:bg-black/70 border-0 h-14 w-14 ${
+                isLiked ? 'bg-red-500/50 hover:bg-red-500/70' : ''
               }`}
               onClick={() => onLike(wallpaper.id)}
             >
@@ -137,19 +137,13 @@ const WallpaperModal = ({ wallpaper, isOpen, onClose, onLike, isLiked }: Wallpap
             <Button
               variant="secondary"
               size="icon"
-              className="rounded-full bg-black/20 hover:bg-black/30 border-0 h-14 w-14"
+              className="rounded-full bg-black/50 hover:bg-black/70 border-0 h-14 w-14"
               onClick={handleDownload}
               disabled={isDownloading}
             >
               <Download className="h-7 w-7 text-white" />
             </Button>
           </div>
-          <DialogClose className="absolute right-4 top-4 rounded-full bg-black/20 hover:bg-black/30 h-14 w-14 flex items-center justify-center">
-            <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M18 6 6 18" />
-              <path d="m6 6 12 12" />
-            </svg>
-          </DialogClose>
         </div>
       </DialogContent>
     </Dialog>
