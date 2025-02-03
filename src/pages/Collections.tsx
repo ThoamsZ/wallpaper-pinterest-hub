@@ -14,7 +14,7 @@ const Collections = () => {
   const [selectedWallpaper, setSelectedWallpaper] = useState<Wallpaper | null>(null);
   const [likedWallpapers, setLikedWallpapers] = useState<string[]>([]);
 
-  const { data: wallpapers = [], isLoading } = useQuery({
+  const { data: wallpapers = [], isLoading, refetch } = useQuery({
     queryKey: ['collections'],
     queryFn: async () => {
       const { data: { session } } = await supabase.auth.getSession();
@@ -28,7 +28,7 @@ const Collections = () => {
         .from('users')
         .select('favor_image')
         .eq('id', session.user.id)
-        .single();
+        .maybeSingle();
 
       if (!userData?.favor_image?.length) return [];
 
@@ -41,7 +41,31 @@ const Collections = () => {
       return wallpapers || [];
     },
     staleTime: 1000 * 60 * 5,
+    refetchOnWindowFocus: true,
   });
+
+  // Check authentication on mount and redirect if not authenticated
+  useEffect(() => {
+    const checkAuth = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        navigate('/auth');
+      }
+    };
+
+    checkAuth();
+
+    // Subscribe to auth changes
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      if (!session) {
+        navigate('/auth');
+      }
+    });
+
+    return () => {
+      subscription.unsubscribe();
+    };
+  }, [navigate]);
 
   const handleLike = async (wallpaperId: string) => {
     try {
@@ -53,6 +77,7 @@ const Collections = () => {
           description: "Please login to like wallpapers",
           variant: "destructive",
         });
+        navigate('/auth');
         return;
       }
 
@@ -60,11 +85,11 @@ const Collections = () => {
         .from('users')
         .select('favor_image')
         .eq('id', session.user.id)
-        .single();
+        .maybeSingle();
 
       if (userError) throw userError;
 
-      const currentFavorites = userData.favor_image || [];
+      const currentFavorites = userData?.favor_image || [];
       const newFavorites = currentFavorites.filter(id => id !== wallpaperId);
 
       const { error: updateError } = await supabase
@@ -80,6 +105,9 @@ const Collections = () => {
         title: "Removed from favorites",
         description: "Wallpaper removed from your collections",
       });
+
+      // Refetch to ensure data is fresh
+      refetch();
     } catch (error) {
       console.error('Like error:', error);
       toast({

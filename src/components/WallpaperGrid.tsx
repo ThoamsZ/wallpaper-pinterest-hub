@@ -4,6 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import type { Database } from "@/integrations/supabase/types";
 import WallpaperModal from "./WallpaperModal";
 import { toast } from "@/hooks/use-toast";
+import { useNavigate } from "react-router-dom";
 
 type Wallpaper = Database['public']['Tables']['wallpapers']['Row'];
 
@@ -19,15 +20,16 @@ const fetchWallpapers = async () => {
 };
 
 const WallpaperGrid = () => {
+  const navigate = useNavigate();
   const [hoveredId, setHoveredId] = useState<string | null>(null);
   const [selectedWallpaper, setSelectedWallpaper] = useState<Wallpaper | null>(null);
   const [likedWallpapers, setLikedWallpapers] = useState<string[]>([]);
   
-  const { data: wallpapers = [], isLoading, error, isRefetching } = useQuery({
+  const { data: wallpapers = [], isLoading, error, isRefetching, refetch } = useQuery({
     queryKey: ['wallpapers'],
     queryFn: fetchWallpapers,
     staleTime: 1000 * 60 * 5,
-    refetchOnWindowFocus: false,
+    refetchOnWindowFocus: true,
     retry: 2,
   });
 
@@ -41,6 +43,7 @@ const WallpaperGrid = () => {
           description: "Please login to like wallpapers",
           variant: "destructive",
         });
+        navigate('/auth');
         return;
       }
 
@@ -48,11 +51,11 @@ const WallpaperGrid = () => {
         .from('users')
         .select('favor_image')
         .eq('id', session.user.id)
-        .single();
+        .maybeSingle();
 
       if (userError) throw userError;
 
-      const currentFavorites = userData.favor_image || [];
+      const currentFavorites = userData?.favor_image || [];
       const isLiked = currentFavorites.includes(wallpaperId);
       const newFavorites = isLiked
         ? currentFavorites.filter(id => id !== wallpaperId)
@@ -71,6 +74,9 @@ const WallpaperGrid = () => {
         title: isLiked ? "Removed from favorites" : "Added to favorites",
         description: isLiked ? "Wallpaper removed from your collections" : "Wallpaper added to your collections",
       });
+
+      // Refetch to ensure data is fresh
+      refetch();
     } catch (error) {
       console.error('Like error:', error);
       toast({
@@ -81,7 +87,7 @@ const WallpaperGrid = () => {
     }
   };
 
-  // Fetch user's liked wallpapers on component mount
+  // Fetch user's liked wallpapers on component mount and auth state change
   useEffect(() => {
     const fetchLikedWallpapers = async () => {
       const { data: { session } } = await supabase.auth.getSession();
@@ -90,7 +96,7 @@ const WallpaperGrid = () => {
           .from('users')
           .select('favor_image')
           .eq('id', session.user.id)
-          .single();
+          .maybeSingle();
         
         if (userData?.favor_image) {
           setLikedWallpapers(userData.favor_image);
@@ -99,6 +105,19 @@ const WallpaperGrid = () => {
     };
 
     fetchLikedWallpapers();
+
+    // Subscribe to auth changes
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (session) {
+        fetchLikedWallpapers();
+      } else {
+        setLikedWallpapers([]);
+      }
+    });
+
+    return () => {
+      subscription.unsubscribe();
+    };
   }, []);
 
   if (isLoading) {
