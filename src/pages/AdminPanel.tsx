@@ -12,7 +12,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Download, Heart, Trash, X } from "lucide-react";
+import { Download, Heart, Trash } from "lucide-react";
 import Header from "@/components/Header";
 
 interface Wallpaper {
@@ -85,32 +85,39 @@ const AdminPanel = () => {
 
   const handleDelete = async (id: string, filePath: string) => {
     try {
-      // Delete from storage
+      // First, delete the file from storage
       const { error: storageError } = await supabase.storage
         .from('wallpapers')
         .remove([filePath]);
 
-      if (storageError) throw storageError;
+      if (storageError) {
+        console.error('Storage deletion error:', storageError);
+        throw storageError;
+      }
 
-      // Delete from database
+      // Then, delete the record from the database
       const { error: dbError } = await supabase
         .from('wallpapers')
         .delete()
-        .eq('id', id);
+        .match({ id: id });
 
-      if (dbError) throw dbError;
+      if (dbError) {
+        console.error('Database deletion error:', dbError);
+        throw dbError;
+      }
 
-      // Update local state
-      setWallpapers(wallpapers.filter(w => w.id !== id));
+      // Update local state only after both operations succeed
+      setWallpapers(prevWallpapers => prevWallpapers.filter(w => w.id !== id));
       
       toast({
         title: "Success",
         description: "Wallpaper deleted successfully",
       });
     } catch (error: any) {
+      console.error('Delete operation failed:', error);
       toast({
         title: "Error",
-        description: "Failed to delete wallpaper",
+        description: error.message || "Failed to delete wallpaper",
         variant: "destructive",
       });
     }
