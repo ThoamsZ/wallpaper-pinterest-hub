@@ -99,14 +99,14 @@ const AdminPanel = () => {
       const { error: dbError } = await supabase
         .from('wallpapers')
         .delete()
-        .match({ id: id });
+        .eq('id', id);
 
       if (dbError) {
         console.error('Database deletion error:', dbError);
         throw dbError;
       }
 
-      // Update local state only after both operations succeed
+      // Update local state
       setWallpapers(prevWallpapers => prevWallpapers.filter(w => w.id !== id));
       
       toast({
