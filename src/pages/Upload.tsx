@@ -120,35 +120,30 @@ const Upload = () => {
       let completed = 0;
 
       for (const file of files) {
-        console.log('Starting upload for file:', file.name);
-        const formData = new FormData();
-        formData.append('file', file);
+        const timestamp = Date.now();
+        const filePath = `${userId}/${timestamp}-${file.name}`;
 
-        // Call compression function
-        const { data, error: functionError } = await supabase.functions
-          .invoke('compress-image', {
-            body: formData
-          });
+        // Upload file to storage
+        const { data: uploadData, error: uploadError } = await supabase.storage
+          .from('wallpapers')
+          .upload(filePath, file);
 
-        if (functionError) {
-          console.error('Function error:', functionError);
-          throw new Error(`Compression failed: ${functionError.message}`);
+        if (uploadError) {
+          console.error('Upload error:', uploadError);
+          throw uploadError;
         }
 
-        if (!data) {
-          throw new Error('No data returned from compression function');
-        }
-
-        console.log('Compression successful:', data);
-
-        const { filePath, originalUrl, compressedUrl } = data;
+        // Get public URL
+        const { data: { publicUrl } } = supabase.storage
+          .from('wallpapers')
+          .getPublicUrl(filePath);
 
         // Insert into database
         const { error: dbError } = await supabase
           .from('wallpapers')
           .insert({
-            url: originalUrl,
-            compressed_url: compressedUrl,
+            url: publicUrl,
+            compressed_url: publicUrl, // Using same URL since we're not compressing
             file_path: filePath,
             type: imageType,
             tags: tagArray,
@@ -162,7 +157,6 @@ const Upload = () => {
         
         completed++;
         setProgress((completed / files.length) * 100);
-        console.log(`Progress: ${completed}/${files.length}`);
       }
 
       toast({
