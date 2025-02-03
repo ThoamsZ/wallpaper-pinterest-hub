@@ -1,7 +1,7 @@
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Heart, Download, X } from "lucide-react";
-import { useState, useEffect } from "react";
+import { Heart, Download } from "lucide-react";
+import { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 import type { Database } from "@/integrations/supabase/types";
@@ -123,35 +123,25 @@ const WallpaperModal = ({ wallpaper, isOpen, onClose, onLike, isLiked }: Wallpap
             alt={`Wallpaper ${wallpaper.id}`}
             className="w-full h-auto max-h-[90vh] object-contain"
           />
-          <div className="absolute right-4 top-4">
+          <div className="absolute left-0 right-0 bottom-[15%] flex justify-center gap-6">
             <Button
               variant="secondary"
               size="icon"
-              className="rounded-full bg-black/20 hover:bg-black/30 border-0"
-              onClick={onClose}
-            >
-              <X className="h-4 w-4 text-white" />
-            </Button>
-          </div>
-          <div className="absolute left-0 right-0 bottom-[15%] flex justify-center gap-4">
-            <Button
-              variant="secondary"
-              size="icon"
-              className={`rounded-full bg-black/20 hover:bg-black/30 border-0 ${
+              className={`rounded-full bg-black/20 hover:bg-black/30 border-0 h-12 w-12 ${
                 isLiked ? 'bg-red-500/20 hover:bg-red-500/30' : ''
               }`}
               onClick={() => onLike(wallpaper.id)}
             >
-              <Heart className={`h-4 w-4 text-white ${isLiked ? 'fill-white' : ''}`} />
+              <Heart className={`h-6 w-6 text-white ${isLiked ? 'fill-white' : ''}`} />
             </Button>
             <Button
               variant="secondary"
               size="icon"
-              className="rounded-full bg-black/20 hover:bg-black/30 border-0"
+              className="rounded-full bg-black/20 hover:bg-black/30 border-0 h-12 w-12"
               onClick={handleDownload}
               disabled={isDownloading}
             >
-              <Download className="h-4 w-4 text-white" />
+              <Download className="h-6 w-6 text-white" />
             </Button>
           </div>
         </div>
