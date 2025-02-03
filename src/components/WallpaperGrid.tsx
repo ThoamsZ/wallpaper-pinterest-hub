@@ -61,12 +61,34 @@ const WallpaperGrid = () => {
         ? currentFavorites.filter(id => id !== wallpaperId)
         : [...currentFavorites, wallpaperId];
 
+      // Update user favorites
       const { error: updateError } = await supabase
         .from('users')
         .update({ favor_image: newFavorites })
         .eq('id', session.user.id);
 
       if (updateError) throw updateError;
+
+      // Get current wallpaper data
+      const { data: wallpaperData, error: wallpaperFetchError } = await supabase
+        .from('wallpapers')
+        .select('like_count')
+        .eq('id', wallpaperId)
+        .maybeSingle();
+
+      if (wallpaperFetchError) throw wallpaperFetchError;
+
+      const currentLikeCount = wallpaperData?.like_count || 0;
+
+      // Update wallpaper like count
+      const { error: likeError } = await supabase
+        .from('wallpapers')
+        .update({
+          like_count: isLiked ? currentLikeCount - 1 : currentLikeCount + 1
+        })
+        .eq('id', wallpaperId);
+
+      if (likeError) throw likeError;
 
       setLikedWallpapers(newFavorites);
       

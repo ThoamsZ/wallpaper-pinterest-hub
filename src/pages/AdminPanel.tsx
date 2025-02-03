@@ -12,8 +12,15 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { X } from "lucide-react";
+import { Download, Heart, Trash } from "lucide-react";
 import Header from "@/components/Header";
+import { CollectionManager } from "@/components/admin/CollectionManager";
+import {
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
+} from "@/components/ui/tabs";
 
 interface Wallpaper {
   id: string;
@@ -21,6 +28,8 @@ interface Wallpaper {
   type: string;
   tags: string[];
   file_path: string;
+  download_count: number;
+  like_count: number;
 }
 
 const AdminPanel = () => {
@@ -83,28 +92,39 @@ const AdminPanel = () => {
 
   const handleDelete = async (id: string, filePath: string) => {
     try {
+      // First, delete the file from storage
       const { error: storageError } = await supabase.storage
         .from('wallpapers')
         .remove([filePath]);
 
-      if (storageError) throw storageError;
+      if (storageError) {
+        console.error('Storage deletion error:', storageError);
+        throw storageError;
+      }
 
+      // Then, delete the record from the database
       const { error: dbError } = await supabase
         .from('wallpapers')
         .delete()
         .eq('id', id);
 
-      if (dbError) throw dbError;
+      if (dbError) {
+        console.error('Database deletion error:', dbError);
+        throw dbError;
+      }
 
-      setWallpapers(wallpapers.filter(w => w.id !== id));
+      // Update local state
+      setWallpapers(prevWallpapers => prevWallpapers.filter(w => w.id !== id));
+      
       toast({
         title: "Success",
         description: "Wallpaper deleted successfully",
       });
     } catch (error: any) {
+      console.error('Delete operation failed:', error);
       toast({
         title: "Error",
-        description: "Failed to delete wallpaper",
+        description: error.message || "Failed to delete wallpaper",
         variant: "destructive",
       });
     }
@@ -160,46 +180,69 @@ const AdminPanel = () => {
           </div>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {wallpapers.map((wallpaper) => (
-            <Card key={wallpaper.id}>
-              <CardHeader>
-                <CardTitle className="text-lg">
-                  {wallpaper.type} Wallpaper
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <img
-                  src={wallpaper.url}
-                  alt="Wallpaper"
-                  className="w-full h-48 object-cover rounded-md"
-                />
-                <div className="flex flex-wrap gap-2">
-                  {wallpaper.tags.map((tag, index) => (
-                    <Badge key={index} variant="secondary">
-                      {tag}
-                    </Badge>
-                  ))}
-                </div>
-                <Input
-                  defaultValue={wallpaper.tags.join(', ')}
-                  placeholder="Update tags (comma-separated)"
-                  onBlur={(e) => handleUpdateTags(wallpaper.id, e.target.value)}
-                />
-              </CardContent>
-              <CardFooter className="justify-end">
-                <Button
-                  variant="destructive"
-                  size="sm"
-                  onClick={() => handleDelete(wallpaper.id, wallpaper.file_path)}
-                >
-                  <X className="w-4 h-4 mr-2" />
-                  Delete
-                </Button>
-              </CardFooter>
-            </Card>
-          ))}
-        </div>
+        <Tabs defaultValue="wallpapers">
+          <TabsList className="mb-8">
+            <TabsTrigger value="wallpapers">Wallpapers</TabsTrigger>
+            <TabsTrigger value="collections">Collections</TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="wallpapers">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {wallpapers.map((wallpaper) => (
+                <Card key={wallpaper.id}>
+                  <CardHeader>
+                    <CardTitle className="text-lg">
+                      {wallpaper.type} Wallpaper
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <img
+                      src={wallpaper.url}
+                      alt="Wallpaper"
+                      className="w-full h-48 object-cover rounded-md"
+                    />
+                    <div className="flex flex-wrap gap-2">
+                      {wallpaper.tags.map((tag, index) => (
+                        <Badge key={index} variant="secondary">
+                          {tag}
+                        </Badge>
+                      ))}
+                    </div>
+                    <Input
+                      defaultValue={wallpaper.tags.join(', ')}
+                      placeholder="Update tags (comma-separated)"
+                      onBlur={(e) => handleUpdateTags(wallpaper.id, e.target.value)}
+                    />
+                    <div className="flex justify-between items-center">
+                      <div className="flex items-center gap-2">
+                        <Download className="w-4 h-4" />
+                        <span>{wallpaper.download_count || 0}</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Heart className="w-4 h-4" />
+                        <span>{wallpaper.like_count || 0}</span>
+                      </div>
+                    </div>
+                  </CardContent>
+                  <CardFooter className="justify-end">
+                    <Button
+                      variant="destructive"
+                      size="sm"
+                      onClick={() => handleDelete(wallpaper.id, wallpaper.file_path)}
+                    >
+                      <Trash className="w-4 h-4 mr-2" />
+                      Delete
+                    </Button>
+                  </CardFooter>
+                </Card>
+              ))}
+            </div>
+          </TabsContent>
+
+          <TabsContent value="collections">
+            <CollectionManager />
+          </TabsContent>
+        </Tabs>
       </div>
     </>
   );
