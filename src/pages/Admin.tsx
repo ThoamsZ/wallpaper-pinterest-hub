@@ -5,6 +5,7 @@ import { Input } from "@/components/ui/input"
 import { toast } from "@/hooks/use-toast"
 import { useState } from "react"
 import { ImageIcon, X } from "lucide-react"
+import { supabase } from "@/integrations/supabase/client"
 
 const IMAGE_TYPES = [
   "Mobile",
@@ -53,23 +54,35 @@ const Admin = () => {
     setIsUploading(true)
     
     try {
-      // Create wallpaper entries for each uploaded image
-      const newWallpapers = imageFiles.map((image, index) => ({
-        id: Date.now() + index,
-        url: image.preview,
-        type: imageType,
-        tags: tags,
-      }))
+      for (const image of imageFiles) {
+        const fileExt = image.file.name.split('.').pop()
+        const filePath = `${crypto.randomUUID()}.${fileExt}`
 
-      // Get existing wallpapers from localStorage or initialize empty array
-      const existingWallpapers = JSON.parse(localStorage.getItem('wallpapers') || '[]')
-      
-      // Combine existing and new wallpapers
-      const updatedWallpapers = [...existingWallpapers, ...newWallpapers]
-      
-      // Store in localStorage
-      localStorage.setItem('wallpapers', JSON.stringify(updatedWallpapers))
-      
+        // Upload file to Supabase Storage
+        const { error: uploadError } = await supabase.storage
+          .from('wallpapers')
+          .upload(filePath, image.file)
+
+        if (uploadError) throw uploadError
+
+        // Get public URL for the uploaded file
+        const { data: { publicUrl } } = supabase.storage
+          .from('wallpapers')
+          .getPublicUrl(filePath)
+
+        // Save wallpaper metadata to database
+        const { error: dbError } = await supabase
+          .from('wallpapers')
+          .insert({
+            url: publicUrl,
+            type: imageType,
+            tags: tags,
+            file_path: filePath
+          })
+
+        if (dbError) throw dbError
+      }
+
       toast({
         title: "Success",
         description: "Wallpapers uploaded successfully!",
@@ -81,6 +94,7 @@ const Admin = () => {
       setTagInput("")
       
     } catch (error) {
+      console.error('Upload error:', error)
       toast({
         title: "Error",
         description: "Failed to upload wallpapers",

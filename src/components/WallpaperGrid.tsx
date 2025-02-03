@@ -1,21 +1,39 @@
 import { useState, useEffect } from "react";
+import { supabase } from "@/integrations/supabase/client";
+import { useQuery } from "@tanstack/react-query";
 
 interface Wallpaper {
-  id: number;
+  id: string;
   url: string;
-  type: "mobile" | "PFP" | "Sticker" | "Background" | "Live Wallpaper";
+  type: string;
   tags: string[];
 }
 
-const WallpaperGrid = () => {
-  const [hoveredId, setHoveredId] = useState<number | null>(null);
-  const [wallpapers, setWallpapers] = useState<Wallpaper[]>([]);
+const fetchWallpapers = async () => {
+  const { data, error } = await supabase
+    .from('wallpapers')
+    .select('*')
+    .order('created_at', { ascending: false });
 
-  useEffect(() => {
-    // Load wallpapers from localStorage
-    const savedWallpapers = JSON.parse(localStorage.getItem('wallpapers') || '[]');
-    setWallpapers(savedWallpapers);
-  }, []);
+  if (error) throw error;
+  return data;
+};
+
+const WallpaperGrid = () => {
+  const [hoveredId, setHoveredId] = useState<string | null>(null);
+  
+  const { data: wallpapers = [], isLoading, error } = useQuery({
+    queryKey: ['wallpapers'],
+    queryFn: fetchWallpapers,
+  });
+
+  if (isLoading) {
+    return <div className="text-center py-8">Loading wallpapers...</div>;
+  }
+
+  if (error) {
+    return <div className="text-center py-8 text-red-500">Error loading wallpapers</div>;
+  }
 
   return (
     <div className="columns-1 md:columns-2 lg:columns-3 xl:columns-4 gap-4 p-4">
