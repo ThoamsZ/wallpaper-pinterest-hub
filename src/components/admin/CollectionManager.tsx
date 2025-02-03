@@ -19,7 +19,7 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { useQuery } from "@tanstack/react-query";
-import { Image, Trash } from "lucide-react";
+import { Image, Trash, Download, Heart } from "lucide-react";
 
 interface Collection {
   id: string;
@@ -33,6 +33,8 @@ interface Wallpaper {
   url: string;
   type: string;
   file_path: string;
+  download_count: number;
+  like_count: number;
 }
 
 interface CollectionWallpaper extends Wallpaper {
@@ -63,7 +65,7 @@ export const CollectionManager = () => {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('wallpapers')
-        .select('id, url, type, file_path');
+        .select('id, url, type, file_path, download_count, like_count');
 
       if (error) throw error;
       return data || [];
@@ -82,7 +84,9 @@ export const CollectionManager = () => {
             id,
             url,
             type,
-            file_path
+            file_path,
+            download_count,
+            like_count
           )
         `)
         .eq('collection_id', selectedCollection);
@@ -235,12 +239,27 @@ export const CollectionManager = () => {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {collectionWallpapers.map((wallpaper: CollectionWallpaper) => (
             <Card key={wallpaper.id}>
-              <CardContent className="pt-6">
+              <CardHeader>
+                <CardTitle className="text-lg">
+                  {wallpaper.type} Wallpaper
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
                 <img
                   src={wallpaper.url}
                   alt="Wallpaper"
                   className="w-full h-48 object-cover rounded-md"
                 />
+                <div className="flex justify-between items-center">
+                  <div className="flex items-center gap-2">
+                    <Download className="w-4 h-4" />
+                    <span>{wallpaper.download_count || 0}</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Heart className="w-4 h-4" />
+                    <span>{wallpaper.like_count || 0}</span>
+                  </div>
+                </div>
               </CardContent>
               <CardFooter className="flex justify-between">
                 <Button
@@ -336,13 +355,22 @@ export const CollectionManager = () => {
                             alt={`Wallpaper ${wallpaper.id}`}
                             className="w-full h-32 object-cover rounded-md"
                           />
-                          <Button
-                            className="absolute bottom-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity"
-                            size="sm"
-                            onClick={() => addToCollection(collection.id, wallpaper.id)}
-                          >
-                            Add
-                          </Button>
+                          <div className="absolute bottom-2 right-2 flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                            <div className="flex items-center gap-1 bg-black/50 text-white px-2 py-1 rounded">
+                              <Download className="w-3 h-3" />
+                              <span className="text-xs">{wallpaper.download_count || 0}</span>
+                            </div>
+                            <div className="flex items-center gap-1 bg-black/50 text-white px-2 py-1 rounded">
+                              <Heart className="w-3 h-3" />
+                              <span className="text-xs">{wallpaper.like_count || 0}</span>
+                            </div>
+                            <Button
+                              size="sm"
+                              onClick={() => addToCollection(collection.id, wallpaper.id)}
+                            >
+                              Add
+                            </Button>
+                          </div>
                         </div>
                       ))}
                     </div>
