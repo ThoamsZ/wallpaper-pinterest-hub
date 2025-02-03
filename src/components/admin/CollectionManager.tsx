@@ -50,6 +50,9 @@ export const CollectionManager = () => {
   const { data: collections = [], refetch: refetchCollections } = useQuery({
     queryKey: ['collections'],
     queryFn: async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) throw new Error("Not authenticated");
+
       const { data, error } = await supabase
         .from('collections')
         .select('*')
@@ -63,9 +66,13 @@ export const CollectionManager = () => {
   const { data: wallpapers = [] } = useQuery({
     queryKey: ['wallpapers'],
     queryFn: async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) throw new Error("Not authenticated");
+
       const { data, error } = await supabase
         .from('wallpapers')
-        .select('id, url, type, file_path, download_count, like_count');
+        .select('id, url, type, file_path, download_count, like_count')
+        .eq('uploaded_by', session.user.id); // Filter wallpapers by the admin's user ID
 
       if (error) throw error;
       return data || [];
@@ -76,6 +83,9 @@ export const CollectionManager = () => {
     queryKey: ['collection_wallpapers', selectedCollection],
     enabled: !!selectedCollection,
     queryFn: async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) throw new Error("Not authenticated");
+
       const { data, error } = await supabase
         .from('collection_wallpapers')
         .select(`
@@ -89,7 +99,8 @@ export const CollectionManager = () => {
             like_count
           )
         `)
-        .eq('collection_id', selectedCollection);
+        .eq('collection_id', selectedCollection)
+        .eq('wallpapers.uploaded_by', session.user.id); // Only get wallpapers uploaded by the admin
 
       if (error) throw error;
       return data.map((item: any) => ({
