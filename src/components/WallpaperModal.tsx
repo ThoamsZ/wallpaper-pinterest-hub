@@ -1,7 +1,7 @@
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Heart } from "lucide-react";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 import type { Database } from "@/integrations/supabase/types";
@@ -18,6 +18,28 @@ interface WallpaperModalProps {
 
 const WallpaperModal = ({ wallpaper, isOpen, onClose, onLike, isLiked }: WallpaperModalProps) => {
   const [isDownloading, setIsDownloading] = useState(false);
+  const [downloadCount, setDownloadCount] = useState(0);
+
+  useEffect(() => {
+    const fetchDownloadCount = async () => {
+      if (!wallpaper) return;
+      
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session) {
+        const { data: userData } = await supabase
+          .from('users')
+          .select('download_count')
+          .eq('id', session.user.id)
+          .single();
+        
+        if (userData) {
+          setDownloadCount(userData.download_count || 0);
+        }
+      }
+    };
+
+    fetchDownloadCount();
+  }, [wallpaper]);
 
   const handleDownload = async () => {
     if (!wallpaper) return;
@@ -137,6 +159,9 @@ const WallpaperModal = ({ wallpaper, isOpen, onClose, onLike, isLiked }: Wallpap
                   ))}
                 </div>
               )}
+              <div className="text-center text-sm text-gray-500 mb-2">
+                Downloads today: {downloadCount}/3
+              </div>
               <div className="flex justify-center">
                 <Button 
                   onClick={handleDownload} 

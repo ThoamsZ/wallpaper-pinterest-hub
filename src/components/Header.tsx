@@ -16,7 +16,6 @@ const Header = () => {
       const { data: { session } } = await supabase.auth.getSession();
       if (session) {
         setIsAuthenticated(true);
-        // Check if user is admin
         const { data: userData, error } = await supabase
           .from('users')
           .select('is_admin')
@@ -65,13 +64,24 @@ const Header = () => {
       });
     } else {
       navigate("/");
+      toast({
+        title: "Success",
+        description: "Successfully logged out",
+      });
     }
+  };
+
+  const handleNavigation = (path: string) => {
+    navigate(path);
   };
 
   return (
     <header className="fixed top-0 left-0 right-0 bg-white/80 backdrop-blur-md z-50 border-b">
       <div className="container mx-auto px-4 py-3 flex items-center justify-between">
-        <h1 className="text-2xl font-bold text-primary cursor-pointer" onClick={() => navigate("/")}>
+        <h1 
+          className="text-2xl font-bold text-primary cursor-pointer" 
+          onClick={() => handleNavigation("/")}
+        >
           XXWallpaper
         </h1>
         <div className="relative max-w-md w-full mx-4">
@@ -83,18 +93,24 @@ const Header = () => {
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-5 h-5" />
         </div>
         <nav className="flex items-center gap-6">
-          <a href="#" className="text-gray-600 hover:text-primary transition-colors">
+          <button 
+            onClick={() => handleNavigation("/")}
+            className="text-gray-600 hover:text-primary transition-colors"
+          >
             Explore
-          </a>
+          </button>
           {isAuthenticated && (
-            <a href="/collections" className="text-gray-600 hover:text-primary transition-colors">
+            <button 
+              onClick={() => handleNavigation("/collections")}
+              className="text-gray-600 hover:text-primary transition-colors"
+            >
               Collections
-            </a>
+            </button>
           )}
           {isAuthenticated ? (
             <>
               {isAdmin && (
-                <Button variant="outline" onClick={() => navigate("/admin")}>
+                <Button variant="outline" onClick={() => handleNavigation("/admin")}>
                   Admin
                 </Button>
               )}
@@ -103,7 +119,7 @@ const Header = () => {
               </Button>
             </>
           ) : (
-            <Button onClick={() => navigate("/auth")}>Login</Button>
+            <Button onClick={() => handleNavigation("/auth")}>Login</Button>
           )}
         </nav>
       </div>
