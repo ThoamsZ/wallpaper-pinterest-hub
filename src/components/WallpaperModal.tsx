@@ -118,39 +118,41 @@ const WallpaperModal = ({ wallpaper, isOpen, onClose, onLike, isLiked }: Wallpap
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="max-w-[95vw] max-h-[95vh] p-0 overflow-hidden border-0 bg-transparent">
         <div className="relative w-full h-full flex items-center justify-center">
-          <Button
-            variant="secondary"
-            size="icon"
-            className="absolute top-4 right-4 z-50 rounded-full bg-black/50 hover:bg-black/70 border-0 h-14 w-14"
-            onClick={onClose}
-          >
-            <X className="h-7 w-7 text-white" />
-          </Button>
-          <img
-            src={wallpaper.url}
-            alt={`Wallpaper ${wallpaper.id}`}
-            className="w-full h-auto max-h-[95vh] object-contain"
-          />
-          <div className="absolute left-0 right-0 bottom-[15%] flex justify-center gap-8">
+          <div className="relative">
             <Button
               variant="secondary"
               size="icon"
-              className={`rounded-full bg-black/50 hover:bg-black/70 border-0 h-14 w-14 ${
-                isLiked ? 'bg-red-500/50 hover:bg-red-500/70' : ''
-              }`}
-              onClick={() => onLike(wallpaper.id)}
+              className="absolute top-4 right-4 z-50 rounded-full bg-black/50 hover:bg-black/70 border-0 h-14 w-14"
+              onClick={onClose}
             >
-              <Heart className={`h-7 w-7 text-white ${isLiked ? 'fill-white' : ''}`} />
+              <X className="h-7 w-7 text-white" />
             </Button>
-            <Button
-              variant="secondary"
-              size="icon"
-              className="rounded-full bg-black/50 hover:bg-black/70 border-0 h-14 w-14"
-              onClick={handleDownload}
-              disabled={isDownloading}
-            >
-              <Download className="h-7 w-7 text-white" />
-            </Button>
+            <img
+              src={wallpaper.url}
+              alt={`Wallpaper ${wallpaper.id}`}
+              className="w-full h-auto max-h-[95vh] object-contain"
+            />
+            <div className="absolute left-0 right-0 bottom-[15%] flex justify-center gap-8">
+              <Button
+                variant="secondary"
+                size="icon"
+                className={`rounded-full bg-black/50 hover:bg-black/70 border-0 h-14 w-14 ${
+                  isLiked ? 'bg-red-500/50 hover:bg-red-500/70' : ''
+                }`}
+                onClick={() => onLike(wallpaper.id)}
+              >
+                <Heart className={`h-7 w-7 text-white ${isLiked ? 'fill-white' : ''}`} />
+              </Button>
+              <Button
+                variant="secondary"
+                size="icon"
+                className="rounded-full bg-black/50 hover:bg-black/70 border-0 h-14 w-14"
+                onClick={handleDownload}
+                disabled={isDownloading}
+              >
+                <Download className="h-7 w-7 text-white" />
+              </Button>
+            </div>
           </div>
         </div>
       </DialogContent>
