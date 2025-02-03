@@ -2,6 +2,8 @@ import { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery } from "@tanstack/react-query";
 import type { Database } from "@/integrations/supabase/types";
+import WallpaperModal from "./WallpaperModal";
+import { toast } from "@/hooks/use-toast";
 
 type Wallpaper = Database['public']['Tables']['wallpapers']['Row'];
 
@@ -10,7 +12,7 @@ const fetchWallpapers = async () => {
     .from('wallpapers')
     .select('*')
     .order('created_at', { ascending: false })
-    .limit(50); // Limit the initial load to 50 items
+    .limit(50);
 
   if (error) throw error;
   return data;
@@ -18,14 +20,86 @@ const fetchWallpapers = async () => {
 
 const WallpaperGrid = () => {
   const [hoveredId, setHoveredId] = useState<string | null>(null);
+  const [selectedWallpaper, setSelectedWallpaper] = useState<Wallpaper | null>(null);
+  const [likedWallpapers, setLikedWallpapers] = useState<string[]>([]);
   
   const { data: wallpapers = [], isLoading, error, isRefetching } = useQuery({
     queryKey: ['wallpapers'],
     queryFn: fetchWallpapers,
-    staleTime: 1000 * 60 * 5, // Cache for 5 minutes
+    staleTime: 1000 * 60 * 5,
     refetchOnWindowFocus: false,
-    retry: 2, // Limit retry attempts
+    retry: 2,
   });
+
+  const handleLike = async (wallpaperId: string) => {
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      if (!session) {
+        toast({
+          title: "Authentication required",
+          description: "Please login to like wallpapers",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      const { data: userData, error: userError } = await supabase
+        .from('users')
+        .select('favor_image')
+        .eq('id', session.user.id)
+        .single();
+
+      if (userError) throw userError;
+
+      const currentFavorites = userData.favor_image || [];
+      const isLiked = currentFavorites.includes(wallpaperId);
+      const newFavorites = isLiked
+        ? currentFavorites.filter(id => id !== wallpaperId)
+        : [...currentFavorites, wallpaperId];
+
+      const { error: updateError } = await supabase
+        .from('users')
+        .update({ favor_image: newFavorites })
+        .eq('id', session.user.id);
+
+      if (updateError) throw updateError;
+
+      setLikedWallpapers(newFavorites);
+      
+      toast({
+        title: isLiked ? "Removed from favorites" : "Added to favorites",
+        description: isLiked ? "Wallpaper removed from your collections" : "Wallpaper added to your collections",
+      });
+    } catch (error) {
+      console.error('Like error:', error);
+      toast({
+        title: "Action failed",
+        description: "There was an error updating your favorites",
+        variant: "destructive",
+      });
+    }
+  };
+
+  // Fetch user's liked wallpapers on component mount
+  useState(() => {
+    const fetchLikedWallpapers = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session) {
+        const { data: userData } = await supabase
+          .from('users')
+          .select('favor_image')
+          .eq('id', session.user.id)
+          .single();
+        
+        if (userData?.favor_image) {
+          setLikedWallpapers(userData.favor_image);
+        }
+      }
+    };
+
+    fetchLikedWallpapers();
+  }, []);
 
   if (isLoading) {
     return (
@@ -58,9 +132,10 @@ const WallpaperGrid = () => {
         {wallpapers.map((wallpaper: Wallpaper) => (
           <div
             key={wallpaper.id}
-            className="relative mb-4 break-inside-avoid"
+            className="relative mb-4 break-inside-avoid cursor-pointer"
             onMouseEnter={() => setHoveredId(wallpaper.id)}
             onMouseLeave={() => setHoveredId(null)}
+            onClick={() => setSelectedWallpaper(wallpaper)}
           >
             <div className="relative group overflow-hidden rounded-lg">
               <img
@@ -75,6 +150,13 @@ const WallpaperGrid = () => {
           </div>
         ))}
       </div>
+      <WallpaperModal
+        wallpaper={selectedWallpaper}
+        isOpen={!!selectedWallpaper}
+        onClose={() => setSelectedWallpaper(null)}
+        onLike={handleLike}
+        isLiked={selectedWallpaper ? likedWallpapers.includes(selectedWallpaper.id) : false}
+      />
     </>
   );
 };
