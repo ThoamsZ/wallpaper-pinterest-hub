@@ -6,7 +6,8 @@ import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import Index from "./pages/Index";
-import Admin from "./pages/Admin";
+import Upload from "./pages/Upload";
+import AdminPanel from "./pages/AdminPanel";
 import Auth from "./pages/Auth";
 import NotFound from "./pages/NotFound";
 import Collections from "./pages/Collections";
@@ -59,9 +60,15 @@ const App = () => {
           <Routes>
             <Route path="/" element={<Index />} />
             <Route
-              path="/admin"
+              path="/upload"
               element={
-                session?.user ? <Admin /> : <Navigate to="/auth" replace />
+                session?.user ? <Upload /> : <Navigate to="/auth" replace />
+              }
+            />
+            <Route
+              path="/admin-panel"
+              element={
+                session?.user ? <AdminPanel /> : <Navigate to="/auth" replace />
               }
             />
             <Route
