@@ -1,9 +1,10 @@
 import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { supabase } from "@/integrations/supabase/client";
+import { CollectionManager } from "@/components/admin/CollectionManager";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { toast } from "@/hooks/use-toast";
-import { supabase } from "@/integrations/supabase/client";
+import { Trash, Download, Heart } from "lucide-react";
 import {
   Card,
   CardContent,
@@ -11,10 +12,6 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Download, Heart, Trash } from "lucide-react";
-import Header from "@/components/Header";
-import { CollectionManager } from "@/components/admin/CollectionManager";
 import {
   Tabs,
   TabsContent,
@@ -39,41 +36,25 @@ interface Wallpaper {
   id: string;
   url: string;
   type: string;
-  tags: string[];
   file_path: string;
   download_count: number;
   like_count: number;
 }
 
 const AdminPanel = () => {
-  const navigate = useNavigate();
-  const [adminEmail, setAdminEmail] = useState<string>("");
+  const [currentCreatorCode, setCurrentCreatorCode] = useState<string | null>(null);
   const [creatorCode, setCreatorCode] = useState<string>("");
-  const [currentCreatorCode, setCurrentCreatorCode] = useState<string>("");
   const [selectedWallpapers, setSelectedWallpapers] = useState<string[]>([]);
-
-  const { data: wallpapers = [], refetch: refetchWallpapers } = useQuery({
-    queryKey: ['admin-wallpapers'],
+  
+  const { data: wallpapers = [] } = useQuery({
+    queryKey: ['wallpapers'],
     queryFn: async () => {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) throw new Error("Not authenticated");
 
-      const { data: userData } = await supabase
-        .from('users')
-        .select('is_admin, creator_code')
-        .eq('id', session.user.id)
-        .single();
-
-      if (!userData?.is_admin) {
-        navigate("/");
-        throw new Error("Not authorized");
-      }
-
-      setCurrentCreatorCode(userData.creator_code || "");
-
       const { data, error } = await supabase
         .from('wallpapers')
-        .select('*')
+        .select('id, url, type, file_path, download_count, like_count')
         .eq('uploaded_by', session.user.id);
 
       if (error) throw error;
@@ -81,124 +62,27 @@ const AdminPanel = () => {
     }
   });
 
-  useEffect(() => {
-    checkAdminAndLoadData();
-  }, []);
-
-  const checkAdminAndLoadData = async () => {
-    const { data: { session } } = await supabase.auth.getSession();
-    if (!session) {
-      navigate("/");
-      return;
-    }
-
-    setAdminEmail(session.user.email || "");
-
-    const { data: userData } = await supabase
-      .from('users')
-      .select('is_admin')
-      .eq('id', session.user.id)
-      .single();
-
-    if (!userData?.is_admin) {
-      navigate("/");
-      toast({
-        title: "Access Denied",
-        description: "You don't have permission to access this page",
-        variant: "destructive",
-      });
-      return;
-    }
-  };
-
   const handleUpdateCreatorCode = async () => {
-    if (!creatorCode.trim()) {
-      toast({
-        title: "Error",
-        description: "Creator code cannot be empty",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    const { data: { session } } = await supabase.auth.getSession();
-    if (!session) {
-      toast({
-        title: "Error",
-        description: "Not authenticated",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    const { error } = await supabase
-      .from('users')
-      .update({ creator_code: creatorCode.trim() })
-      .eq('id', session.user.id);
-
-    if (error) {
-      if (error.code === '23505') {
-        toast({
-          title: "Error",
-          description: "This creator code is already taken",
-          variant: "destructive",
-        });
-      } else {
-        toast({
-          title: "Error",
-          description: "Failed to update creator code",
-          variant: "destructive",
-        });
-      }
-      return;
-    }
-
-    setCurrentCreatorCode(creatorCode.trim());
-    setCreatorCode("");
-    toast({
-      title: "Success",
-      description: "Creator code updated successfully",
-    });
-  };
-
-  const handleDelete = async (id: string, filePath: string) => {
     try {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) throw new Error("Not authenticated");
 
-      // First, delete the file from storage
-      const { error: storageError } = await supabase.storage
-        .from('wallpapers')
-        .remove([filePath]);
+      const { error } = await supabase
+        .from('users')
+        .update({ creator_code: creatorCode })
+        .eq('id', session.user.id);
 
-      if (storageError) {
-        console.error('Storage deletion error:', storageError);
-        throw storageError;
-      }
+      if (error) throw error;
 
-      // Then, delete the record from the database
-      const { error: dbError } = await supabase
-        .from('wallpapers')
-        .delete()
-        .eq('id', id)
-        .eq('uploaded_by', session.user.id);
-
-      if (dbError) {
-        console.error('Database deletion error:', dbError);
-        throw dbError;
-      }
-
-      refetchWallpapers();
-      
       toast({
         title: "Success",
-        description: "Wallpaper deleted successfully",
+        description: "Creator code updated successfully",
       });
+      setCurrentCreatorCode(creatorCode);
     } catch (error: any) {
-      console.error('Delete operation failed:', error);
       toast({
         title: "Error",
-        description: error.message || "Failed to delete wallpaper",
+        description: error.message,
         variant: "destructive",
       });
     }
@@ -206,142 +90,108 @@ const AdminPanel = () => {
 
   const handleDeleteMultiple = async () => {
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) throw new Error("Not authenticated");
-
-      const wallpapersToDelete = wallpapers.filter(w => selectedWallpapers.includes(w.id));
-
-      // First delete from storage
-      for (const wallpaper of wallpapersToDelete) {
-        const { error: storageError } = await supabase.storage
-          .from('wallpapers')
-          .remove([wallpaper.file_path]);
-
-        if (storageError) throw storageError;
-      }
-
-      // Then delete from database
-      const { error: dbError } = await supabase
+      const { error } = await supabase
         .from('wallpapers')
         .delete()
-        .in('id', selectedWallpapers)
-        .eq('uploaded_by', session.user.id);
+        .in('id', selectedWallpapers);
 
-      if (dbError) throw dbError;
+      if (error) throw error;
 
       toast({
         title: "Success",
-        description: `${selectedWallpapers.length} wallpapers deleted successfully`,
+        description: "Selected wallpapers deleted successfully",
       });
-      
       setSelectedWallpapers([]);
-      refetchWallpapers();
     } catch (error: any) {
       toast({
         title: "Error",
-        description: error.message || "Failed to delete wallpapers",
+        description: error.message,
         variant: "destructive",
       });
     }
   };
 
-  const handleUpdateTags = async (id: string, newTags: string) => {
+  const handleDeleteWallpaper = async (wallpaper: Wallpaper) => {
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) throw new Error("Not authenticated");
-
-      const tagArray = newTags.split(',').map(tag => tag.trim()).filter(tag => tag);
-      
       const { error } = await supabase
         .from('wallpapers')
-        .update({ tags: tagArray })
-        .eq('id', id)
-        .eq('uploaded_by', session.user.id);
+        .delete()
+        .eq('id', wallpaper.id);
 
       if (error) throw error;
 
-      refetchWallpapers();
-
       toast({
         title: "Success",
-        description: "Tags updated successfully",
+        description: "Wallpaper deleted successfully",
       });
     } catch (error: any) {
       toast({
         title: "Error",
-        description: "Failed to update tags",
+        description: error.message,
         variant: "destructive",
       });
     }
   };
 
   return (
-    <>
-      <Header />
-      <div className="container mx-auto px-4 py-8 mt-20">
-        <div className="flex justify-between items-center mb-8">
-          <div>
-            <h1 className="text-2xl font-bold">Admin Panel</h1>
-            <p className="text-gray-600">Logged in as: {adminEmail}</p>
-          </div>
-          <div className="space-x-4">
-            <Button onClick={() => navigate("/upload")}>Upload Wallpapers</Button>
-          </div>
-        </div>
-
-        <Card className="mb-8">
-          <CardHeader>
-            <CardTitle>Creator Code Management</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              {currentCreatorCode && (
-                <p className="text-sm text-gray-600">
-                  Current Creator Code: <span className="font-semibold">{currentCreatorCode}</span>
-                </p>
-              )}
-              <div className="flex gap-4">
-                <Input
-                  placeholder="Enter new creator code"
-                  value={creatorCode}
-                  onChange={(e) => setCreatorCode(e.target.value)}
-                />
-                <Button onClick={handleUpdateCreatorCode}>
-                  {currentCreatorCode ? "Update" : "Set"} Creator Code
-                </Button>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Tabs defaultValue="wallpapers">
-          <TabsList className="mb-8">
-            <TabsTrigger value="wallpapers">Wallpapers</TabsTrigger>
-            <TabsTrigger value="collections">Collections</TabsTrigger>
+    <div className="min-h-screen bg-background p-4 md:p-8">
+      <div className="container mx-auto">
+        <h1 className="text-2xl font-bold mb-6">Admin Panel</h1>
+        <Tabs defaultValue="creator-code" className="w-full">
+          <TabsList className="w-full flex flex-wrap gap-2 mb-4">
+            <TabsTrigger value="creator-code" className="flex-1">Creator Code</TabsTrigger>
+            <TabsTrigger value="wallpapers" className="flex-1">Wallpapers</TabsTrigger>
+            <TabsTrigger value="collections" className="flex-1">Collections</TabsTrigger>
           </TabsList>
 
+          <TabsContent value="creator-code">
+            <Card className="mb-6">
+              <CardHeader>
+                <CardTitle>Your Creator Code</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  <div className="text-sm">
+                    Current Creator Code: {currentCreatorCode || "Not set"}
+                  </div>
+                  <div className="flex flex-col sm:flex-row gap-4">
+                    <Input
+                      placeholder="Enter new creator code"
+                      value={creatorCode}
+                      onChange={(e) => setCreatorCode(e.target.value)}
+                      className="flex-1"
+                    />
+                    <Button onClick={handleUpdateCreatorCode} className="w-full sm:w-auto">
+                      Update Code
+                    </Button>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
           <TabsContent value="wallpapers">
-            <div className="flex justify-between items-center mb-4">
+            <div className="flex justify-between items-center mb-4 flex-wrap gap-4">
               {selectedWallpapers.length > 0 && (
                 <AlertDialog>
                   <AlertDialogTrigger asChild>
-                    <Button variant="destructive">
+                    <Button variant="destructive" className="w-full sm:w-auto">
                       <Trash className="w-4 h-4 mr-2" />
                       Delete Selected ({selectedWallpapers.length})
                     </Button>
                   </AlertDialogTrigger>
-                  <AlertDialogContent>
+                  <AlertDialogContent className="sm:max-w-[425px]">
                     <AlertDialogHeader>
                       <AlertDialogTitle>Delete Multiple Wallpapers</AlertDialogTitle>
                       <AlertDialogDescription>
                         Are you sure you want to delete {selectedWallpapers.length} wallpapers? This action cannot be undone.
                       </AlertDialogDescription>
                     </AlertDialogHeader>
-                    <AlertDialogFooter>
-                      <AlertDialogCancel>Cancel</AlertDialogCancel>
+                    <AlertDialogFooter className="flex-col sm:flex-row gap-2">
+                      <AlertDialogCancel className="w-full sm:w-auto">Cancel</AlertDialogCancel>
                       <AlertDialogAction
                         onClick={handleDeleteMultiple}
-                        className="bg-red-500 hover:bg-red-600"
+                        className="w-full sm:w-auto bg-red-500 hover:bg-red-600"
                       >
                         Delete
                       </AlertDialogAction>
@@ -350,9 +200,12 @@ const AdminPanel = () => {
                 </AlertDialog>
               )}
             </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
               {wallpapers.map((wallpaper) => (
-                <Card key={wallpaper.id} className={`relative ${selectedWallpapers.includes(wallpaper.id) ? 'ring-2 ring-primary' : ''}`}>
+                <Card 
+                  key={wallpaper.id} 
+                  className={`relative ${selectedWallpapers.includes(wallpaper.id) ? 'ring-2 ring-primary' : ''}`}
+                >
                   <div className="absolute top-2 left-2 z-10">
                     <Checkbox
                       checked={selectedWallpapers.includes(wallpaper.id)}
@@ -374,19 +227,7 @@ const AdminPanel = () => {
                     <img
                       src={wallpaper.url}
                       alt="Wallpaper"
-                      className="w-full h-48 object-cover rounded-md"
-                    />
-                    <div className="flex flex-wrap gap-2">
-                      {wallpaper.tags.map((tag, index) => (
-                        <Badge key={index} variant="secondary">
-                          {tag}
-                        </Badge>
-                      ))}
-                    </div>
-                    <Input
-                      defaultValue={wallpaper.tags.join(', ')}
-                      placeholder="Update tags (comma-separated)"
-                      onBlur={(e) => handleUpdateTags(wallpaper.id, e.target.value)}
+                      className="w-full aspect-[3/4] object-cover rounded-md"
                     />
                     <div className="flex justify-between items-center">
                       <div className="flex items-center gap-2">
@@ -399,11 +240,11 @@ const AdminPanel = () => {
                       </div>
                     </div>
                   </CardContent>
-                  <CardFooter className="justify-end">
+                  <CardFooter className="flex flex-col sm:flex-row gap-2">
                     <Button
                       variant="destructive"
-                      size="sm"
-                      onClick={() => handleDelete(wallpaper.id, wallpaper.file_path)}
+                      onClick={() => handleDeleteWallpaper(wallpaper)}
+                      className="w-full sm:w-auto"
                     >
                       <Trash className="w-4 h-4 mr-2" />
                       Delete
@@ -419,7 +260,7 @@ const AdminPanel = () => {
           </TabsContent>
         </Tabs>
       </div>
-    </>
+    </div>
   );
 };
 
