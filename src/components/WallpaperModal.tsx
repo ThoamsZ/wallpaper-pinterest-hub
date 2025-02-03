@@ -116,12 +116,12 @@ const WallpaperModal = ({ wallpaper, isOpen, onClose, onLike, isLiked }: Wallpap
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-[90vw] max-h-[90vh] p-0">
-        <div className="relative">
+      <DialogContent className="max-w-[95vw] max-h-[95vh] p-0 overflow-hidden border-0 bg-transparent">
+        <div className="relative w-full h-full flex items-center justify-center">
           <img
             src={wallpaper.url}
             alt={`Wallpaper ${wallpaper.id}`}
-            className="w-full h-auto max-h-[90vh] object-contain"
+            className="w-full h-auto max-h-[95vh] object-contain"
           />
           <div className="absolute left-0 right-0 bottom-[15%] flex justify-center gap-8">
             <Button
