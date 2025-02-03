@@ -5,6 +5,7 @@ import type { Database } from "@/integrations/supabase/types";
 import WallpaperModal from "./WallpaperModal";
 import { toast } from "@/hooks/use-toast";
 import { useNavigate } from "react-router-dom";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 type Wallpaper = Database['public']['Tables']['wallpapers']['Row'];
 
@@ -25,6 +26,7 @@ const fetchWallpapers = async () => {
 
 const WallpaperGrid = ({ wallpapers: propWallpapers }: WallpaperGridProps) => {
   const navigate = useNavigate();
+  const isMobile = useIsMobile();
   const [hoveredId, setHoveredId] = useState<string | null>(null);
   const [selectedWallpaper, setSelectedWallpaper] = useState<Wallpaper | null>(null);
   const [likedWallpapers, setLikedWallpapers] = useState<string[]>([]);
@@ -35,7 +37,7 @@ const WallpaperGrid = ({ wallpapers: propWallpapers }: WallpaperGridProps) => {
     staleTime: 1000 * 60 * 5,
     refetchOnWindowFocus: true,
     retry: 2,
-    enabled: !propWallpapers, // Only fetch if wallpapers weren't provided as props
+    enabled: !propWallpapers,
   });
 
   const wallpapers = propWallpapers || fetchedWallpapers;
@@ -116,7 +118,6 @@ const WallpaperGrid = ({ wallpapers: propWallpapers }: WallpaperGridProps) => {
     }
   };
 
-  // Fetch user's liked wallpapers on component mount and auth state change
   useEffect(() => {
     const fetchLikedWallpapers = async () => {
       const { data: { session } } = await supabase.auth.getSession();
@@ -151,10 +152,14 @@ const WallpaperGrid = ({ wallpapers: propWallpapers }: WallpaperGridProps) => {
 
   if (isLoading && !propWallpapers) {
     return (
-      <div className="columns-1 md:columns-2 lg:columns-3 xl:columns-4 gap-4 p-4">
+      <div className={`grid gap-4 p-4 ${
+        isMobile 
+          ? 'grid-cols-1' 
+          : 'sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4'
+      }`}>
         {[...Array(8)].map((_, i) => (
-          <div key={i} className="mb-4 break-inside-avoid">
-            <div className="animate-pulse bg-gray-200 rounded-lg aspect-[3/4]"></div>
+          <div key={i} className="relative aspect-[3/4]">
+            <div className="animate-pulse bg-gray-200 rounded-lg h-full w-full"></div>
           </div>
         ))}
       </div>
@@ -172,15 +177,23 @@ const WallpaperGrid = ({ wallpapers: propWallpapers }: WallpaperGridProps) => {
   return (
     <>
       {isRefetching && !propWallpapers && (
-        <div className="fixed top-20 right-4 bg-primary text-white px-4 py-2 rounded-md shadow-lg">
+        <div className="fixed top-20 right-4 bg-primary text-white px-4 py-2 rounded-md shadow-lg z-50">
           Updating...
         </div>
       )}
-      <div className="columns-1 md:columns-2 lg:columns-3 xl:columns-4 gap-4 p-4">
+      <div className={`${
+        isMobile
+          ? 'grid grid-cols-1 gap-4'
+          : 'columns-1 sm:columns-2 md:columns-3 lg:columns-4'
+      } p-4`}>
         {wallpapers.map((wallpaper: Wallpaper) => (
           <div
             key={wallpaper.id}
-            className="relative mb-4 break-inside-avoid cursor-pointer"
+            className={`${
+              isMobile 
+                ? 'mb-4 aspect-[3/4]' 
+                : 'mb-4 break-inside-avoid'
+            } relative cursor-pointer`}
             onMouseEnter={() => setHoveredId(wallpaper.id)}
             onMouseLeave={() => setHoveredId(null)}
             onClick={() => setSelectedWallpaper(wallpaper)}
@@ -190,7 +203,7 @@ const WallpaperGrid = ({ wallpapers: propWallpapers }: WallpaperGridProps) => {
                 src={wallpaper.compressed_url}
                 alt={`Wallpaper ${wallpaper.id}`}
                 loading="lazy"
-                className={`w-full object-cover transition-transform duration-300 ${
+                className={`w-full h-full object-cover transition-transform duration-300 ${
                   hoveredId === wallpaper.id ? "scale-105" : ""
                 }`}
               />
