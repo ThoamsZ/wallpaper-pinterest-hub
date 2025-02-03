@@ -42,8 +42,10 @@ export type Database = {
       wallpapers: {
         Row: {
           created_at: string
+          download_count: number | null
           file_path: string
           id: string
+          like_count: number | null
           tags: string[] | null
           type: string
           uploaded_by: string | null
@@ -51,8 +53,10 @@ export type Database = {
         }
         Insert: {
           created_at?: string
+          download_count?: number | null
           file_path: string
           id?: string
+          like_count?: number | null
           tags?: string[] | null
           type: string
           uploaded_by?: string | null
@@ -60,8 +64,10 @@ export type Database = {
         }
         Update: {
           created_at?: string
+          download_count?: number | null
           file_path?: string
           id?: string
+          like_count?: number | null
           tags?: string[] | null
           type?: string
           uploaded_by?: string | null

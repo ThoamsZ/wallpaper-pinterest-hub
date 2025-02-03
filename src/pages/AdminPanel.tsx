@@ -12,7 +12,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { X } from "lucide-react";
+import { Download, Heart, Trash, X } from "lucide-react";
 import Header from "@/components/Header";
 
 interface Wallpaper {
@@ -21,6 +21,8 @@ interface Wallpaper {
   type: string;
   tags: string[];
   file_path: string;
+  download_count: number;
+  like_count: number;
 }
 
 const AdminPanel = () => {
@@ -83,12 +85,14 @@ const AdminPanel = () => {
 
   const handleDelete = async (id: string, filePath: string) => {
     try {
+      // Delete from storage
       const { error: storageError } = await supabase.storage
         .from('wallpapers')
         .remove([filePath]);
 
       if (storageError) throw storageError;
 
+      // Delete from database
       const { error: dbError } = await supabase
         .from('wallpapers')
         .delete()
@@ -96,7 +100,9 @@ const AdminPanel = () => {
 
       if (dbError) throw dbError;
 
+      // Update local state
       setWallpapers(wallpapers.filter(w => w.id !== id));
+      
       toast({
         title: "Success",
         description: "Wallpaper deleted successfully",
@@ -186,6 +192,16 @@ const AdminPanel = () => {
                   placeholder="Update tags (comma-separated)"
                   onBlur={(e) => handleUpdateTags(wallpaper.id, e.target.value)}
                 />
+                <div className="flex justify-between items-center">
+                  <div className="flex items-center gap-2">
+                    <Download className="w-4 h-4" />
+                    <span>{wallpaper.download_count || 0}</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Heart className="w-4 h-4" />
+                    <span>{wallpaper.like_count || 0}</span>
+                  </div>
+                </div>
               </CardContent>
               <CardFooter className="justify-end">
                 <Button
@@ -193,7 +209,7 @@ const AdminPanel = () => {
                   size="sm"
                   onClick={() => handleDelete(wallpaper.id, wallpaper.file_path)}
                 >
-                  <X className="w-4 h-4 mr-2" />
+                  <Trash className="w-4 h-4 mr-2" />
                   Delete
                 </Button>
               </CardFooter>
