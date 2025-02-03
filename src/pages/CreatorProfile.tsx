@@ -16,7 +16,6 @@ const CreatorProfile = () => {
   const [activeTab, setActiveTab] = useState("wallpapers");
   const [selectedCollection, setSelectedCollection] = useState<string | null>(null);
 
-  // Fetch creator's user ID using creator code
   const { data: creatorData, isLoading: isCreatorLoading } = useQuery({
     queryKey: ['creator', creatorCode],
     queryFn: async () => {
@@ -49,7 +48,6 @@ const CreatorProfile = () => {
     enabled: !!creatorCode,
   });
 
-  // Fetch wallpapers uploaded by the creator
   const { data: wallpapers = [], isLoading: isWallpapersLoading } = useQuery({
     queryKey: ['creator-wallpapers', creatorData?.id],
     queryFn: async () => {
@@ -73,7 +71,7 @@ const CreatorProfile = () => {
     enabled: !!creatorData?.id,
   });
 
-  // Fetch collections created by the creator - no auth check needed as it's public
+  // Fetch collections created by the creator
   const { data: collections = [], isLoading: isCollectionsLoading } = useQuery({
     queryKey: ['creator-collections', creatorData?.id],
     queryFn: async () => {
@@ -81,8 +79,7 @@ const CreatorProfile = () => {
         .from('collections')
         .select(`
           *,
-          collection_wallpapers (
-            wallpaper_id,
+          collection_wallpapers!inner (
             wallpapers (
               id,
               compressed_url,
@@ -98,9 +95,11 @@ const CreatorProfile = () => {
         .eq('created_by', creatorData.id)
         .order('created_at', { ascending: false });
 
-      if (error) throw error;
+      if (error) {
+        console.error('Error fetching collections:', error);
+        throw error;
+      }
       
-      console.log('Collections data:', data); // Debug log
       return data || [];
     },
     enabled: !!creatorData?.id,
@@ -123,13 +122,12 @@ const CreatorProfile = () => {
 
   const getCollectionPreviewImages = (collection: any) => {
     return collection.collection_wallpapers
-      .slice(0, 4)
       .map((cw: any) => cw.wallpapers?.compressed_url)
-      .filter(Boolean);
+      .filter(Boolean)
+      .slice(0, 4);
   };
 
   const getCollectionWallpapers = (collection: any): Wallpaper[] => {
-    if (!collection || !collection.collection_wallpapers) return [];
     return collection.collection_wallpapers
       .map((cw: any) => cw.wallpapers)
       .filter(Boolean);
