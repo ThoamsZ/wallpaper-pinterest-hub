@@ -69,13 +69,22 @@ const WallpaperGrid = () => {
 
       if (updateError) throw updateError;
 
+      // Get current wallpaper data
+      const { data: wallpaperData, error: wallpaperFetchError } = await supabase
+        .from('wallpapers')
+        .select('like_count')
+        .eq('id', wallpaperId)
+        .maybeSingle();
+
+      if (wallpaperFetchError) throw wallpaperFetchError;
+
+      const currentLikeCount = wallpaperData?.like_count || 0;
+
       // Update wallpaper like count
       const { error: likeError } = await supabase
         .from('wallpapers')
         .update({
-          like_count: isLiked 
-            ? supabase.sql`like_count - 1`
-            : supabase.sql`like_count + 1`
+          like_count: isLiked ? currentLikeCount - 1 : currentLikeCount + 1
         })
         .eq('id', wallpaperId);
 
