@@ -106,12 +106,12 @@ const WallpaperModal = ({ wallpaper, isOpen, onClose, onLike, isLiked }: Wallpap
 
   return (
     <Dialog open={isOpen} onOpenChange={() => onClose()}>
-      <DialogContent className="max-w-4xl">
-        <div className="relative">
+      <DialogContent className="max-w-[90vw] max-h-[90vh] p-0 overflow-hidden">
+        <div className="relative flex flex-col items-center">
           <img
             src={wallpaper.url}
             alt={`Wallpaper ${wallpaper.id}`}
-            className="w-full rounded-lg"
+            className="w-full h-auto max-h-[75vh] object-contain"
           />
           <div className="absolute top-4 right-4 flex gap-2">
             <Button
@@ -123,21 +123,31 @@ const WallpaperModal = ({ wallpaper, isOpen, onClose, onLike, isLiked }: Wallpap
               <Heart className={`${isLiked ? 'fill-red-500 text-red-500' : ''}`} />
             </Button>
           </div>
-        </div>
-        <div className="flex justify-between items-center mt-4">
-          <div className="flex gap-2">
-            {wallpaper.tags?.map((tag, index) => (
-              <span
-                key={index}
-                className="px-2 py-1 bg-secondary text-secondary-foreground rounded-md text-sm"
-              >
-                {tag}
-              </span>
-            ))}
+          <div className="w-full p-6 bg-background">
+            <div className="flex flex-col gap-4">
+              {wallpaper.tags && wallpaper.tags.length > 0 && (
+                <div className="flex flex-wrap gap-2">
+                  {wallpaper.tags.map((tag, index) => (
+                    <span
+                      key={index}
+                      className="px-2 py-1 bg-secondary/20 text-secondary-foreground rounded-md text-sm"
+                    >
+                      {tag}
+                    </span>
+                  ))}
+                </div>
+              )}
+              <div className="flex justify-center">
+                <Button 
+                  onClick={handleDownload} 
+                  disabled={isDownloading}
+                  className="w-full max-w-md"
+                >
+                  {isDownloading ? "Downloading..." : "Download"}
+                </Button>
+              </div>
+            </div>
           </div>
-          <Button onClick={handleDownload} disabled={isDownloading}>
-            {isDownloading ? "Downloading..." : "Download"}
-          </Button>
         </div>
       </DialogContent>
     </Dialog>
