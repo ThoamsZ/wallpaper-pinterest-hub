@@ -22,6 +22,18 @@ import {
   TabsTrigger,
 } from "@/components/ui/tabs";
 import { useQuery } from "@tanstack/react-query";
+import { Checkbox } from "@/components/ui/checkbox";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 
 interface Wallpaper {
   id: string;
@@ -38,6 +50,7 @@ const AdminPanel = () => {
   const [adminEmail, setAdminEmail] = useState<string>("");
   const [creatorCode, setCreatorCode] = useState<string>("");
   const [currentCreatorCode, setCurrentCreatorCode] = useState<string>("");
+  const [selectedWallpapers, setSelectedWallpapers] = useState<string[]>([]);
 
   const { data: wallpapers = [], refetch: refetchWallpapers } = useQuery({
     queryKey: ['admin-wallpapers'],
@@ -191,6 +204,47 @@ const AdminPanel = () => {
     }
   };
 
+  const handleDeleteMultiple = async () => {
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) throw new Error("Not authenticated");
+
+      const wallpapersToDelete = wallpapers.filter(w => selectedWallpapers.includes(w.id));
+
+      // First delete from storage
+      for (const wallpaper of wallpapersToDelete) {
+        const { error: storageError } = await supabase.storage
+          .from('wallpapers')
+          .remove([wallpaper.file_path]);
+
+        if (storageError) throw storageError;
+      }
+
+      // Then delete from database
+      const { error: dbError } = await supabase
+        .from('wallpapers')
+        .delete()
+        .in('id', selectedWallpapers)
+        .eq('uploaded_by', session.user.id);
+
+      if (dbError) throw dbError;
+
+      toast({
+        title: "Success",
+        description: `${selectedWallpapers.length} wallpapers deleted successfully`,
+      });
+      
+      setSelectedWallpapers([]);
+      refetchWallpapers();
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to delete wallpapers",
+        variant: "destructive",
+      });
+    }
+  };
+
   const handleUpdateTags = async (id: string, newTags: string) => {
     try {
       const { data: { session } } = await supabase.auth.getSession();
@@ -267,9 +321,50 @@ const AdminPanel = () => {
           </TabsList>
 
           <TabsContent value="wallpapers">
+            <div className="flex justify-between items-center mb-4">
+              {selectedWallpapers.length > 0 && (
+                <AlertDialog>
+                  <AlertDialogTrigger asChild>
+                    <Button variant="destructive">
+                      <Trash className="w-4 h-4 mr-2" />
+                      Delete Selected ({selectedWallpapers.length})
+                    </Button>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>Delete Multiple Wallpapers</AlertDialogTitle>
+                      <AlertDialogDescription>
+                        Are you sure you want to delete {selectedWallpapers.length} wallpapers? This action cannot be undone.
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel>Cancel</AlertDialogCancel>
+                      <AlertDialogAction
+                        onClick={handleDeleteMultiple}
+                        className="bg-red-500 hover:bg-red-600"
+                      >
+                        Delete
+                      </AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
+              )}
+            </div>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {wallpapers.map((wallpaper) => (
-                <Card key={wallpaper.id}>
+                <Card key={wallpaper.id} className={`relative ${selectedWallpapers.includes(wallpaper.id) ? 'ring-2 ring-primary' : ''}`}>
+                  <div className="absolute top-2 left-2 z-10">
+                    <Checkbox
+                      checked={selectedWallpapers.includes(wallpaper.id)}
+                      onCheckedChange={(checked) => {
+                        if (checked) {
+                          setSelectedWallpapers([...selectedWallpapers, wallpaper.id]);
+                        } else {
+                          setSelectedWallpapers(selectedWallpapers.filter(id => id !== wallpaper.id));
+                        }
+                      }}
+                    />
+                  </div>
                   <CardHeader>
                     <CardTitle className="text-lg">
                       {wallpaper.type} Wallpaper
