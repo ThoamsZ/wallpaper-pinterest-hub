@@ -110,7 +110,7 @@ const Header = () => {
           {isAuthenticated ? (
             <>
               {isAdmin && (
-                <Button variant="outline" onClick={() => handleNavigation("/admin")}>
+                <Button variant="outline" onClick={() => handleNavigation("/admin-panel")}>
                   Admin
                 </Button>
               )}
