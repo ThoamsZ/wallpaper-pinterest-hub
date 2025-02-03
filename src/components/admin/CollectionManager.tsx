@@ -29,6 +29,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
+import { Checkbox } from "@/components/ui/checkbox";
 import { useQuery } from "@tanstack/react-query";
 import { Image, Trash, Download, Heart } from "lucide-react";
 
@@ -57,6 +58,7 @@ export const CollectionManager = () => {
   const [newCollectionDesc, setNewCollectionDesc] = useState("");
   const [selectedCollection, setSelectedCollection] = useState<string | null>(null);
   const [isViewingCollection, setIsViewingCollection] = useState(false);
+  const [selectedWallpapers, setSelectedWallpapers] = useState<string[]>([]);
 
   const { data: collections = [], refetch: refetchCollections } = useQuery({
     queryKey: ['collections'],
@@ -199,6 +201,43 @@ export const CollectionManager = () => {
     }
   };
 
+  const deleteMultipleWallpapers = async () => {
+    try {
+      // First delete from storage
+      const wallpapersToDelete = collectionWallpapers.filter(w => selectedWallpapers.includes(w.id));
+      
+      for (const wallpaper of wallpapersToDelete) {
+        const { error: storageError } = await supabase.storage
+          .from('wallpapers')
+          .remove([wallpaper.file_path]);
+
+        if (storageError) throw storageError;
+      }
+
+      // Then delete from database
+      const { error: dbError } = await supabase
+        .from('wallpapers')
+        .delete()
+        .in('id', selectedWallpapers);
+
+      if (dbError) throw dbError;
+
+      toast({
+        title: "Success",
+        description: `${selectedWallpapers.length} wallpapers deleted successfully`,
+      });
+      
+      setSelectedWallpapers([]);
+      refetchCollectionWallpapers();
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+      });
+    }
+  };
+
   const addToCollection = async (collectionId: string, wallpaperId: string) => {
     try {
       const { data: { session } } = await supabase.auth.getSession();
@@ -323,17 +362,59 @@ export const CollectionManager = () => {
           <h2 className="text-2xl font-bold">
             {collections.find(c => c.id === selectedCollection)?.name}
           </h2>
-          <Button onClick={() => {
-            setIsViewingCollection(false);
-            setSelectedCollection(null);
-          }}>
-            Back to Collections
-          </Button>
+          <div className="flex gap-4">
+            {selectedWallpapers.length > 0 && (
+              <AlertDialog>
+                <AlertDialogTrigger asChild>
+                  <Button variant="destructive">
+                    <Trash className="w-4 h-4 mr-2" />
+                    Delete Selected ({selectedWallpapers.length})
+                  </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>Delete Multiple Wallpapers</AlertDialogTitle>
+                    <AlertDialogDescription>
+                      Are you sure you want to delete {selectedWallpapers.length} wallpapers? This action cannot be undone.
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                    <AlertDialogAction
+                      onClick={deleteMultipleWallpapers}
+                      className="bg-red-500 hover:bg-red-600"
+                    >
+                      Delete
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
+            )}
+            <Button onClick={() => {
+              setIsViewingCollection(false);
+              setSelectedCollection(null);
+              setSelectedWallpapers([]);
+            }}>
+              Back to Collections
+            </Button>
+          </div>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 max-h-[calc(100vh-200px)] overflow-y-auto pr-2">
           {collectionWallpapers.map((wallpaper: CollectionWallpaper) => (
-            <Card key={wallpaper.id}>
+            <Card key={wallpaper.id} className={`relative ${selectedWallpapers.includes(wallpaper.id) ? 'ring-2 ring-primary' : ''}`}>
+              <div className="absolute top-2 left-2 z-10">
+                <Checkbox
+                  checked={selectedWallpapers.includes(wallpaper.id)}
+                  onCheckedChange={(checked) => {
+                    if (checked) {
+                      setSelectedWallpapers([...selectedWallpapers, wallpaper.id]);
+                    } else {
+                      setSelectedWallpapers(selectedWallpapers.filter(id => id !== wallpaper.id));
+                    }
+                  }}
+                />
+              </div>
               <CardHeader>
                 <CardTitle className="text-lg">
                   {wallpaper.type} Wallpaper
