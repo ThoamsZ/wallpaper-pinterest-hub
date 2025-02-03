@@ -120,24 +120,24 @@ const Upload = () => {
       let completed = 0;
 
       for (const file of files) {
-        const formData = new FormData();
-        formData.append('file', file);
+        const fileExt = file.name.split('.').pop();
+        const fileName = `${Math.random()}.${fileExt}`;
+        const filePath = `${fileName}`;
 
-        // Call our compression function
-        const { data: compressedData, error: compressError } = await supabase.functions
-          .invoke('compress-image', {
-            body: formData
-          });
+        const { error: uploadError, data } = await supabase.storage
+          .from('wallpapers')
+          .upload(filePath, file);
 
-        if (compressError) throw compressError;
+        if (uploadError) throw uploadError;
 
-        const { filePath, originalUrl, compressedUrl } = compressedData;
+        const { data: { publicUrl } } = supabase.storage
+          .from('wallpapers')
+          .getPublicUrl(filePath);
 
         const { error: dbError } = await supabase
           .from('wallpapers')
           .insert({
-            url: originalUrl,
-            compressed_url: compressedUrl,
+            url: publicUrl,
             file_path: filePath,
             type: imageType,
             tags: tagArray,
@@ -161,12 +161,12 @@ const Upload = () => {
       const fileInput = document.getElementById('file') as HTMLInputElement;
       if (fileInput) fileInput.value = '';
       
+      // Navigate to admin panel after successful upload
       navigate('/admin-panel');
     } catch (error: any) {
-      console.error('Upload error:', error);
       toast({
         title: "Error",
-        description: error.message || 'Failed to upload files',
+        description: error.message,
         variant: "destructive",
       });
     } finally {

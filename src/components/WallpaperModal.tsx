@@ -87,7 +87,7 @@ const WallpaperModal = ({ wallpaper, isOpen, onClose, onLike, isLiked }: Wallpap
         });
         return;
       } else {
-        // Increment download count for user
+        // Increment download count
         await supabase
           .from('users')
           .update({
@@ -95,16 +95,6 @@ const WallpaperModal = ({ wallpaper, isOpen, onClose, onLike, isLiked }: Wallpap
           })
           .eq('id', session.user.id);
       }
-
-      // Increment wallpaper download count
-      const { error: wallpaperError } = await supabase
-        .from('wallpapers')
-        .update({
-          download_count: (wallpaper.download_count || 0) + 1
-        })
-        .eq('id', wallpaper.id);
-
-      if (wallpaperError) throw wallpaperError;
 
       // Trigger download
       const response = await fetch(wallpaper.url);

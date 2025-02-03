@@ -9,63 +9,6 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
-      collection_wallpapers: {
-        Row: {
-          added_at: string
-          collection_id: string
-          wallpaper_id: string
-        }
-        Insert: {
-          added_at?: string
-          collection_id: string
-          wallpaper_id: string
-        }
-        Update: {
-          added_at?: string
-          collection_id?: string
-          wallpaper_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "collection_wallpapers_collection_id_fkey"
-            columns: ["collection_id"]
-            isOneToOne: false
-            referencedRelation: "collections"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "collection_wallpapers_wallpaper_id_fkey"
-            columns: ["wallpaper_id"]
-            isOneToOne: false
-            referencedRelation: "wallpapers"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      collections: {
-        Row: {
-          created_at: string
-          created_by: string
-          description: string | null
-          id: string
-          name: string
-        }
-        Insert: {
-          created_at?: string
-          created_by: string
-          description?: string | null
-          id?: string
-          name: string
-        }
-        Update: {
-          created_at?: string
-          created_by?: string
-          description?: string | null
-          id?: string
-          name?: string
-        }
-        Relationships: []
-      }
       users: {
         Row: {
           created_at: string
@@ -98,36 +41,27 @@ export type Database = {
       }
       wallpapers: {
         Row: {
-          compressed_url: string
           created_at: string
-          download_count: number | null
           file_path: string
           id: string
-          like_count: number | null
           tags: string[] | null
           type: string
           uploaded_by: string | null
           url: string
         }
         Insert: {
-          compressed_url: string
           created_at?: string
-          download_count?: number | null
           file_path: string
           id?: string
-          like_count?: number | null
           tags?: string[] | null
           type: string
           uploaded_by?: string | null
           url: string
         }
         Update: {
-          compressed_url?: string
           created_at?: string
-          download_count?: number | null
           file_path?: string
           id?: string
-          like_count?: number | null
           tags?: string[] | null
           type?: string
           uploaded_by?: string | null
