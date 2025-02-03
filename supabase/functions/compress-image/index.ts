@@ -29,12 +29,12 @@ serve(async (req) => {
     console.log('Starting ImageMagick compression...')
     
     // Create a new process to run ImageMagick
-    const cmd = new Deno.Command("magick", {
+    const cmd = new Deno.Command("convert", {
       args: [
         "-", // Read from stdin
         "-resize", "800x800>", // Resize to max 800x800 while maintaining aspect ratio
         "-quality", "80", // Set JPEG quality to 80%
-        "JPEG:-" // Output as JPEG to stdout
+        "jpeg:-" // Output as JPEG to stdout
       ],
       stdin: "piped",
       stdout: "piped",
