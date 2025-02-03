@@ -1,21 +1,22 @@
-import { useState, useEffect } from "react";
-import { supabase } from "@/integrations/supabase/client";
-import { useQuery } from "@tanstack/react-query";
-import type { Database } from "@/integrations/supabase/types";
-import Header from "@/components/Header";
-import WallpaperModal from "@/components/WallpaperModal";
-import { toast } from "@/hooks/use-toast";
+import { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { useQuery } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
+import Header from "@/components/Header";
+import { Button } from "@/components/ui/button";
+import { Heart } from "lucide-react";
+import { toast } from "@/hooks/use-toast";
+import WallpaperGrid from "@/components/WallpaperGrid";
+import type { Database } from "@/integrations/supabase/types";
 
 type Wallpaper = Database['public']['Tables']['wallpapers']['Row'];
 
 const Collections = () => {
   const navigate = useNavigate();
-  const [selectedWallpaper, setSelectedWallpaper] = useState<Wallpaper | null>(null);
-  const [likedWallpapers, setLikedWallpapers] = useState<string[]>([]);
+  const [selectedCollection, setSelectedCollection] = useState<string | null>(null);
 
-  const { data: wallpapers = [], isLoading, refetch } = useQuery({
-    queryKey: ['collections'],
+  const { data: collections = [], isLoading: isCollectionsLoading, refetch: refetchCollections } = useQuery({
+    queryKey: ['user-collections'],
     queryFn: async () => {
       const { data: { session } } = await supabase.auth.getSession();
       
@@ -24,111 +25,113 @@ const Collections = () => {
         return [];
       }
 
-      const { data: userData } = await supabase
-        .from('users')
-        .select('favor_image')
-        .eq('id', session.user.id)
-        .maybeSingle();
+      const { data, error } = await supabase
+        .from('collections')
+        .select(`
+          *,
+          collection_wallpapers!inner (
+            wallpapers (
+              id,
+              compressed_url,
+              url,
+              type,
+              file_path,
+              download_count,
+              like_count,
+              created_at
+            )
+          )
+        `)
+        .eq('created_by', session.user.id)
+        .order('created_at', { ascending: false });
 
-      if (!userData?.favor_image?.length) return [];
-
-      const { data: wallpapers } = await supabase
-        .from('wallpapers')
-        .select('*')
-        .in('id', userData.favor_image);
-
-      setLikedWallpapers(userData.favor_image || []);
-      return wallpapers || [];
+      if (error) {
+        console.error('Error fetching collections:', error);
+        throw error;
+      }
+      
+      return data || [];
     },
-    staleTime: 1000 * 60 * 5,
-    refetchOnWindowFocus: true,
   });
 
-  // Check authentication on mount and redirect if not authenticated
-  useEffect(() => {
-    const checkAuth = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) {
-        navigate('/auth');
-      }
-    };
-
-    checkAuth();
-
-    // Subscribe to auth changes
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-      if (!session) {
-        navigate('/auth');
-      }
-    });
-
-    return () => {
-      subscription.unsubscribe();
-    };
-  }, [navigate]);
-
-  const handleLike = async (wallpaperId: string) => {
+  const handleCollectionLike = async (collectionId: string) => {
     try {
       const { data: { session } } = await supabase.auth.getSession();
       
       if (!session) {
         toast({
           title: "Authentication required",
-          description: "Please login to like wallpapers",
+          description: "Please login to like collections",
           variant: "destructive",
         });
         navigate('/auth');
         return;
       }
 
+      // Get user's current liked collections
       const { data: userData, error: userError } = await supabase
         .from('users')
-        .select('favor_image')
+        .select('favor_collections')
         .eq('id', session.user.id)
-        .maybeSingle();
+        .single();
 
       if (userError) throw userError;
 
-      const currentFavorites = userData?.favor_image || [];
-      const newFavorites = currentFavorites.filter(id => id !== wallpaperId);
+      const currentFavorites = userData?.favor_collections || [];
+      const isLiked = currentFavorites.includes(collectionId);
+      const newFavorites = isLiked
+        ? currentFavorites.filter(id => id !== collectionId)
+        : [...currentFavorites, collectionId];
 
+      // Update user's liked collections
       const { error: updateError } = await supabase
         .from('users')
-        .update({ favor_image: newFavorites })
+        .update({ favor_collections: newFavorites })
         .eq('id', session.user.id);
 
       if (updateError) throw updateError;
 
-      setLikedWallpapers(newFavorites);
-      
       toast({
-        title: "Removed from favorites",
-        description: "Wallpaper removed from your collections",
+        title: isLiked ? "Collection removed from likes" : "Collection liked",
+        description: isLiked ? "Collection removed from your likes" : "Collection added to your likes",
       });
 
-      // Refetch to ensure data is fresh
-      refetch();
-    } catch (error) {
-      console.error('Like error:', error);
+      refetchCollections();
+    } catch (error: any) {
+      console.error('Collection like error:', error);
       toast({
         title: "Action failed",
-        description: "There was an error updating your favorites",
+        description: "There was an error updating your likes",
         variant: "destructive",
       });
     }
   };
 
-  if (isLoading) {
+  const getCollectionPreviewImages = (collection: any) => {
+    return collection.collection_wallpapers
+      .map((cw: any) => cw.wallpapers?.compressed_url)
+      .filter(Boolean)
+      .slice(0, 4);
+  };
+
+  const getCollectionWallpapers = (collection: any): Wallpaper[] => {
+    return collection.collection_wallpapers
+      .map((cw: any) => cw.wallpapers)
+      .filter(Boolean);
+  };
+
+  const selectedCollectionData = collections.find(c => c.id === selectedCollection);
+  const selectedCollectionWallpapers = selectedCollectionData 
+    ? getCollectionWallpapers(selectedCollectionData)
+    : [];
+
+  if (isCollectionsLoading) {
     return (
       <div className="min-h-screen bg-background">
         <Header />
         <main className="container mx-auto pt-20">
-          <div className="columns-1 md:columns-2 lg:columns-3 xl:columns-4 gap-4 p-4">
-            {[...Array(8)].map((_, i) => (
-              <div key={i} className="mb-4 break-inside-avoid">
-                <div className="animate-pulse bg-gray-200 rounded-lg aspect-[3/4]"></div>
-              </div>
-            ))}
+          <div className="flex items-center justify-center min-h-[60vh]">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
           </div>
         </main>
       </div>
@@ -139,40 +142,83 @@ const Collections = () => {
     <div className="min-h-screen bg-background">
       <Header />
       <main className="container mx-auto pt-20">
-        {wallpapers.length === 0 ? (
-          <div className="text-center py-20">
-            <h2 className="text-2xl font-bold mb-4">No saved wallpapers yet</h2>
-            <p className="text-muted-foreground">
-              Like some wallpapers to see them here!
-            </p>
-          </div>
-        ) : (
-          <div className="columns-1 md:columns-2 lg:columns-3 xl:columns-4 gap-4 p-4">
-            {wallpapers.map((wallpaper: Wallpaper) => (
-              <div
-                key={wallpaper.id}
-                className="relative mb-4 break-inside-avoid cursor-pointer"
-                onClick={() => setSelectedWallpaper(wallpaper)}
-              >
-                <div className="relative group overflow-hidden rounded-lg">
-                  <img
-                    src={wallpaper.url}
-                    alt={`Wallpaper ${wallpaper.id}`}
-                    loading="lazy"
-                    className="w-full object-cover transition-transform duration-300 group-hover:scale-105"
-                  />
+        <div className="mb-8">
+          <h1 className="text-3xl font-bold mb-2">My Collections</h1>
+          {selectedCollection && (
+            <Button 
+              variant="outline" 
+              className="mt-4"
+              onClick={() => setSelectedCollection(null)}
+            >
+              ← Back to Collections
+            </Button>
+          )}
+        </div>
+
+        {!selectedCollection ? (
+          collections.length === 0 ? (
+            <div className="text-center py-12">
+              <p className="text-muted-foreground">No collections found</p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {collections.map((collection) => (
+                <div
+                  key={collection.id}
+                  className="p-6 rounded-lg border bg-card text-card-foreground shadow-sm hover:shadow-md transition-shadow cursor-pointer relative"
+                  onClick={() => setSelectedCollection(collection.id)}
+                >
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="absolute top-2 right-2 z-10"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleCollectionLike(collection.id);
+                    }}
+                  >
+                    <Heart className="h-5 w-5" />
+                  </Button>
+                  <h3 className="text-lg font-semibold mb-2">{collection.name}</h3>
+                  {collection.description && (
+                    <p className="text-muted-foreground mb-4">{collection.description}</p>
+                  )}
+                  <div className="grid grid-cols-2 gap-2 mb-4">
+                    {getCollectionPreviewImages(collection).map((url, index) => (
+                      <img
+                        key={index}
+                        src={url}
+                        alt={`Preview ${index + 1}`}
+                        className="w-full h-24 object-cover rounded-md"
+                      />
+                    ))}
+                  </div>
+                  <p className="text-sm text-muted-foreground">
+                    Created: {new Date(collection.created_at).toLocaleDateString()}
+                  </p>
+                  <p className="text-sm text-muted-foreground mt-2">
+                    Wallpapers: {collection.collection_wallpapers.length}
+                  </p>
                 </div>
+              ))}
+            </div>
+          )
+        ) : (
+          <div>
+            <h2 className="text-2xl font-semibold mb-6">
+              {selectedCollectionData?.name}
+            </h2>
+            {selectedCollectionWallpapers.length === 0 ? (
+              <div className="text-center py-12">
+                <p className="text-muted-foreground">No wallpapers in this collection</p>
               </div>
-            ))}
+            ) : (
+              <WallpaperGrid 
+                wallpapers={selectedCollectionWallpapers} 
+              />
+            )}
           </div>
         )}
-        <WallpaperModal
-          wallpaper={selectedWallpaper}
-          isOpen={!!selectedWallpaper}
-          onClose={() => setSelectedWallpaper(null)}
-          onLike={handleLike}
-          isLiked={selectedWallpaper ? likedWallpapers.includes(selectedWallpaper.id) : false}
-        />
       </main>
     </div>
   );
