@@ -68,9 +68,9 @@ const Header = () => {
     // First try to find by creator code
     const { data: creatorData, error: creatorError } = await supabase
       .from('users')
-      .select('creator_code')
+      .select('id')
       .eq('creator_code', searchQuery.trim())
-      .maybeSingle();
+      .single();
 
     if (creatorError && creatorError.code !== 'PGRST116') {
       console.error('Error searching creator:', creatorError);
@@ -78,8 +78,24 @@ const Header = () => {
     }
 
     if (creatorData) {
-      // Navigate to creator profile
-      navigate(`/creator/${creatorData.creator_code}`);
+      // If creator found, navigate to their profile or filter their wallpapers
+      // For now, we'll just show their wallpapers
+      const { data: wallpapers, error: wallpapersError } = await supabase
+        .from('wallpapers')
+        .select('*')
+        .eq('uploaded_by', creatorData.id);
+
+      if (wallpapersError) {
+        console.error('Error fetching wallpapers:', wallpapersError);
+        return;
+      }
+
+      // You might want to implement a proper state management solution for this
+      // For now, we'll just show a toast with the results
+      toast({
+        title: "Creator Found",
+        description: `Found ${wallpapers.length} wallpapers by this creator`,
+      });
     } else {
       toast({
         title: "Creator Not Found",

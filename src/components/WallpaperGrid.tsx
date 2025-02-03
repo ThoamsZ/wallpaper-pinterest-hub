@@ -8,10 +8,6 @@ import { useNavigate } from "react-router-dom";
 
 type Wallpaper = Database['public']['Tables']['wallpapers']['Row'];
 
-interface WallpaperGridProps {
-  wallpapers?: Wallpaper[];
-}
-
 const fetchWallpapers = async () => {
   const { data, error } = await supabase
     .from('wallpapers')
@@ -23,22 +19,19 @@ const fetchWallpapers = async () => {
   return data;
 };
 
-const WallpaperGrid = ({ wallpapers: propWallpapers }: WallpaperGridProps) => {
+const WallpaperGrid = () => {
   const navigate = useNavigate();
   const [hoveredId, setHoveredId] = useState<string | null>(null);
   const [selectedWallpaper, setSelectedWallpaper] = useState<Wallpaper | null>(null);
   const [likedWallpapers, setLikedWallpapers] = useState<string[]>([]);
   
-  const { data: fetchedWallpapers = [], isLoading, error, isRefetching, refetch } = useQuery({
+  const { data: wallpapers = [], isLoading, error, isRefetching, refetch } = useQuery({
     queryKey: ['wallpapers'],
     queryFn: fetchWallpapers,
     staleTime: 1000 * 60 * 5,
     refetchOnWindowFocus: true,
     retry: 2,
-    enabled: !propWallpapers, // Only fetch if wallpapers aren't provided as props
   });
-
-  const wallpapers = propWallpapers || fetchedWallpapers;
 
   const handleLike = async (wallpaperId: string) => {
     try {
@@ -105,9 +98,7 @@ const WallpaperGrid = ({ wallpapers: propWallpapers }: WallpaperGridProps) => {
       });
 
       // Refetch to ensure data is fresh
-      if (!propWallpapers) {
-        refetch();
-      }
+      refetch();
     } catch (error) {
       console.error('Like error:', error);
       toast({
@@ -151,7 +142,7 @@ const WallpaperGrid = ({ wallpapers: propWallpapers }: WallpaperGridProps) => {
     };
   }, []);
 
-  if (isLoading && !propWallpapers) {
+  if (isLoading) {
     return (
       <div className="columns-1 md:columns-2 lg:columns-3 xl:columns-4 gap-4 p-4">
         {[...Array(8)].map((_, i) => (
@@ -163,7 +154,7 @@ const WallpaperGrid = ({ wallpapers: propWallpapers }: WallpaperGridProps) => {
     );
   }
 
-  if (error && !propWallpapers) {
+  if (error) {
     return (
       <div className="text-center py-8 text-red-500">
         Error loading wallpapers. Please try again later.
@@ -173,7 +164,7 @@ const WallpaperGrid = ({ wallpapers: propWallpapers }: WallpaperGridProps) => {
 
   return (
     <>
-      {isRefetching && !propWallpapers && (
+      {isRefetching && (
         <div className="fixed top-20 right-4 bg-primary text-white px-4 py-2 rounded-md shadow-lg">
           Updating...
         </div>
