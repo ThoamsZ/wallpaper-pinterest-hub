@@ -98,15 +98,9 @@ const CreatorProfile = () => {
         .eq('created_by', creatorData.id)
         .order('created_at', { ascending: false });
 
-      if (error) {
-        toast({
-          title: "Error",
-          description: "Failed to fetch collections",
-          variant: "destructive",
-        });
-        throw error;
-      }
-
+      if (error) throw error;
+      
+      console.log('Collections data:', data); // Debug log
       return data || [];
     },
     enabled: !!creatorData?.id,
@@ -135,10 +129,16 @@ const CreatorProfile = () => {
   };
 
   const getCollectionWallpapers = (collection: any): Wallpaper[] => {
+    if (!collection || !collection.collection_wallpapers) return [];
     return collection.collection_wallpapers
       .map((cw: any) => cw.wallpapers)
       .filter(Boolean);
   };
+
+  const selectedCollectionData = collections.find(c => c.id === selectedCollection);
+  const selectedCollectionWallpapers = selectedCollectionData 
+    ? getCollectionWallpapers(selectedCollectionData)
+    : [];
 
   return (
     <div className="min-h-screen bg-background">
@@ -221,17 +221,15 @@ const CreatorProfile = () => {
         ) : (
           <div>
             <h2 className="text-2xl font-semibold mb-6">
-              {collections.find(c => c.id === selectedCollection)?.name}
+              {selectedCollectionData?.name}
             </h2>
-            {collections.find(c => c.id === selectedCollection)?.collection_wallpapers.length === 0 ? (
+            {selectedCollectionWallpapers.length === 0 ? (
               <div className="text-center py-12">
                 <p className="text-muted-foreground">No wallpapers in this collection</p>
               </div>
             ) : (
               <WallpaperGrid 
-                wallpapers={getCollectionWallpapers(
-                  collections.find(c => c.id === selectedCollection)
-                )} 
+                wallpapers={selectedCollectionWallpapers} 
               />
             )}
           </div>
