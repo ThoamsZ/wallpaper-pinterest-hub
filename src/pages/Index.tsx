@@ -23,7 +23,7 @@ const Index = () => {
   return (
     <div className="min-h-screen bg-background">
       <Header />
-      <main className="pt-28 px-2 sm:px-4">
+      <main className="container mx-auto pt-32 px-4 sm:px-6 lg:px-8">
         <WallpaperGrid key={session?.user?.id} />
       </main>
     </div>
