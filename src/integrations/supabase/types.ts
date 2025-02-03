@@ -69,6 +69,7 @@ export type Database = {
       users: {
         Row: {
           created_at: string
+          creator_code: string | null
           download_count: number | null
           favor_image: string[] | null
           id: string
@@ -78,6 +79,7 @@ export type Database = {
         }
         Insert: {
           created_at?: string
+          creator_code?: string | null
           download_count?: number | null
           favor_image?: string[] | null
           id: string
@@ -87,6 +89,7 @@ export type Database = {
         }
         Update: {
           created_at?: string
+          creator_code?: string | null
           download_count?: number | null
           favor_image?: string[] | null
           id?: string

@@ -36,6 +36,8 @@ interface Wallpaper {
 const AdminPanel = () => {
   const navigate = useNavigate();
   const [adminEmail, setAdminEmail] = useState<string>("");
+  const [creatorCode, setCreatorCode] = useState<string>("");
+  const [currentCreatorCode, setCurrentCreatorCode] = useState<string>("");
 
   const { data: wallpapers = [], refetch: refetchWallpapers } = useQuery({
     queryKey: ['admin-wallpapers'],
@@ -45,7 +47,7 @@ const AdminPanel = () => {
 
       const { data: userData } = await supabase
         .from('users')
-        .select('is_admin')
+        .select('is_admin, creator_code')
         .eq('id', session.user.id)
         .single();
 
@@ -53,6 +55,8 @@ const AdminPanel = () => {
         navigate("/");
         throw new Error("Not authorized");
       }
+
+      setCurrentCreatorCode(userData.creator_code || "");
 
       const { data, error } = await supabase
         .from('wallpapers')
@@ -94,6 +98,56 @@ const AdminPanel = () => {
     }
   };
 
+  const handleUpdateCreatorCode = async () => {
+    if (!creatorCode.trim()) {
+      toast({
+        title: "Error",
+        description: "Creator code cannot be empty",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) {
+      toast({
+        title: "Error",
+        description: "Not authenticated",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const { error } = await supabase
+      .from('users')
+      .update({ creator_code: creatorCode.trim() })
+      .eq('id', session.user.id);
+
+    if (error) {
+      if (error.code === '23505') {
+        toast({
+          title: "Error",
+          description: "This creator code is already taken",
+          variant: "destructive",
+        });
+      } else {
+        toast({
+          title: "Error",
+          description: "Failed to update creator code",
+          variant: "destructive",
+        });
+      }
+      return;
+    }
+
+    setCurrentCreatorCode(creatorCode.trim());
+    setCreatorCode("");
+    toast({
+      title: "Success",
+      description: "Creator code updated successfully",
+    });
+  };
+
   const handleDelete = async (id: string, filePath: string) => {
     try {
       const { data: { session } } = await supabase.auth.getSession();
@@ -114,7 +168,7 @@ const AdminPanel = () => {
         .from('wallpapers')
         .delete()
         .eq('id', id)
-        .eq('uploaded_by', session.user.id); // Only delete if the user owns the wallpaper
+        .eq('uploaded_by', session.user.id);
 
       if (dbError) {
         console.error('Database deletion error:', dbError);
@@ -148,7 +202,7 @@ const AdminPanel = () => {
         .from('wallpapers')
         .update({ tags: tagArray })
         .eq('id', id)
-        .eq('uploaded_by', session.user.id); // Only update if the user owns the wallpaper
+        .eq('uploaded_by', session.user.id);
 
       if (error) throw error;
 
@@ -180,6 +234,31 @@ const AdminPanel = () => {
             <Button onClick={() => navigate("/upload")}>Upload Wallpapers</Button>
           </div>
         </div>
+
+        <Card className="mb-8">
+          <CardHeader>
+            <CardTitle>Creator Code Management</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              {currentCreatorCode && (
+                <p className="text-sm text-gray-600">
+                  Current Creator Code: <span className="font-semibold">{currentCreatorCode}</span>
+                </p>
+              )}
+              <div className="flex gap-4">
+                <Input
+                  placeholder="Enter new creator code"
+                  value={creatorCode}
+                  onChange={(e) => setCreatorCode(e.target.value)}
+                />
+                <Button onClick={handleUpdateCreatorCode}>
+                  {currentCreatorCode ? "Update" : "Set"} Creator Code
+                </Button>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
 
         <Tabs defaultValue="wallpapers">
           <TabsList className="mb-8">
