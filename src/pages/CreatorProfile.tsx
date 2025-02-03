@@ -86,6 +86,11 @@ const CreatorProfile = () => {
             wallpapers (
               id,
               compressed_url,
+              url,
+              type,
+              file_path,
+              download_count,
+              like_count,
               created_at
             )
           )
@@ -107,24 +112,6 @@ const CreatorProfile = () => {
     enabled: !!creatorData?.id,
   });
 
-  // Fetch wallpapers for a specific collection
-  const { data: collectionWallpapers = [] } = useQuery({
-    queryKey: ['collection-wallpapers', selectedCollection],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from('collection_wallpapers')
-        .select(`
-          wallpaper_id,
-          wallpapers (*)
-        `)
-        .eq('collection_id', selectedCollection);
-
-      if (error) throw error;
-      return data.map((item: any) => item.wallpapers) || [];
-    },
-    enabled: !!selectedCollection,
-  });
-
   const isLoading = isCreatorLoading || isWallpapersLoading || isCollectionsLoading;
 
   if (isLoading) {
@@ -144,6 +131,12 @@ const CreatorProfile = () => {
     return collection.collection_wallpapers
       .slice(0, 4)
       .map((cw: any) => cw.wallpapers?.compressed_url)
+      .filter(Boolean);
+  };
+
+  const getCollectionWallpapers = (collection: any): Wallpaper[] => {
+    return collection.collection_wallpapers
+      .map((cw: any) => cw.wallpapers)
       .filter(Boolean);
   };
 
@@ -216,6 +209,9 @@ const CreatorProfile = () => {
                       <p className="text-sm text-muted-foreground">
                         Created: {new Date(collection.created_at).toLocaleDateString()}
                       </p>
+                      <p className="text-sm text-muted-foreground mt-2">
+                        Wallpapers: {collection.collection_wallpapers.length}
+                      </p>
                     </div>
                   ))}
                 </div>
@@ -227,12 +223,16 @@ const CreatorProfile = () => {
             <h2 className="text-2xl font-semibold mb-6">
               {collections.find(c => c.id === selectedCollection)?.name}
             </h2>
-            {collectionWallpapers.length === 0 ? (
+            {collections.find(c => c.id === selectedCollection)?.collection_wallpapers.length === 0 ? (
               <div className="text-center py-12">
                 <p className="text-muted-foreground">No wallpapers in this collection</p>
               </div>
             ) : (
-              <WallpaperGrid wallpapers={collectionWallpapers} />
+              <WallpaperGrid 
+                wallpapers={getCollectionWallpapers(
+                  collections.find(c => c.id === selectedCollection)
+                )} 
+              />
             )}
           </div>
         )}
