@@ -17,11 +17,17 @@ const Header = () => {
       if (session) {
         setIsAuthenticated(true);
         // Check if user is admin
-        const { data: userData } = await supabase
+        const { data: userData, error } = await supabase
           .from('users')
           .select('is_admin')
           .eq('id', session.user.id)
-          .single();
+          .maybeSingle();
+        
+        if (error) {
+          console.error('Error fetching user data:', error);
+          return;
+        }
+        
         setIsAdmin(userData?.is_admin || false);
       }
     };
@@ -31,11 +37,17 @@ const Header = () => {
     supabase.auth.onAuthStateChange(async (event, session) => {
       setIsAuthenticated(!!session);
       if (session) {
-        const { data: userData } = await supabase
+        const { data: userData, error } = await supabase
           .from('users')
           .select('is_admin')
           .eq('id', session.user.id)
-          .single();
+          .maybeSingle();
+        
+        if (error) {
+          console.error('Error fetching user data:', error);
+          return;
+        }
+
         setIsAdmin(userData?.is_admin || false);
       } else {
         setIsAdmin(false);
