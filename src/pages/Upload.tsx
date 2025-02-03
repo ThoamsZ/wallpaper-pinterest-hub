@@ -123,7 +123,6 @@ const Upload = () => {
         const timestamp = Date.now();
         const filePath = `${userId}/${timestamp}-${file.name}`;
 
-        // Upload file to storage
         const { data: uploadData, error: uploadError } = await supabase.storage
           .from('wallpapers')
           .upload(filePath, file);
@@ -132,12 +131,10 @@ const Upload = () => {
           throw uploadError;
         }
 
-        // Get public URL
         const { data: { publicUrl } } = supabase.storage
           .from('wallpapers')
           .getPublicUrl(filePath);
 
-        // Insert into database
         const { error: dbError } = await supabase
           .from('wallpapers')
           .insert({
@@ -177,6 +174,7 @@ const Upload = () => {
       });
     } finally {
       setUploading(false);
+      setProgress(0);
     }
   };
 
