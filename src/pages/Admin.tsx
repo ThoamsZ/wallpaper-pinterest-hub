@@ -53,8 +53,22 @@ const Admin = () => {
     setIsUploading(true)
     
     try {
-      // TODO: Implement actual upload logic when backend is connected
-      console.log("Uploading:", { imageFiles, imageType, tags })
+      // Create wallpaper entries for each uploaded image
+      const newWallpapers = imageFiles.map((image, index) => ({
+        id: Date.now() + index,
+        url: image.preview,
+        type: imageType,
+        tags: tags,
+      }))
+
+      // Get existing wallpapers from localStorage or initialize empty array
+      const existingWallpapers = JSON.parse(localStorage.getItem('wallpapers') || '[]')
+      
+      // Combine existing and new wallpapers
+      const updatedWallpapers = [...existingWallpapers, ...newWallpapers]
+      
+      // Store in localStorage
+      localStorage.setItem('wallpapers', JSON.stringify(updatedWallpapers))
       
       toast({
         title: "Success",
