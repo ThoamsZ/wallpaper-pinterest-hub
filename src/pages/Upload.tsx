@@ -120,19 +120,30 @@ const Upload = () => {
       let completed = 0;
 
       for (const file of files) {
+        console.log('Starting upload for file:', file.name);
         const formData = new FormData();
         formData.append('file', file);
 
-        // Call our compression function
-        const { data: compressedData, error: compressError } = await supabase.functions
+        // Call compression function
+        const { data, error: functionError } = await supabase.functions
           .invoke('compress-image', {
             body: formData
           });
 
-        if (compressError) throw compressError;
+        if (functionError) {
+          console.error('Function error:', functionError);
+          throw new Error(`Compression failed: ${functionError.message}`);
+        }
 
-        const { filePath, originalUrl, compressedUrl } = compressedData;
+        if (!data) {
+          throw new Error('No data returned from compression function');
+        }
 
+        console.log('Compression successful:', data);
+
+        const { filePath, originalUrl, compressedUrl } = data;
+
+        // Insert into database
         const { error: dbError } = await supabase
           .from('wallpapers')
           .insert({
@@ -144,10 +155,14 @@ const Upload = () => {
             uploaded_by: userId
           });
 
-        if (dbError) throw dbError;
+        if (dbError) {
+          console.error('Database error:', dbError);
+          throw dbError;
+        }
         
         completed++;
         setProgress((completed / files.length) * 100);
+        console.log(`Progress: ${completed}/${files.length}`);
       }
 
       toast({
