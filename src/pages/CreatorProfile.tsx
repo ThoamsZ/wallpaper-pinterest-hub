@@ -21,6 +21,7 @@ const CreatorProfile = () => {
   const [wallpapers, setWallpapers] = useState<Wallpaper[]>([]);
   const [collections, setCollections] = useState<Collection[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [creatorId, setCreatorId] = useState<string | null>(null);
 
   useEffect(() => {
     const fetchCreatorContent = async () => {
@@ -46,6 +47,8 @@ const CreatorProfile = () => {
           return;
         }
 
+        setCreatorId(userData.id);
+
         // Fetch wallpapers
         const { data: wallpaperData, error: wallpaperError } = await supabase
           .from('wallpapers')
@@ -54,7 +57,7 @@ const CreatorProfile = () => {
           .order(sortBy === 'date' ? 'created_at' : 'like_count', { ascending: false });
 
         if (wallpaperError) throw wallpaperError;
-        setWallpapers(wallpaperData);
+        setWallpapers(wallpaperData || []);
 
         // Fetch collections
         const { data: collectionData, error: collectionError } = await supabase
@@ -64,7 +67,7 @@ const CreatorProfile = () => {
           .order(sortBy === 'date' ? 'created_at' : 'name', { ascending: true });
 
         if (collectionError) throw collectionError;
-        setCollections(collectionData);
+        setCollections(collectionData || []);
 
       } catch (error) {
         console.error('Error fetching creator content:', error);
@@ -82,12 +85,13 @@ const CreatorProfile = () => {
   }, [creatorCode, sortBy]);
 
   const filteredWallpapers = wallpapers.filter(wallpaper => 
-    wallpaper.tags?.some(tag => 
+    !searchQuery || wallpaper.tags?.some(tag => 
       tag.toLowerCase().includes(searchQuery.toLowerCase())
     )
   );
 
   const filteredCollections = collections.filter(collection =>
+    !searchQuery || 
     collection.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
     (collection.description?.toLowerCase() || "").includes(searchQuery.toLowerCase())
   );
