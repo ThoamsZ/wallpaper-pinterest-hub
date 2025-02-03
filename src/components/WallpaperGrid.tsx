@@ -1,13 +1,9 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery } from "@tanstack/react-query";
+import type { Database } from "@/integrations/supabase/types";
 
-interface Wallpaper {
-  id: string;
-  url: string;
-  type: string;
-  tags: string[];
-}
+type Wallpaper = Database['public']['Tables']['wallpapers']['Row'];
 
 const fetchWallpapers = async () => {
   const { data, error } = await supabase
@@ -37,7 +33,7 @@ const WallpaperGrid = () => {
 
   return (
     <div className="columns-1 md:columns-2 lg:columns-3 xl:columns-4 gap-4 p-4">
-      {wallpapers.map((wallpaper) => (
+      {wallpapers.map((wallpaper: Wallpaper) => (
         <div
           key={wallpaper.id}
           className="relative mb-4 break-inside-avoid"

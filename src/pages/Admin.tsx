@@ -6,6 +6,7 @@ import { toast } from "@/hooks/use-toast"
 import { useState } from "react"
 import { ImageIcon, X } from "lucide-react"
 import { supabase } from "@/integrations/supabase/client"
+import type { Database } from "@/integrations/supabase/types"
 
 const IMAGE_TYPES = [
   "Mobile",
@@ -16,6 +17,7 @@ const IMAGE_TYPES = [
 ] as const
 
 type ImageType = typeof IMAGE_TYPES[number]
+type WallpaperInsert = Database['public']['Tables']['wallpapers']['Insert']
 
 interface ImagePreview {
   file: File
@@ -71,14 +73,16 @@ const Admin = () => {
           .getPublicUrl(filePath)
 
         // Save wallpaper metadata to database
+        const wallpaperData: WallpaperInsert = {
+          url: publicUrl,
+          type: imageType,
+          tags: tags,
+          file_path: filePath
+        }
+
         const { error: dbError } = await supabase
           .from('wallpapers')
-          .insert({
-            url: publicUrl,
-            type: imageType,
-            tags: tags,
-            file_path: filePath
-          })
+          .insert(wallpaperData)
 
         if (dbError) throw dbError
       }
