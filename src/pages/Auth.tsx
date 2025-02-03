@@ -23,7 +23,24 @@ const Auth = () => {
           email,
           password,
         });
-        if (error) throw error;
+        
+        if (error) {
+          if (error.message.includes("email_provider_disabled")) {
+            toast({
+              title: "Error",
+              description: "Email signup is currently disabled. Please contact administrator.",
+              variant: "destructive",
+            });
+          } else {
+            toast({
+              title: "Error",
+              description: error.message,
+              variant: "destructive",
+            });
+          }
+          return;
+        }
+        
         toast({
           title: "Success",
           description: "Please check your email to verify your account",
@@ -33,7 +50,30 @@ const Auth = () => {
           email,
           password,
         });
-        if (error) throw error;
+        
+        if (error) {
+          if (error.message.includes("email_provider_disabled")) {
+            toast({
+              title: "Error",
+              description: "Email login is currently disabled. Please contact administrator.",
+              variant: "destructive",
+            });
+          } else if (error.message.includes("email_not_confirmed")) {
+            toast({
+              title: "Error",
+              description: "Please verify your email before logging in.",
+              variant: "destructive",
+            });
+          } else {
+            toast({
+              title: "Error",
+              description: error.message,
+              variant: "destructive",
+            });
+          }
+          return;
+        }
+        
         navigate("/");
       }
     } catch (error: any) {
