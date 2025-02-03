@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery } from "@tanstack/react-query";
 import type { Database } from "@/integrations/supabase/types";
@@ -82,7 +82,7 @@ const WallpaperGrid = () => {
   };
 
   // Fetch user's liked wallpapers on component mount
-  useState(() => {
+  useEffect(() => {
     const fetchLikedWallpapers = async () => {
       const { data: { session } } = await supabase.auth.getSession();
       if (session) {
