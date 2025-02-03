@@ -30,7 +30,7 @@ const WallpaperGrid = ({ wallpapers: propWallpapers }: WallpaperGridProps) => {
   const [hoveredId, setHoveredId] = useState<string | null>(null);
   const [selectedWallpaper, setSelectedWallpaper] = useState<Wallpaper | null>(null);
   const [likedWallpapers, setLikedWallpapers] = useState<string[]>([]);
-  
+
   const { data: fetchedWallpapers = [], isLoading, error, isRefetching, refetch } = useQuery({
     queryKey: ['wallpapers'],
     queryFn: fetchWallpapers,
@@ -152,12 +152,8 @@ const WallpaperGrid = ({ wallpapers: propWallpapers }: WallpaperGridProps) => {
 
   if (isLoading && !propWallpapers) {
     return (
-      <div className={`grid gap-4 p-4 ${
-        isMobile 
-          ? 'grid-cols-1' 
-          : 'sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4'
-      }`}>
-        {[...Array(8)].map((_, i) => (
+      <div className="grid grid-cols-3 gap-2 p-2 sm:gap-4 sm:p-4">
+        {[...Array(9)].map((_, i) => (
           <div key={i} className="relative aspect-[3/4]">
             <div className="animate-pulse bg-gray-200 rounded-lg h-full w-full"></div>
           </div>
@@ -181,32 +177,28 @@ const WallpaperGrid = ({ wallpapers: propWallpapers }: WallpaperGridProps) => {
           Updating...
         </div>
       )}
-      <div className={`${
-        isMobile
-          ? 'grid grid-cols-1 gap-4'
-          : 'columns-1 sm:columns-2 md:columns-3 lg:columns-4'
-      } p-4`}>
+      <div className={`grid grid-cols-3 gap-2 p-2 ${
+        !isMobile && 'sm:columns-3 md:columns-4 lg:columns-5 sm:gap-4 sm:p-4'
+      }`}>
         {wallpapers.map((wallpaper: Wallpaper) => (
           <div
             key={wallpaper.id}
-            className={`${
-              isMobile 
-                ? 'mb-4 aspect-[3/4]' 
-                : 'mb-4 break-inside-avoid'
-            } relative cursor-pointer`}
+            className="relative cursor-pointer"
             onMouseEnter={() => setHoveredId(wallpaper.id)}
             onMouseLeave={() => setHoveredId(null)}
             onClick={() => setSelectedWallpaper(wallpaper)}
           >
             <div className="relative group overflow-hidden rounded-lg">
-              <img
-                src={wallpaper.compressed_url}
-                alt={`Wallpaper ${wallpaper.id}`}
-                loading="lazy"
-                className={`w-full h-full object-cover transition-transform duration-300 ${
-                  hoveredId === wallpaper.id ? "scale-105" : ""
-                }`}
-              />
+              <div className="aspect-[3/4] w-full">
+                <img
+                  src={wallpaper.compressed_url}
+                  alt={`Wallpaper ${wallpaper.id}`}
+                  loading="lazy"
+                  className={`w-full h-full object-cover transition-transform duration-300 ${
+                    !isMobile && hoveredId === wallpaper.id ? "scale-105" : ""
+                  }`}
+                />
+              </div>
             </div>
           </div>
         ))}

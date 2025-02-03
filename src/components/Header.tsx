@@ -5,14 +5,17 @@ import { useNavigate, useLocation } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useEffect, useState } from "react";
 import { toast } from "@/hooks/use-toast";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 const Header = () => {
   const navigate = useNavigate();
   const location = useLocation();
+  const isMobile = useIsMobile();
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
   const [userEmail, setUserEmail] = useState<string>("");
   const [searchQuery, setSearchQuery] = useState("");
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
   const isAdminPanel = location.pathname === "/admin-panel";
 
   useEffect(() => {
@@ -112,64 +115,94 @@ const Header = () => {
 
   return (
     <header className="fixed top-0 left-0 right-0 bg-white/80 backdrop-blur-md z-50 border-b">
-      <div className="container mx-auto px-4 py-3 flex items-center justify-between">
-        <h1 
-          className="text-2xl font-bold text-primary cursor-pointer" 
-          onClick={() => handleNavigation("/")}
-        >
-          XXWallpaper
-        </h1>
-        {!isAdminPanel && (
-          <form onSubmit={handleSearch} className="relative max-w-md w-full mx-4">
-            <Input
-              type="search"
-              placeholder="Search wallpapers or enter creator code..."
-              className="w-full pl-10 pr-4 py-2 rounded-full border-gray-200"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-            />
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-5 h-5" />
-          </form>
-        )}
-        <nav className="flex items-center gap-6">
-          {!isAdminPanel && (
-            <>
-              <button 
-                onClick={() => handleNavigation("/")}
-                className="text-gray-600 hover:text-primary transition-colors"
-              >
-                Explore
-              </button>
-              {isAuthenticated && (
-                <button 
-                  onClick={() => handleNavigation("/collections")}
-                  className="text-gray-600 hover:text-primary transition-colors"
+      <div className="container mx-auto px-2 sm:px-4 py-3">
+        <div className="flex flex-col sm:flex-row items-center gap-2 sm:gap-4">
+          <div className="w-full sm:w-auto flex items-center justify-between">
+            <h1 
+              className="text-xl sm:text-2xl font-bold text-primary cursor-pointer" 
+              onClick={() => handleNavigation("/")}
+            >
+              XXWallpaper
+            </h1>
+            <button
+              className="sm:hidden"
+              onClick={() => setIsMenuOpen(!isMenuOpen)}
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16m-7 6h7" />
+              </svg>
+            </button>
+          </div>
+          
+          <div className={`w-full sm:flex ${isMenuOpen ? 'flex' : 'hidden'} flex-col sm:flex-row items-center gap-2 sm:gap-4`}>
+            {!isAdminPanel && (
+              <form onSubmit={handleSearch} className="w-full sm:max-w-md relative">
+                <Input
+                  type="search"
+                  placeholder="Search wallpapers..."
+                  className="w-full pl-10 pr-4 py-2 rounded-full border-gray-200 text-sm"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                />
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4" />
+              </form>
+            )}
+            
+            <nav className="flex flex-col sm:flex-row items-center gap-2 sm:gap-4 w-full sm:w-auto">
+              {!isAdminPanel && (
+                <>
+                  <button 
+                    onClick={() => handleNavigation("/")}
+                    className="text-gray-600 hover:text-primary transition-colors w-full sm:w-auto text-sm"
+                  >
+                    Explore
+                  </button>
+                  {isAuthenticated && (
+                    <button 
+                      onClick={() => handleNavigation("/collections")}
+                      className="text-gray-600 hover:text-primary transition-colors w-full sm:w-auto text-sm"
+                    >
+                      Collections
+                    </button>
+                  )}
+                </>
+              )}
+              
+              {isAuthenticated ? (
+                <div className="flex flex-col sm:flex-row items-center gap-2 w-full sm:w-auto">
+                  {userEmail && (
+                    <span className="text-xs text-gray-600 truncate max-w-[150px]">
+                      {userEmail}
+                    </span>
+                  )}
+                  {isAdmin && !isAdminPanel && (
+                    <Button 
+                      variant="outline" 
+                      onClick={() => handleNavigation("/admin-panel")}
+                      className="w-full sm:w-auto text-sm"
+                    >
+                      Admin
+                    </Button>
+                  )}
+                  <Button 
+                    variant="ghost" 
+                    onClick={handleLogout}
+                    className="w-full sm:w-auto text-sm"
+                  >
+                    Logout
+                  </Button>
+                </div>
+              ) : (
+                <Button 
+                  onClick={() => handleNavigation("/auth")}
+                  className="w-full sm:w-auto text-sm"
                 >
-                  Collections
-                </button>
-              )}
-            </>
-          )}
-          {isAuthenticated ? (
-            <div className="flex items-center gap-4">
-              {userEmail && (
-                <span className="text-sm text-gray-600">
-                  {userEmail}
-                </span>
-              )}
-              {isAdmin && !isAdminPanel && (
-                <Button variant="outline" onClick={() => handleNavigation("/admin-panel")}>
-                  Admin
+                  Login
                 </Button>
               )}
-              <Button variant="ghost" onClick={handleLogout}>
-                Logout
-              </Button>
-            </div>
-          ) : (
-            <Button onClick={() => handleNavigation("/auth")}>Login</Button>
-          )}
-        </nav>
+            </nav>
+          </div>
+        </div>
       </div>
     </header>
   );
