@@ -12,12 +12,12 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog";
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SheetTrigger,
+} from "@/components/ui/sheet";
 import { useQuery } from "@tanstack/react-query";
 import { Image, Trash, Download, Heart } from "lucide-react";
 
@@ -387,24 +387,24 @@ export const CollectionManager = () => {
                 >
                   View Collection
                 </Button>
-                <Dialog>
-                  <DialogTrigger asChild>
+                <Sheet>
+                  <SheetTrigger asChild>
                     <Button variant="outline">
                       <Image className="w-4 h-4 mr-2" />
                       Add Wallpapers
                     </Button>
-                  </DialogTrigger>
-                  <DialogContent>
-                    <DialogHeader>
-                      <DialogTitle>Add Wallpapers to Collection</DialogTitle>
-                    </DialogHeader>
-                    <div className="grid grid-cols-2 gap-4 mt-4">
+                  </SheetTrigger>
+                  <SheetContent side="right" className="w-[90%] sm:w-[540px] overflow-y-auto">
+                    <SheetHeader>
+                      <SheetTitle>Add Wallpapers to Collection</SheetTitle>
+                    </SheetHeader>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-4">
                       {wallpapers.map((wallpaper: Wallpaper) => (
                         <div key={wallpaper.id} className="relative group">
                           <img
                             src={wallpaper.url}
                             alt={`Wallpaper ${wallpaper.id}`}
-                            className="w-full h-32 object-cover rounded-md"
+                            className="w-full h-40 object-cover rounded-md"
                           />
                           <div className="absolute bottom-2 right-2 flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
                             <div className="flex items-center gap-1 bg-black/50 text-white px-2 py-1 rounded">
@@ -425,8 +425,8 @@ export const CollectionManager = () => {
                         </div>
                       ))}
                     </div>
-                  </DialogContent>
-                </Dialog>
+                  </SheetContent>
+                </Sheet>
               </div>
             </CardContent>
           </Card>
