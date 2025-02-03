@@ -18,6 +18,23 @@ const CreatorProfile = () => {
   const [activeTab, setActiveTab] = useState("wallpapers");
   const [selectedCollection, setSelectedCollection] = useState<string | null>(null);
 
+  const { data: currentUser } = useQuery({
+    queryKey: ['current-user'],
+    queryFn: async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) return null;
+
+      const { data, error } = await supabase
+        .from('users')
+        .select('*')
+        .eq('id', session.user.id)
+        .single();
+
+      if (error) throw error;
+      return data;
+    },
+  });
+
   const { data: creatorData, isLoading: isCreatorLoading } = useQuery({
     queryKey: ['creator', creatorCode],
     queryFn: async () => {
@@ -106,8 +123,6 @@ const CreatorProfile = () => {
     enabled: !!creatorData?.id,
   });
 
-  const isLoading = isCreatorLoading || isWallpapersLoading || isCollectionsLoading;
-
   const handleCollectionLike = async (collectionId: string) => {
     try {
       const { data: { session } } = await supabase.auth.getSession();
@@ -122,22 +137,12 @@ const CreatorProfile = () => {
         return;
       }
 
-      // Get user's current liked collections
-      const { data: userData, error: userError } = await supabase
-        .from('users')
-        .select('favor_collections')
-        .eq('id', session.user.id)
-        .single();
-
-      if (userError) throw userError;
-
-      const currentFavorites = userData?.favor_collections || [];
+      const currentFavorites = currentUser?.favor_collections || [];
       const isLiked = currentFavorites.includes(collectionId);
       const newFavorites = isLiked
         ? currentFavorites.filter(id => id !== collectionId)
         : [...currentFavorites, collectionId];
 
-      // Update user's liked collections
       const { error: updateError } = await supabase
         .from('users')
         .update({ favor_collections: newFavorites })
@@ -147,32 +152,19 @@ const CreatorProfile = () => {
 
       toast({
         title: isLiked ? "Collection removed from likes" : "Collection liked",
-        description: isLiked ? "Collection removed from your likes" : "Collection added to your likes",
+        description: isLiked ? "Collection removed from your Collections" : "Collection added to your Collections",
       });
-
-      refetchCollections();
     } catch (error: any) {
       console.error('Collection like error:', error);
       toast({
         title: "Action failed",
-        description: "There was an error updating your likes",
+        description: "There was an error updating your Collections",
         variant: "destructive",
       });
     }
   };
 
-  if (isLoading) {
-    return (
-      <div className="min-h-screen bg-background">
-        <Header />
-        <main className="container mx-auto pt-20">
-          <div className="flex items-center justify-center min-h-[60vh]">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-          </div>
-        </main>
-      </div>
-    );
-  }
+  const isLoading = isCreatorLoading || isWallpapersLoading || isCollectionsLoading;
 
   const getCollectionPreviewImages = (collection: any) => {
     return collection.collection_wallpapers
@@ -191,6 +183,19 @@ const CreatorProfile = () => {
   const selectedCollectionWallpapers = selectedCollectionData 
     ? getCollectionWallpapers(selectedCollectionData)
     : [];
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-background">
+        <Header />
+        <main className="container mx-auto pt-20">
+          <div className="flex items-center justify-center min-h-[60vh]">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+          </div>
+        </main>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-background">
@@ -253,7 +258,13 @@ const CreatorProfile = () => {
                           handleCollectionLike(collection.id);
                         }}
                       >
-                        <Heart className="h-5 w-5" />
+                        <Heart 
+                          className={`h-5 w-5 ${
+                            currentUser?.favor_collections?.includes(collection.id)
+                              ? "fill-red-500 text-red-500"
+                              : ""
+                          }`}
+                        />
                       </Button>
                       <h3 className="text-lg font-semibold mb-2">{collection.name}</h3>
                       {collection.description && (
