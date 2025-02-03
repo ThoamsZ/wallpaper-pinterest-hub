@@ -1,6 +1,5 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.7.1'
-import Sharp from 'https://esm.sh/sharp@0.32.6'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -23,11 +22,29 @@ serve(async (req) => {
     const arrayBuffer = await file.arrayBuffer()
     const buffer = new Uint8Array(arrayBuffer)
 
-    // Compress the image
-    const compressedBuffer = await Sharp(buffer)
-      .resize(800) // Resize to max width of 800px while maintaining aspect ratio
-      .jpeg({ quality: 80 }) // Convert to JPEG with 80% quality
-      .toBuffer()
+    // Create a new process to run ImageMagick
+    const cmd = new Deno.Command("magick", {
+      args: [
+        "-", // Read from stdin
+        "-resize", "800x800>", // Resize to max 800x800 while maintaining aspect ratio
+        "-quality", "80", // Set JPEG quality to 80%
+        "JPEG:-" // Output as JPEG to stdout
+      ],
+      stdin: "piped",
+      stdout: "piped",
+    });
+
+    // Start the process
+    const process = cmd.spawn();
+    
+    // Write the original buffer to stdin
+    const writer = process.stdin.getWriter();
+    await writer.write(buffer);
+    await writer.close();
+
+    // Get the compressed image data
+    const { stdout } = await process.output();
+    const compressedBuffer = stdout;
 
     const supabase = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
