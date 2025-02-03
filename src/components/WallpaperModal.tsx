@@ -145,7 +145,7 @@ const WallpaperModal = ({ wallpaper, isOpen, onClose, onLike, isLiked }: Wallpap
             alt={`Wallpaper ${wallpaper.id}`}
             className="w-full h-auto max-h-[75vh] object-contain"
           />
-          <div className="absolute top-4 right-4 flex gap-2">
+          <div className="absolute top-4 right-12 flex gap-2">
             <Button
               variant="secondary"
               size="icon"
@@ -155,32 +155,30 @@ const WallpaperModal = ({ wallpaper, isOpen, onClose, onLike, isLiked }: Wallpap
               <Heart className={`${isLiked ? 'fill-red-500 text-red-500' : ''}`} />
             </Button>
           </div>
-          <div className="w-full p-6 bg-background">
-            <div className="flex flex-col gap-4">
-              {wallpaper.tags && wallpaper.tags.length > 0 && (
-                <div className="flex flex-wrap gap-2">
-                  {wallpaper.tags.map((tag, index) => (
-                    <span
-                      key={index}
-                      className="px-2 py-1 bg-secondary/20 text-secondary-foreground rounded-md text-sm"
-                    >
-                      {tag}
-                    </span>
-                  ))}
-                </div>
-              )}
-              <div className="text-center text-sm text-gray-500 mb-2">
-                Downloads today: {downloadCount}/3
+          <div className="w-full p-6 bg-background space-y-4">
+            {wallpaper.tags && wallpaper.tags.length > 0 && (
+              <div className="flex flex-wrap gap-2">
+                {wallpaper.tags.map((tag, index) => (
+                  <span
+                    key={index}
+                    className="px-3 py-1.5 bg-secondary/20 text-secondary-foreground rounded-md text-sm"
+                  >
+                    {tag}
+                  </span>
+                ))}
               </div>
-              <div className="flex justify-center">
-                <Button 
-                  onClick={handleDownload} 
-                  disabled={isDownloading}
-                  className="w-full max-w-md"
-                >
-                  {isDownloading ? "Downloading..." : "Download"}
-                </Button>
-              </div>
+            )}
+            <div className="text-center text-sm text-gray-500">
+              Downloads today: {downloadCount}/3
+            </div>
+            <div className="flex justify-center pt-2">
+              <Button 
+                onClick={handleDownload} 
+                disabled={isDownloading}
+                className="w-full max-w-md"
+              >
+                {isDownloading ? "Downloading..." : "Download"}
+              </Button>
             </div>
           </div>
         </div>
