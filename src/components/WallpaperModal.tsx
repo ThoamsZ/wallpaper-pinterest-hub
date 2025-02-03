@@ -116,34 +116,40 @@ const WallpaperModal = ({ wallpaper, isOpen, onClose, onLike, isLiked }: Wallpap
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-[90vw] max-h-[90vh] p-0 overflow-hidden">
+      <DialogContent className="max-w-[90vw] max-h-[90vh] p-0">
         <div className="relative">
           <img
             src={wallpaper.url}
             alt={`Wallpaper ${wallpaper.id}`}
             className="w-full h-auto max-h-[90vh] object-contain"
           />
-          <div className="absolute left-0 right-0 bottom-[15%] flex justify-center gap-6">
+          <div className="absolute left-0 right-0 bottom-[15%] flex justify-center gap-8">
             <Button
               variant="secondary"
               size="icon"
-              className={`rounded-full bg-black/20 hover:bg-black/30 border-0 h-12 w-12 ${
+              className={`rounded-full bg-black/20 hover:bg-black/30 border-0 h-14 w-14 ${
                 isLiked ? 'bg-red-500/20 hover:bg-red-500/30' : ''
               }`}
               onClick={() => onLike(wallpaper.id)}
             >
-              <Heart className={`h-6 w-6 text-white ${isLiked ? 'fill-white' : ''}`} />
+              <Heart className={`h-7 w-7 text-white ${isLiked ? 'fill-white' : ''}`} />
             </Button>
             <Button
               variant="secondary"
               size="icon"
-              className="rounded-full bg-black/20 hover:bg-black/30 border-0 h-12 w-12"
+              className="rounded-full bg-black/20 hover:bg-black/30 border-0 h-14 w-14"
               onClick={handleDownload}
               disabled={isDownloading}
             >
-              <Download className="h-6 w-6 text-white" />
+              <Download className="h-7 w-7 text-white" />
             </Button>
           </div>
+          <DialogContent.Close className="absolute right-4 top-4 rounded-full bg-black/20 hover:bg-black/30 h-14 w-14 flex items-center justify-center">
+            <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M18 6 6 18" />
+              <path d="m6 6 12 12" />
+            </svg>
+          </DialogContent.Close>
         </div>
       </DialogContent>
     </Dialog>
