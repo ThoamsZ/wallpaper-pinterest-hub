@@ -129,7 +129,6 @@ const Upload = () => {
           .upload(filePath, file);
 
         if (uploadError) {
-          console.error('Upload error:', uploadError);
           throw uploadError;
         }
 
@@ -143,7 +142,7 @@ const Upload = () => {
           .from('wallpapers')
           .insert({
             url: publicUrl,
-            compressed_url: publicUrl, // Using same URL since we're not compressing
+            compressed_url: publicUrl,
             file_path: filePath,
             type: imageType,
             tags: tagArray,
@@ -151,7 +150,6 @@ const Upload = () => {
           });
 
         if (dbError) {
-          console.error('Database error:', dbError);
           throw dbError;
         }
         
@@ -172,7 +170,6 @@ const Upload = () => {
       
       navigate('/admin-panel');
     } catch (error: any) {
-      console.error('Upload error:', error);
       toast({
         title: "Error",
         description: error.message || 'Failed to upload files',
