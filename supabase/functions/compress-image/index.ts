@@ -7,11 +7,13 @@ const corsHeaders = {
 }
 
 serve(async (req) => {
+  // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders })
   }
 
   try {
+    console.log('Starting file upload process...')
     const formData = await req.formData()
     const file = formData.get('file') as File
     
@@ -19,9 +21,13 @@ serve(async (req) => {
       throw new Error('No file uploaded')
     }
 
+    console.log('File received:', file.name, 'Size:', file.size)
+
     const arrayBuffer = await file.arrayBuffer()
     const buffer = new Uint8Array(arrayBuffer)
 
+    console.log('Starting ImageMagick compression...')
+    
     // Create a new process to run ImageMagick
     const cmd = new Deno.Command("magick", {
       args: [
@@ -46,6 +52,8 @@ serve(async (req) => {
     const { stdout } = await process.output();
     const compressedBuffer = stdout;
 
+    console.log('Image compression completed')
+
     const supabase = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
@@ -56,6 +64,8 @@ serve(async (req) => {
     const filePath = `${fileName}.${fileExt}`
     const compressedFilePath = `compressed/${fileName}.jpg`
 
+    console.log('Uploading original file...')
+    
     // Upload original file
     const { data: originalData, error: originalError } = await supabase.storage
       .from('wallpapers')
@@ -64,7 +74,13 @@ serve(async (req) => {
         upsert: false
       })
 
-    if (originalError) throw originalError
+    if (originalError) {
+      console.error('Original file upload error:', originalError)
+      throw originalError
+    }
+
+    console.log('Original file uploaded successfully')
+    console.log('Uploading compressed version...')
 
     // Upload compressed version
     const { data: compressedData, error: compressedError } = await supabase.storage
@@ -74,7 +90,12 @@ serve(async (req) => {
         upsert: false
       })
 
-    if (compressedError) throw compressedError
+    if (compressedError) {
+      console.error('Compressed file upload error:', compressedError)
+      throw compressedError
+    }
+
+    console.log('Compressed file uploaded successfully')
 
     // Get public URLs
     const { data: { publicUrl: originalUrl } } = supabase.storage
@@ -84,6 +105,8 @@ serve(async (req) => {
     const { data: { publicUrl: compressedUrl } } = supabase.storage
       .from('wallpapers')
       .getPublicUrl(compressedFilePath)
+
+    console.log('Generated public URLs')
 
     return new Response(
       JSON.stringify({ 
@@ -98,7 +121,7 @@ serve(async (req) => {
       }
     )
   } catch (error) {
-    console.error('Error:', error)
+    console.error('Error in upload process:', error)
     return new Response(
       JSON.stringify({ error: error.message }),
       { 
