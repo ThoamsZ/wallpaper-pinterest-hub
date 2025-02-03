@@ -152,7 +152,7 @@ const WallpaperGrid = ({ wallpapers: propWallpapers }: WallpaperGridProps) => {
 
   if (isLoading && !propWallpapers) {
     return (
-      <div className="grid grid-cols-3 gap-2 p-2 sm:gap-4 sm:p-4">
+      <div className="grid grid-cols-3 gap-2 sm:gap-4">
         {[...Array(9)].map((_, i) => (
           <div key={i} className="relative aspect-[3/4]">
             <div className="animate-pulse bg-gray-200 rounded-lg h-full w-full"></div>
@@ -177,15 +177,15 @@ const WallpaperGrid = ({ wallpapers: propWallpapers }: WallpaperGridProps) => {
           Updating...
         </div>
       )}
-      <div className={`grid grid-cols-3 gap-2 p-2 ${
-        !isMobile && 'sm:columns-3 md:columns-4 lg:columns-5 sm:gap-4 sm:p-4'
+      <div className={`grid grid-cols-3 gap-2 ${
+        !isMobile ? 'sm:grid-cols-4 lg:grid-cols-5 sm:gap-4' : ''
       }`}>
         {wallpapers.map((wallpaper: Wallpaper) => (
           <div
             key={wallpaper.id}
             className="relative cursor-pointer"
-            onMouseEnter={() => setHoveredId(wallpaper.id)}
-            onMouseLeave={() => setHoveredId(null)}
+            onMouseEnter={() => !isMobile && setHoveredId(wallpaper.id)}
+            onMouseLeave={() => !isMobile && setHoveredId(null)}
             onClick={() => setSelectedWallpaper(wallpaper)}
           >
             <div className="relative group overflow-hidden rounded-lg">
