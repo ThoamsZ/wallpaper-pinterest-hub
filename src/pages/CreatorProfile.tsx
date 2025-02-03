@@ -73,7 +73,7 @@ const CreatorProfile = () => {
     enabled: !!creatorData?.id,
   });
 
-  // Fetch collections created by the creator
+  // Fetch collections created by the creator - no auth check needed as it's public
   const { data: collections = [], isLoading: isCollectionsLoading } = useQuery({
     queryKey: ['creator-collections', creatorData?.id],
     queryFn: async () => {
