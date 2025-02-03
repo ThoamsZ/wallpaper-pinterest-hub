@@ -7,6 +7,7 @@ import { toast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { cn } from "@/lib/utils";
+import { Progress } from "@/components/ui/progress";
 
 const WALLPAPER_TYPES = [
   { value: "mobile", label: "Mobile" },
@@ -16,13 +17,16 @@ const WALLPAPER_TYPES = [
   { value: "live", label: "Live Wallpaper" },
 ];
 
+const MAX_FILES = 25;
+
 const Admin = () => {
   const navigate = useNavigate();
-  const [file, setFile] = useState<File | null>(null);
+  const [files, setFiles] = useState<File[]>([]);
   const [uploading, setUploading] = useState(false);
   const [imageType, setImageType] = useState<string>("mobile");
   const [tags, setTags] = useState<string>("");
   const [dragActive, setDragActive] = useState(false);
+  const [progress, setProgress] = useState(0);
 
   useEffect(() => {
     checkAdmin();
@@ -66,17 +70,23 @@ const Admin = () => {
     e.stopPropagation();
     setDragActive(false);
 
-    if (e.dataTransfer.files && e.dataTransfer.files[0]) {
-      setFile(e.dataTransfer.files[0]);
+    const droppedFiles = Array.from(e.dataTransfer.files).slice(0, MAX_FILES);
+    setFiles(droppedFiles);
+  };
+
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files) {
+      const selectedFiles = Array.from(e.target.files).slice(0, MAX_FILES);
+      setFiles(selectedFiles);
     }
   };
 
-  const handleFileUpload = async (e: React.FormEvent) => {
+  const handleUpload = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!file) {
+    if (files.length === 0) {
       toast({
         title: "Error",
-        description: "Please select a file to upload",
+        description: "Please select files to upload",
         variant: "destructive",
       });
       return;
@@ -93,41 +103,47 @@ const Admin = () => {
 
     try {
       setUploading(true);
-      
-      const fileExt = file.name.split('.').pop();
-      const fileName = `${Math.random()}.${fileExt}`;
-      const filePath = `${fileName}`;
-
-      const { error: uploadError, data } = await supabase.storage
-        .from('wallpapers')
-        .upload(filePath, file);
-
-      if (uploadError) throw uploadError;
-
-      const { data: { publicUrl } } = supabase.storage
-        .from('wallpapers')
-        .getPublicUrl(filePath);
-
       const tagArray = tags.split(',').map(tag => tag.trim()).filter(tag => tag);
+      let completed = 0;
 
-      const { error: dbError } = await supabase
-        .from('wallpapers')
-        .insert({
-          url: publicUrl,
-          file_path: filePath,
-          type: imageType,
-          tags: tagArray,
-        });
+      for (const file of files) {
+        const fileExt = file.name.split('.').pop();
+        const fileName = `${Math.random()}.${fileExt}`;
+        const filePath = `${fileName}`;
 
-      if (dbError) throw dbError;
+        const { error: uploadError, data } = await supabase.storage
+          .from('wallpapers')
+          .upload(filePath, file);
+
+        if (uploadError) throw uploadError;
+
+        const { data: { publicUrl } } = supabase.storage
+          .from('wallpapers')
+          .getPublicUrl(filePath);
+
+        const { error: dbError } = await supabase
+          .from('wallpapers')
+          .insert({
+            url: publicUrl,
+            file_path: filePath,
+            type: imageType,
+            tags: tagArray,
+          });
+
+        if (dbError) throw dbError;
+        
+        completed++;
+        setProgress((completed / files.length) * 100);
+      }
 
       toast({
         title: "Success",
-        description: "Wallpaper uploaded successfully",
+        description: `${files.length} wallpapers uploaded successfully`,
       });
 
-      setFile(null);
+      setFiles([]);
       setTags("");
+      setProgress(0);
       const fileInput = document.getElementById('file') as HTMLInputElement;
       if (fileInput) fileInput.value = '';
     } catch (error: any) {
@@ -146,7 +162,7 @@ const Admin = () => {
       <h1 className="text-2xl font-bold mb-8">Admin Dashboard</h1>
       
       <div className="max-w-md">
-        <form onSubmit={handleFileUpload} className="space-y-6">
+        <form onSubmit={handleUpload} className="space-y-6">
           <div 
             className={cn(
               "border-2 border-dashed rounded-lg p-8 text-center cursor-pointer transition-colors",
@@ -163,18 +179,26 @@ const Admin = () => {
               id="file"
               type="file"
               accept="image/*"
-              onChange={(e) => setFile(e.target.files?.[0] || null)}
+              multiple
+              onChange={handleFileSelect}
               className="hidden"
             />
-            {file ? (
-              <p className="text-sm">Selected file: {file.name}</p>
+            {files.length > 0 ? (
+              <p className="text-sm">Selected {files.length} file(s)</p>
             ) : (
               <div>
-                <p className="text-lg font-medium">Drag and drop your image here</p>
-                <p className="text-sm text-gray-500 mt-2">or click to select a file</p>
+                <p className="text-lg font-medium">Drag and drop your images here</p>
+                <p className="text-sm text-gray-500 mt-2">or click to select files (max {MAX_FILES})</p>
               </div>
             )}
           </div>
+
+          {uploading && (
+            <div className="space-y-2">
+              <Progress value={progress} />
+              <p className="text-sm text-gray-500 text-center">{Math.round(progress)}% complete</p>
+            </div>
+          )}
 
           <div className="space-y-3">
             <Label>Image Type</Label>
@@ -202,7 +226,7 @@ const Admin = () => {
             />
           </div>
           
-          <Button type="submit" disabled={uploading || !file}>
+          <Button type="submit" disabled={uploading || files.length === 0}>
             {uploading ? "Uploading..." : "Upload"}
           </Button>
         </form>

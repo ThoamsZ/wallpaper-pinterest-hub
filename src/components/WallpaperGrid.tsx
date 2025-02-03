@@ -21,10 +21,20 @@ const WallpaperGrid = () => {
   const { data: wallpapers = [], isLoading, error } = useQuery({
     queryKey: ['wallpapers'],
     queryFn: fetchWallpapers,
+    staleTime: 1000 * 60 * 5, // Cache for 5 minutes
+    refetchOnWindowFocus: false,
   });
 
   if (isLoading) {
-    return <div className="text-center py-8">Loading wallpapers...</div>;
+    return (
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 p-4">
+        {[...Array(8)].map((_, i) => (
+          <div key={i} className="animate-pulse">
+            <div className="bg-gray-200 rounded-lg aspect-[3/4]"></div>
+          </div>
+        ))}
+      </div>
+    );
   }
 
   if (error) {
