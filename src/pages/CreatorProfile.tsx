@@ -6,10 +6,15 @@ import Header from "@/components/Header";
 import WallpaperGrid from "@/components/WallpaperGrid";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "@/hooks/use-toast";
+import { Button } from "@/components/ui/button";
+import type { Database } from "@/integrations/supabase/types";
+
+type Wallpaper = Database['public']['Tables']['wallpapers']['Row'];
 
 const CreatorProfile = () => {
   const { creatorCode } = useParams();
   const [activeTab, setActiveTab] = useState("wallpapers");
+  const [selectedCollection, setSelectedCollection] = useState<string | null>(null);
 
   // Fetch creator's user ID using creator code
   const { data: creatorData, isLoading: isCreatorLoading } = useQuery({
@@ -92,6 +97,24 @@ const CreatorProfile = () => {
     enabled: !!creatorData?.id,
   });
 
+  // Fetch wallpapers for a specific collection
+  const { data: collectionWallpapers = [] } = useQuery({
+    queryKey: ['collection-wallpapers', selectedCollection],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('collection_wallpapers')
+        .select(`
+          wallpaper_id,
+          wallpapers (*)
+        `)
+        .eq('collection_id', selectedCollection);
+
+      if (error) throw error;
+      return data.map((item: any) => item.wallpapers) || [];
+    },
+    enabled: !!selectedCollection,
+  });
+
   const isLoading = isCreatorLoading || isWallpapersLoading || isCollectionsLoading;
 
   if (isLoading) {
@@ -114,53 +137,78 @@ const CreatorProfile = () => {
         <div className="mb-8">
           <h1 className="text-3xl font-bold mb-2">Creator Profile</h1>
           <p className="text-muted-foreground">Creator Code: {creatorCode}</p>
+          {selectedCollection && (
+            <Button 
+              variant="outline" 
+              className="mt-4"
+              onClick={() => setSelectedCollection(null)}
+            >
+              ← Back to Collections
+            </Button>
+          )}
         </div>
 
-        <Tabs value={activeTab} onValueChange={setActiveTab}>
-          <TabsList className="mb-8">
-            <TabsTrigger value="wallpapers">
-              Wallpapers ({wallpapers.length})
-            </TabsTrigger>
-            <TabsTrigger value="collections">
-              Collections ({collections.length})
-            </TabsTrigger>
-          </TabsList>
+        {!selectedCollection ? (
+          <Tabs value={activeTab} onValueChange={setActiveTab}>
+            <TabsList className="mb-8">
+              <TabsTrigger value="wallpapers">
+                Wallpapers ({wallpapers.length})
+              </TabsTrigger>
+              <TabsTrigger value="collections">
+                Collections ({collections.length})
+              </TabsTrigger>
+            </TabsList>
 
-          <TabsContent value="wallpapers">
-            {wallpapers.length === 0 ? (
+            <TabsContent value="wallpapers">
+              {wallpapers.length === 0 ? (
+                <div className="text-center py-12">
+                  <p className="text-muted-foreground">No wallpapers found</p>
+                </div>
+              ) : (
+                <WallpaperGrid wallpapers={wallpapers} />
+              )}
+            </TabsContent>
+
+            <TabsContent value="collections">
+              {collections.length === 0 ? (
+                <div className="text-center py-12">
+                  <p className="text-muted-foreground">No collections found</p>
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                  {collections.map((collection) => (
+                    <div
+                      key={collection.id}
+                      className="p-6 rounded-lg border bg-card text-card-foreground shadow-sm hover:shadow-md transition-shadow cursor-pointer"
+                      onClick={() => setSelectedCollection(collection.id)}
+                    >
+                      <h3 className="text-lg font-semibold mb-2">{collection.name}</h3>
+                      {collection.description && (
+                        <p className="text-muted-foreground mb-4">{collection.description}</p>
+                      )}
+                      <p className="text-sm text-muted-foreground">
+                        Created: {new Date(collection.created_at).toLocaleDateString()}
+                      </p>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </TabsContent>
+          </Tabs>
+        ) : (
+          <div>
+            <h2 className="text-2xl font-semibold mb-6">
+              {collections.find(c => c.id === selectedCollection)?.name}
+            </h2>
+            {collectionWallpapers.length === 0 ? (
               <div className="text-center py-12">
-                <p className="text-muted-foreground">No wallpapers found</p>
+                <p className="text-muted-foreground">No wallpapers in this collection</p>
               </div>
             ) : (
-              <WallpaperGrid wallpapers={wallpapers} />
+              <WallpaperGrid wallpapers={collectionWallpapers} />
             )}
-          </TabsContent>
-
-          <TabsContent value="collections">
-            {collections.length === 0 ? (
-              <div className="text-center py-12">
-                <p className="text-muted-foreground">No collections found</p>
-              </div>
-            ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {collections.map((collection) => (
-                  <div
-                    key={collection.id}
-                    className="p-6 rounded-lg border bg-card text-card-foreground shadow-sm"
-                  >
-                    <h3 className="text-lg font-semibold mb-2">{collection.name}</h3>
-                    {collection.description && (
-                      <p className="text-muted-foreground mb-4">{collection.description}</p>
-                    )}
-                    <p className="text-sm text-muted-foreground">
-                      Created: {new Date(collection.created_at).toLocaleDateString()}
-                    </p>
-                  </div>
-                ))}
-              </div>
-            )}
-          </TabsContent>
-        </Tabs>
+          </div>
+        )}
       </main>
     </div>
   );
