@@ -12,6 +12,7 @@ import AdminPanel from "./pages/AdminPanel";
 import Auth from "./pages/Auth";
 import NotFound from "./pages/NotFound";
 import Collections from "./pages/Collections";
+import CreatorProfile from "./pages/CreatorProfile";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -104,6 +105,7 @@ const App = () => {
                 session?.user ? <Collections /> : <Navigate to="/auth" replace />
               }
             />
+            <Route path="/creator/:creatorCode" element={<CreatorProfile />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </BrowserRouter>
