@@ -1,6 +1,6 @@
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Heart, Download } from "lucide-react";
+import { Heart, Download, X } from "lucide-react";
 import { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
@@ -118,6 +118,14 @@ const WallpaperModal = ({ wallpaper, isOpen, onClose, onLike, isLiked }: Wallpap
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="max-w-[95vw] max-h-[95vh] p-0 overflow-hidden border-0 bg-transparent">
         <div className="relative w-full h-full flex items-center justify-center">
+          <Button
+            variant="secondary"
+            size="icon"
+            className="absolute top-4 right-4 z-50 rounded-full bg-black/50 hover:bg-black/70 border-0 h-14 w-14"
+            onClick={onClose}
+          >
+            <X className="h-7 w-7 text-white" />
+          </Button>
           <img
             src={wallpaper.url}
             alt={`Wallpaper ${wallpaper.id}`}
