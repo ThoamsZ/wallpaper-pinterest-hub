@@ -287,7 +287,7 @@ export const CollectionManager = () => {
           </Button>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 max-h-[calc(100vh-200px)] overflow-y-auto pr-2">
           {collectionWallpapers.map((wallpaper: CollectionWallpaper) => (
             <Card key={wallpaper.id}>
               <CardHeader>
