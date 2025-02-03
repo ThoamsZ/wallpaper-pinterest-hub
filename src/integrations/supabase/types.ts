@@ -46,6 +46,7 @@ export type Database = {
           id: string
           tags: string[] | null
           type: string
+          uploaded_by: string | null
           url: string
         }
         Insert: {
@@ -54,6 +55,7 @@ export type Database = {
           id?: string
           tags?: string[] | null
           type: string
+          uploaded_by?: string | null
           url: string
         }
         Update: {
@@ -62,6 +64,7 @@ export type Database = {
           id?: string
           tags?: string[] | null
           type?: string
+          uploaded_by?: string | null
           url?: string
         }
         Relationships: []

@@ -13,6 +13,7 @@ import {
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { X } from "lucide-react";
+import Header from "@/components/Header";
 
 interface Wallpaper {
   id: string;
@@ -137,23 +138,6 @@ const AdminPanel = () => {
     }
   };
 
-  const handleLogout = async () => {
-    const { error } = await supabase.auth.signOut();
-    if (error) {
-      toast({
-        title: "Error",
-        description: "Failed to sign out",
-        variant: "destructive",
-      });
-    } else {
-      navigate("/");
-      toast({
-        title: "Success",
-        description: "Successfully logged out",
-      });
-    }
-  };
-
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
@@ -163,59 +147,61 @@ const AdminPanel = () => {
   }
 
   return (
-    <div className="container mx-auto px-4 py-8 mt-20">
-      <div className="flex justify-between items-center mb-8">
-        <div>
-          <h1 className="text-2xl font-bold">Admin Panel</h1>
-          <p className="text-gray-600">Logged in as: {adminEmail}</p>
+    <>
+      <Header />
+      <div className="container mx-auto px-4 py-8 mt-20">
+        <div className="flex justify-between items-center mb-8">
+          <div>
+            <h1 className="text-2xl font-bold">Admin Panel</h1>
+            <p className="text-gray-600">Logged in as: {adminEmail}</p>
+          </div>
+          <div className="space-x-4">
+            <Button onClick={() => navigate("/upload")}>Upload Wallpapers</Button>
+          </div>
         </div>
-        <div className="space-x-4">
-          <Button onClick={() => navigate("/upload")}>Upload Wallpapers</Button>
-          <Button variant="outline" onClick={handleLogout}>Logout</Button>
-        </div>
-      </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {wallpapers.map((wallpaper) => (
-          <Card key={wallpaper.id}>
-            <CardHeader>
-              <CardTitle className="text-lg">
-                {wallpaper.type} Wallpaper
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <img
-                src={wallpaper.url}
-                alt="Wallpaper"
-                className="w-full h-48 object-cover rounded-md"
-              />
-              <div className="flex flex-wrap gap-2">
-                {wallpaper.tags.map((tag, index) => (
-                  <Badge key={index} variant="secondary">
-                    {tag}
-                  </Badge>
-                ))}
-              </div>
-              <Input
-                defaultValue={wallpaper.tags.join(', ')}
-                placeholder="Update tags (comma-separated)"
-                onBlur={(e) => handleUpdateTags(wallpaper.id, e.target.value)}
-              />
-            </CardContent>
-            <CardFooter className="justify-end">
-              <Button
-                variant="destructive"
-                size="sm"
-                onClick={() => handleDelete(wallpaper.id, wallpaper.file_path)}
-              >
-                <X className="w-4 h-4 mr-2" />
-                Delete
-              </Button>
-            </CardFooter>
-          </Card>
-        ))}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {wallpapers.map((wallpaper) => (
+            <Card key={wallpaper.id}>
+              <CardHeader>
+                <CardTitle className="text-lg">
+                  {wallpaper.type} Wallpaper
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <img
+                  src={wallpaper.url}
+                  alt="Wallpaper"
+                  className="w-full h-48 object-cover rounded-md"
+                />
+                <div className="flex flex-wrap gap-2">
+                  {wallpaper.tags.map((tag, index) => (
+                    <Badge key={index} variant="secondary">
+                      {tag}
+                    </Badge>
+                  ))}
+                </div>
+                <Input
+                  defaultValue={wallpaper.tags.join(', ')}
+                  placeholder="Update tags (comma-separated)"
+                  onBlur={(e) => handleUpdateTags(wallpaper.id, e.target.value)}
+                />
+              </CardContent>
+              <CardFooter className="justify-end">
+                <Button
+                  variant="destructive"
+                  size="sm"
+                  onClick={() => handleDelete(wallpaper.id, wallpaper.file_path)}
+                >
+                  <X className="w-4 h-4 mr-2" />
+                  Delete
+                </Button>
+              </CardFooter>
+            </Card>
+          ))}
+        </div>
       </div>
-    </div>
+    </>
   );
 };
 
