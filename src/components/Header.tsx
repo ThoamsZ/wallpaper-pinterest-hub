@@ -9,15 +9,37 @@ import { toast } from "@/hooks/use-toast";
 const Header = () => {
   const navigate = useNavigate();
   const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [isAdmin, setIsAdmin] = useState(false);
 
   useEffect(() => {
-    supabase.auth.onAuthStateChange((event, session) => {
-      setIsAuthenticated(!!session);
-    });
+    const checkUser = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session) {
+        setIsAuthenticated(true);
+        // Check if user is admin
+        const { data: userData } = await supabase
+          .from('users')
+          .select('is_admin')
+          .eq('id', session.user.id)
+          .single();
+        setIsAdmin(userData?.is_admin || false);
+      }
+    };
 
-    // Check initial session
-    supabase.auth.getSession().then(({ data: { session } }) => {
+    checkUser();
+
+    supabase.auth.onAuthStateChange(async (event, session) => {
       setIsAuthenticated(!!session);
+      if (session) {
+        const { data: userData } = await supabase
+          .from('users')
+          .select('is_admin')
+          .eq('id', session.user.id)
+          .single();
+        setIsAdmin(userData?.is_admin || false);
+      } else {
+        setIsAdmin(false);
+      }
     });
   }, []);
 
@@ -37,7 +59,9 @@ const Header = () => {
   return (
     <header className="fixed top-0 left-0 right-0 bg-white/80 backdrop-blur-md z-50 border-b">
       <div className="container mx-auto px-4 py-3 flex items-center justify-between">
-        <h1 className="text-2xl font-bold text-primary">WallpaperHub</h1>
+        <h1 className="text-2xl font-bold text-primary cursor-pointer" onClick={() => navigate("/")}>
+          WallpaperHub
+        </h1>
         <div className="relative max-w-md w-full mx-4">
           <Input
             type="search"
@@ -55,9 +79,11 @@ const Header = () => {
           </a>
           {isAuthenticated ? (
             <>
-              <Button variant="outline" onClick={() => navigate("/admin")}>
-                Admin
-              </Button>
+              {isAdmin && (
+                <Button variant="outline" onClick={() => navigate("/admin")}>
+                  Admin
+                </Button>
+              )}
               <Button variant="ghost" onClick={handleLogout}>
                 Logout
               </Button>

@@ -34,7 +34,7 @@ const Auth = () => {
           password,
         });
         if (error) throw error;
-        navigate("/admin");
+        navigate("/");
       }
     } catch (error: any) {
       toast({
