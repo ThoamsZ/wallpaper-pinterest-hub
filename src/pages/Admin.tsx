@@ -7,6 +7,7 @@ import { useState } from "react"
 import { ImageIcon, X } from "lucide-react"
 import { supabase } from "@/integrations/supabase/client"
 import type { Database } from "@/integrations/supabase/types"
+import { useNavigate } from "react-router-dom"
 
 const IMAGE_TYPES = [
   "Mobile",
@@ -25,6 +26,7 @@ interface ImagePreview {
 }
 
 const Admin = () => {
+  const navigate = useNavigate();
   const [imageFiles, setImageFiles] = useState<ImagePreview[]>([])
   const [imageType, setImageType] = useState<ImageType>("Mobile")
   const [tags, setTags] = useState<string[]>([])
@@ -32,9 +34,26 @@ const Admin = () => {
   const [isUploading, setIsUploading] = useState(false)
   const [isDragging, setIsDragging] = useState(false)
 
+  const checkAuth = async () => {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) {
+      toast({
+        title: "Authentication Required",
+        description: "Please log in to upload wallpapers",
+        variant: "destructive",
+      });
+      navigate("/");
+      return false;
+    }
+    return true;
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     
+    const isAuthenticated = await checkAuth();
+    if (!isAuthenticated) return;
+
     if (imageFiles.length === 0) {
       toast({
         title: "Error",
