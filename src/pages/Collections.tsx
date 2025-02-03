@@ -15,15 +15,30 @@ const Collections = () => {
   const navigate = useNavigate();
   const [selectedCollection, setSelectedCollection] = useState<string | null>(null);
 
-  const { data: collections = [], isLoading: isCollectionsLoading, refetch: refetchCollections } = useQuery({
-    queryKey: ['user-collections'],
+  const { data: currentUser } = useQuery({
+    queryKey: ['current-user'],
     queryFn: async () => {
       const { data: { session } } = await supabase.auth.getSession();
-      
       if (!session) {
         navigate('/auth');
-        return [];
+        return null;
       }
+
+      const { data, error } = await supabase
+        .from('users')
+        .select('*')
+        .eq('id', session.user.id)
+        .single();
+
+      if (error) throw error;
+      return data;
+    },
+  });
+
+  const { data: collections = [], isLoading: isCollectionsLoading } = useQuery({
+    queryKey: ['liked-collections', currentUser?.favor_collections],
+    queryFn: async () => {
+      if (!currentUser?.favor_collections?.length) return [];
 
       const { data, error } = await supabase
         .from('collections')
@@ -42,7 +57,7 @@ const Collections = () => {
             )
           )
         `)
-        .eq('created_by', session.user.id)
+        .in('id', currentUser.favor_collections)
         .order('created_at', { ascending: false });
 
       if (error) {
@@ -52,6 +67,7 @@ const Collections = () => {
       
       return data || [];
     },
+    enabled: !!currentUser?.favor_collections?.length,
   });
 
   const handleCollectionLike = async (collectionId: string) => {
@@ -68,22 +84,12 @@ const Collections = () => {
         return;
       }
 
-      // Get user's current liked collections
-      const { data: userData, error: userError } = await supabase
-        .from('users')
-        .select('favor_collections')
-        .eq('id', session.user.id)
-        .single();
-
-      if (userError) throw userError;
-
-      const currentFavorites = userData?.favor_collections || [];
+      const currentFavorites = currentUser?.favor_collections || [];
       const isLiked = currentFavorites.includes(collectionId);
       const newFavorites = isLiked
         ? currentFavorites.filter(id => id !== collectionId)
         : [...currentFavorites, collectionId];
 
-      // Update user's liked collections
       const { error: updateError } = await supabase
         .from('users')
         .update({ favor_collections: newFavorites })
@@ -93,15 +99,13 @@ const Collections = () => {
 
       toast({
         title: isLiked ? "Collection removed from likes" : "Collection liked",
-        description: isLiked ? "Collection removed from your likes" : "Collection added to your likes",
+        description: isLiked ? "Collection removed from your Collections" : "Collection added to your Collections",
       });
-
-      refetchCollections();
     } catch (error: any) {
       console.error('Collection like error:', error);
       toast({
         title: "Action failed",
-        description: "There was an error updating your likes",
+        description: "There was an error updating your Collections",
         variant: "destructive",
       });
     }
@@ -177,7 +181,13 @@ const Collections = () => {
                       handleCollectionLike(collection.id);
                     }}
                   >
-                    <Heart className="h-5 w-5" />
+                    <Heart 
+                      className={`h-5 w-5 ${
+                        currentUser?.favor_collections?.includes(collection.id)
+                          ? "fill-red-500 text-red-500"
+                          : ""
+                      }`}
+                    />
                   </Button>
                   <h3 className="text-lg font-semibold mb-2">{collection.name}</h3>
                   {collection.description && (
