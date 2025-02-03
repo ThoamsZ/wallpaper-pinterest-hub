@@ -79,7 +79,17 @@ const CreatorProfile = () => {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('collections')
-        .select('*')
+        .select(`
+          *,
+          collection_wallpapers (
+            wallpaper_id,
+            wallpapers (
+              id,
+              compressed_url,
+              created_at
+            )
+          )
+        `)
         .eq('created_by', creatorData.id)
         .order('created_at', { ascending: false });
 
@@ -129,6 +139,13 @@ const CreatorProfile = () => {
       </div>
     );
   }
+
+  const getCollectionPreviewImages = (collection: any) => {
+    return collection.collection_wallpapers
+      .slice(0, 4)
+      .map((cw: any) => cw.wallpapers?.compressed_url)
+      .filter(Boolean);
+  };
 
   return (
     <div className="min-h-screen bg-background">
@@ -186,6 +203,16 @@ const CreatorProfile = () => {
                       {collection.description && (
                         <p className="text-muted-foreground mb-4">{collection.description}</p>
                       )}
+                      <div className="grid grid-cols-2 gap-2 mb-4">
+                        {getCollectionPreviewImages(collection).map((url, index) => (
+                          <img
+                            key={index}
+                            src={url}
+                            alt={`Preview ${index + 1}`}
+                            className="w-full h-24 object-cover rounded-md"
+                          />
+                        ))}
+                      </div>
                       <p className="text-sm text-muted-foreground">
                         Created: {new Date(collection.created_at).toLocaleDateString()}
                       </p>
