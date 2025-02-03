@@ -56,6 +56,7 @@ export const CollectionManager = () => {
       const { data, error } = await supabase
         .from('collections')
         .select('*')
+        .eq('created_by', session.user.id) // Only get collections created by the current admin
         .order('created_at', { ascending: false });
 
       if (error) throw error;
@@ -72,7 +73,7 @@ export const CollectionManager = () => {
       const { data, error } = await supabase
         .from('wallpapers')
         .select('id, url, type, file_path, download_count, like_count')
-        .eq('uploaded_by', session.user.id); // Filter wallpapers by the admin's user ID
+        .eq('uploaded_by', session.user.id); // Only get wallpapers uploaded by the current admin
 
       if (error) throw error;
       return data || [];
@@ -85,6 +86,18 @@ export const CollectionManager = () => {
     queryFn: async () => {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) throw new Error("Not authenticated");
+
+      // First, verify this collection belongs to the current admin
+      const { data: collectionData, error: collectionError } = await supabase
+        .from('collections')
+        .select('id')
+        .eq('id', selectedCollection)
+        .eq('created_by', session.user.id)
+        .single();
+
+      if (collectionError || !collectionData) {
+        throw new Error("Collection not found or unauthorized");
+      }
 
       const { data, error } = await supabase
         .from('collection_wallpapers')
@@ -100,7 +113,7 @@ export const CollectionManager = () => {
           )
         `)
         .eq('collection_id', selectedCollection)
-        .eq('wallpapers.uploaded_by', session.user.id); // Only get wallpapers uploaded by the admin
+        .eq('wallpapers.uploaded_by', session.user.id); // Only get wallpapers uploaded by the current admin
 
       if (error) throw error;
       return data.map((item: any) => ({
@@ -144,6 +157,33 @@ export const CollectionManager = () => {
 
   const addToCollection = async (collectionId: string, wallpaperId: string) => {
     try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) throw new Error("Not authenticated");
+
+      // Verify the collection belongs to the current admin
+      const { data: collectionData, error: collectionError } = await supabase
+        .from('collections')
+        .select('id')
+        .eq('id', collectionId)
+        .eq('created_by', session.user.id)
+        .single();
+
+      if (collectionError || !collectionData) {
+        throw new Error("Collection not found or unauthorized");
+      }
+
+      // Verify the wallpaper belongs to the current admin
+      const { data: wallpaperData, error: wallpaperError } = await supabase
+        .from('wallpapers')
+        .select('id')
+        .eq('id', wallpaperId)
+        .eq('uploaded_by', session.user.id)
+        .single();
+
+      if (wallpaperError || !wallpaperData) {
+        throw new Error("Wallpaper not found or unauthorized");
+      }
+
       const { error } = await supabase
         .from('collection_wallpapers')
         .insert({

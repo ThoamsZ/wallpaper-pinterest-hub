@@ -21,6 +21,7 @@ import {
   TabsList,
   TabsTrigger,
 } from "@/components/ui/tabs";
+import { useQuery } from "@tanstack/react-query";
 
 interface Wallpaper {
   id: string;
@@ -34,9 +35,34 @@ interface Wallpaper {
 
 const AdminPanel = () => {
   const navigate = useNavigate();
-  const [wallpapers, setWallpapers] = useState<Wallpaper[]>([]);
   const [adminEmail, setAdminEmail] = useState<string>("");
-  const [loading, setLoading] = useState(true);
+
+  const { data: wallpapers = [], refetch: refetchWallpapers } = useQuery({
+    queryKey: ['admin-wallpapers'],
+    queryFn: async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) throw new Error("Not authenticated");
+
+      const { data: userData } = await supabase
+        .from('users')
+        .select('is_admin')
+        .eq('id', session.user.id)
+        .single();
+
+      if (!userData?.is_admin) {
+        navigate("/");
+        throw new Error("Not authorized");
+      }
+
+      const { data, error } = await supabase
+        .from('wallpapers')
+        .select('*')
+        .eq('uploaded_by', session.user.id);
+
+      if (error) throw error;
+      return data || [];
+    }
+  });
 
   useEffect(() => {
     checkAdminAndLoadData();
@@ -55,7 +81,7 @@ const AdminPanel = () => {
       .from('users')
       .select('is_admin')
       .eq('id', session.user.id)
-      .maybeSingle();
+      .single();
 
     if (!userData?.is_admin) {
       navigate("/");
@@ -66,32 +92,13 @@ const AdminPanel = () => {
       });
       return;
     }
-
-    loadWallpapers(session.user.id);
-  };
-
-  const loadWallpapers = async (userId: string) => {
-    try {
-      const { data, error } = await supabase
-        .from('wallpapers')
-        .select('*')
-        .eq('uploaded_by', userId);
-
-      if (error) throw error;
-      setWallpapers(data || []);
-    } catch (error: any) {
-      toast({
-        title: "Error",
-        description: "Failed to load wallpapers",
-        variant: "destructive",
-      });
-    } finally {
-      setLoading(false);
-    }
   };
 
   const handleDelete = async (id: string, filePath: string) => {
     try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) throw new Error("Not authenticated");
+
       // First, delete the file from storage
       const { error: storageError } = await supabase.storage
         .from('wallpapers')
@@ -106,15 +113,15 @@ const AdminPanel = () => {
       const { error: dbError } = await supabase
         .from('wallpapers')
         .delete()
-        .eq('id', id);
+        .eq('id', id)
+        .eq('uploaded_by', session.user.id); // Only delete if the user owns the wallpaper
 
       if (dbError) {
         console.error('Database deletion error:', dbError);
         throw dbError;
       }
 
-      // Update local state
-      setWallpapers(prevWallpapers => prevWallpapers.filter(w => w.id !== id));
+      refetchWallpapers();
       
       toast({
         title: "Success",
@@ -132,18 +139,20 @@ const AdminPanel = () => {
 
   const handleUpdateTags = async (id: string, newTags: string) => {
     try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) throw new Error("Not authenticated");
+
       const tagArray = newTags.split(',').map(tag => tag.trim()).filter(tag => tag);
       
       const { error } = await supabase
         .from('wallpapers')
         .update({ tags: tagArray })
-        .eq('id', id);
+        .eq('id', id)
+        .eq('uploaded_by', session.user.id); // Only update if the user owns the wallpaper
 
       if (error) throw error;
 
-      setWallpapers(wallpapers.map(w => 
-        w.id === id ? { ...w, tags: tagArray } : w
-      ));
+      refetchWallpapers();
 
       toast({
         title: "Success",
@@ -157,14 +166,6 @@ const AdminPanel = () => {
       });
     }
   };
-
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-      </div>
-    );
-  }
 
   return (
     <>

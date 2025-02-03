@@ -98,6 +98,7 @@ export type Database = {
       }
       wallpapers: {
         Row: {
+          compressed_url: string
           created_at: string
           download_count: number | null
           file_path: string
@@ -109,6 +110,7 @@ export type Database = {
           url: string
         }
         Insert: {
+          compressed_url: string
           created_at?: string
           download_count?: number | null
           file_path: string
@@ -120,6 +122,7 @@ export type Database = {
           url: string
         }
         Update: {
+          compressed_url?: string
           created_at?: string
           download_count?: number | null
           file_path?: string
