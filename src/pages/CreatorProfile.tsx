@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useParams } from "react-router-dom";
+import { useParams, useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import Header from "@/components/Header";
@@ -14,6 +14,7 @@ type Wallpaper = Database['public']['Tables']['wallpapers']['Row'];
 
 const CreatorProfile = () => {
   const { creatorCode } = useParams();
+  const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState("wallpapers");
   const [selectedCollection, setSelectedCollection] = useState<string | null>(null);
 
@@ -72,7 +73,7 @@ const CreatorProfile = () => {
     enabled: !!creatorData?.id,
   });
 
-  const { data: collections = [], isLoading: isCollectionsLoading } = useQuery({
+  const { data: collections = [], isLoading: isCollectionsLoading, refetch: refetchCollections } = useQuery({
     queryKey: ['creator-collections', creatorData?.id],
     queryFn: async () => {
       const { data, error } = await supabase
@@ -149,7 +150,6 @@ const CreatorProfile = () => {
         description: isLiked ? "Collection removed from your likes" : "Collection added to your likes",
       });
 
-      // Refetch collections to update UI
       refetchCollections();
     } catch (error: any) {
       console.error('Collection like error:', error);

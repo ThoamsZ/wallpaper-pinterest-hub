@@ -71,6 +71,7 @@ export type Database = {
           created_at: string
           creator_code: string | null
           download_count: number | null
+          favor_collections: string[] | null
           favor_image: string[] | null
           id: string
           is_admin: boolean | null
@@ -81,6 +82,7 @@ export type Database = {
           created_at?: string
           creator_code?: string | null
           download_count?: number | null
+          favor_collections?: string[] | null
           favor_image?: string[] | null
           id: string
           is_admin?: boolean | null
@@ -91,6 +93,7 @@ export type Database = {
           created_at?: string
           creator_code?: string | null
           download_count?: number | null
+          favor_collections?: string[] | null
           favor_image?: string[] | null
           id?: string
           is_admin?: boolean | null
