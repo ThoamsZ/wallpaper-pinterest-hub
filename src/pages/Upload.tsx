@@ -139,7 +139,7 @@ const Upload = () => {
           .from('wallpapers')
           .insert({
             url: publicUrl,
-            compressed_url: publicUrl,
+            compressed_url: publicUrl, // Using the same URL for both fields
             file_path: filePath,
             type: imageType,
             tags: tagArray,
