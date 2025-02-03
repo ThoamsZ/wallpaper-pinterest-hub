@@ -1,4 +1,4 @@
-import { Search } from "lucide-react";
+import { Search, Heart, Archive } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { useNavigate, useLocation } from "react-router-dom";
@@ -137,12 +137,22 @@ const Header = () => {
               </button>
             )}
             {isAuthenticated && !isAdminPanel && (
-              <button 
-                onClick={() => handleNavigation("/collections")}
-                className="text-gray-600 hover:text-primary transition-colors"
-              >
-                Collections
-              </button>
+              <>
+                <button 
+                  onClick={() => handleNavigation("/collections")}
+                  className="text-gray-600 hover:text-primary transition-colors flex items-center gap-1"
+                >
+                  <Archive className="w-4 h-4" />
+                  Collections
+                </button>
+                <button 
+                  onClick={() => handleNavigation("/likes")}
+                  className="text-gray-600 hover:text-primary transition-colors flex items-center gap-1"
+                >
+                  <Heart className="w-4 h-4" />
+                  Likes
+                </button>
+              </>
             )}
             
             <div className="flex items-center gap-2 ml-auto">

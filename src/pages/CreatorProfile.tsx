@@ -7,6 +7,7 @@ import WallpaperGrid from "@/components/WallpaperGrid";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
+import { Heart } from "lucide-react";
 import type { Database } from "@/integrations/supabase/types";
 
 type Wallpaper = Database['public']['Tables']['wallpapers']['Row'];
@@ -71,7 +72,6 @@ const CreatorProfile = () => {
     enabled: !!creatorData?.id,
   });
 
-  // Fetch collections created by the creator
   const { data: collections = [], isLoading: isCollectionsLoading } = useQuery({
     queryKey: ['creator-collections', creatorData?.id],
     queryFn: async () => {
@@ -106,6 +106,60 @@ const CreatorProfile = () => {
   });
 
   const isLoading = isCreatorLoading || isWallpapersLoading || isCollectionsLoading;
+
+  const handleCollectionLike = async (collectionId: string) => {
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      if (!session) {
+        toast({
+          title: "Authentication required",
+          description: "Please login to like collections",
+          variant: "destructive",
+        });
+        navigate('/auth');
+        return;
+      }
+
+      // Get user's current liked collections
+      const { data: userData, error: userError } = await supabase
+        .from('users')
+        .select('favor_collections')
+        .eq('id', session.user.id)
+        .single();
+
+      if (userError) throw userError;
+
+      const currentFavorites = userData?.favor_collections || [];
+      const isLiked = currentFavorites.includes(collectionId);
+      const newFavorites = isLiked
+        ? currentFavorites.filter(id => id !== collectionId)
+        : [...currentFavorites, collectionId];
+
+      // Update user's liked collections
+      const { error: updateError } = await supabase
+        .from('users')
+        .update({ favor_collections: newFavorites })
+        .eq('id', session.user.id);
+
+      if (updateError) throw updateError;
+
+      toast({
+        title: isLiked ? "Collection removed from likes" : "Collection liked",
+        description: isLiked ? "Collection removed from your likes" : "Collection added to your likes",
+      });
+
+      // Refetch collections to update UI
+      refetchCollections();
+    } catch (error: any) {
+      console.error('Collection like error:', error);
+      toast({
+        title: "Action failed",
+        description: "There was an error updating your likes",
+        variant: "destructive",
+      });
+    }
+  };
 
   if (isLoading) {
     return (
@@ -187,9 +241,20 @@ const CreatorProfile = () => {
                   {collections.map((collection) => (
                     <div
                       key={collection.id}
-                      className="p-6 rounded-lg border bg-card text-card-foreground shadow-sm hover:shadow-md transition-shadow cursor-pointer"
+                      className="p-6 rounded-lg border bg-card text-card-foreground shadow-sm hover:shadow-md transition-shadow cursor-pointer relative"
                       onClick={() => setSelectedCollection(collection.id)}
                     >
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="absolute top-2 right-2 z-10"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleCollectionLike(collection.id);
+                        }}
+                      >
+                        <Heart className="h-5 w-5" />
+                      </Button>
                       <h3 className="text-lg font-semibold mb-2">{collection.name}</h3>
                       {collection.description && (
                         <p className="text-muted-foreground mb-4">{collection.description}</p>
