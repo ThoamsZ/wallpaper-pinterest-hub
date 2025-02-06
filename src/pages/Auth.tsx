@@ -1,5 +1,5 @@
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -13,6 +13,17 @@ const Auth = () => {
   const [password, setPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [isSignUp, setIsSignUp] = useState(false);
+
+  // Check session on mount and redirect if already authenticated
+  useEffect(() => {
+    const checkSession = async () => {
+      const { data: { session }, error } = await supabase.auth.getSession();
+      if (session) {
+        navigate("/");
+      }
+    };
+    checkSession();
+  }, [navigate]);
 
   const handleAuth = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -38,11 +49,11 @@ const Auth = () => {
           return;
         }
 
-        const { error: signUpError } = await supabase.auth.signUp({
+        const { data, error: signUpError } = await supabase.auth.signUp({
           email,
           password,
           options: {
-            emailRedirectTo: window.location.origin,
+            emailRedirectTo: `${window.location.origin}/auth/callback`,
           }
         });
         
@@ -56,12 +67,16 @@ const Auth = () => {
           return;
         }
         
-        toast({
-          title: "Success",
-          description: "Please check your email to verify your account",
-        });
+        if (data.session) {
+          navigate("/");
+        } else {
+          toast({
+            title: "Success",
+            description: "Please check your email to verify your account",
+          });
+        }
       } else {
-        const { error: signInError } = await supabase.auth.signInWithPassword({
+        const { data, error: signInError } = await supabase.auth.signInWithPassword({
           email,
           password,
         });
@@ -84,8 +99,10 @@ const Auth = () => {
           return;
         }
 
-        console.log("Sign in successful, navigating to home...");
-        navigate("/");
+        if (data.session) {
+          console.log("Sign in successful, navigating to home...");
+          navigate("/");
+        }
       }
     } catch (error: any) {
       console.error("Auth error:", error);
@@ -160,3 +177,4 @@ const Auth = () => {
 };
 
 export default Auth;
+
