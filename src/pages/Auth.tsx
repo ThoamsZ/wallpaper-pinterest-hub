@@ -49,25 +49,31 @@ const Auth = () => {
           return;
         }
 
-        const { data, error: signUpError } = await supabase.auth.signUp({
+        const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
           email,
           password,
           options: {
             emailRedirectTo: `${window.location.origin}/auth/callback`,
           }
         });
-        
+
         if (signUpError) {
           console.error("Sign up error:", signUpError);
+          let errorMessage = signUpError.message;
+          
+          if (signUpError.message.includes("Password should be")) {
+            errorMessage = "Password should be at least 6 characters long";
+          }
+          
           toast({
             title: "Sign up failed",
-            description: signUpError.message,
+            description: errorMessage,
             variant: "destructive",
           });
           return;
         }
-        
-        if (data.session) {
+
+        if (signUpData.session) {
           navigate("/");
         } else {
           toast({
@@ -76,14 +82,16 @@ const Auth = () => {
           });
         }
       } else {
-        const { data, error: signInError } = await supabase.auth.signInWithPassword({
+        const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
           email,
           password,
         });
-        
+
         if (signInError) {
           console.error("Sign in error:", signInError);
-          if (signInError.message.includes("Invalid login credentials")) {
+          
+          if (signInError.message === "Invalid login credentials" || 
+              signInError.message.includes("Invalid")) {
             toast({
               title: "Invalid credentials",
               description: "Please check your email and password",
@@ -99,8 +107,7 @@ const Auth = () => {
           return;
         }
 
-        if (data.session) {
-          console.log("Sign in successful, navigating to home...");
+        if (signInData.session) {
           navigate("/");
         }
       }
@@ -177,4 +184,3 @@ const Auth = () => {
 };
 
 export default Auth;
-
