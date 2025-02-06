@@ -42,6 +42,7 @@ export const useWallpapers = (propWallpapers?: Wallpaper[]) => {
     getNextPageParam: (lastPage, allPages) => {
       // Ensure lastPage exists and has the expected length before calculating next page
       if (!lastPage || !Array.isArray(lastPage)) return undefined;
+      if (lastPage.length === 0) return undefined;
       return lastPage.length === PAGE_SIZE ? allPages.length : undefined;
     },
     initialPageParam: 0,
@@ -68,3 +69,4 @@ export const useWallpapers = (propWallpapers?: Wallpaper[]) => {
 };
 
 export type { Wallpaper };
+
