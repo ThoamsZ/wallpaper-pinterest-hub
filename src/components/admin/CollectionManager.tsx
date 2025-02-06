@@ -31,7 +31,7 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { Checkbox } from "@/components/ui/checkbox";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import { Image, Trash, Download, Heart } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 
@@ -62,7 +62,6 @@ export const CollectionManager = () => {
   const [selectedCollection, setSelectedCollection] = useState<string | null>(null);
   const [isViewingCollection, setIsViewingCollection] = useState(false);
   const [selectedWallpapers, setSelectedWallpapers] = useState<string[]>([]);
-  const queryClient = useQueryClient();
 
   // Check admin status
   const { data: adminStatus, isError: isAdminError } = useQuery({
@@ -162,10 +161,13 @@ export const CollectionManager = () => {
       // Ensure we have valid data before mapping
       if (!data) return [];
       
-      return data.map((item: any) => ({
-        ...item.wallpapers,
-        collection_id: selectedCollection
-      })) || [];
+      // Ensure each item has the required wallpaper data
+      return data
+        .filter(item => item.wallpapers) // Filter out any items without wallpaper data
+        .map(item => ({
+          ...item.wallpapers,
+          collection_id: selectedCollection
+        })) || [];
     },
     retry: 1,
   });
@@ -220,16 +222,17 @@ export const CollectionManager = () => {
   };
 
   const getCollectionWallpapers = (collection: Collection): Wallpaper[] => {
-    // Ensure we're working with a valid array
-    return (collectionWallpapers || [])
+    if (!collectionWallpapers) return [];
+    // Filter and map the wallpapers that belong to this collection
+    return collectionWallpapers
       .filter(cw => cw.collection_id === collection.id)
       .map(cw => ({
         id: cw.id,
         url: cw.url,
         type: cw.type,
         file_path: cw.file_path,
-        download_count: cw.download_count,
-        like_count: cw.like_count
+        download_count: cw.download_count || 0,
+        like_count: cw.like_count || 0
       }));
   };
 
@@ -409,12 +412,13 @@ export const CollectionManager = () => {
   };
 
   if (isViewingCollection && selectedCollection) {
+    const collectionData = collections.find(c => c.id === selectedCollection);
+    if (!collectionData) return null;
+
     return (
       <div className="space-y-6">
         <div className="flex justify-between items-center">
-          <h2 className="text-2xl font-bold">
-            {collections.find(c => c.id === selectedCollection)?.name}
-          </h2>
+          <h2 className="text-2xl font-bold">{collectionData.name}</h2>
           <div className="flex gap-4">
             {selectedWallpapers.length > 0 && (
               <AlertDialog>
@@ -454,7 +458,7 @@ export const CollectionManager = () => {
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 max-h-[calc(100vh-200px)] overflow-y-auto pr-2">
-          {(collectionWallpapers || []).map((wallpaper: CollectionWallpaper) => (
+          {Array.isArray(collectionWallpapers) && collectionWallpapers.map((wallpaper: CollectionWallpaper) => (
             <Card key={wallpaper.id} className={`relative ${selectedWallpapers.includes(wallpaper.id) ? 'ring-2 ring-primary' : ''}`}>
               <div className="absolute top-2 left-2 z-10">
                 <Checkbox
@@ -536,7 +540,7 @@ export const CollectionManager = () => {
       </Card>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {(collections || []).map((collection: Collection) => (
+        {Array.isArray(collections) && collections.map((collection: Collection) => (
           <Card key={collection.id} className="cursor-pointer hover:shadow-lg transition-shadow">
             <CardHeader>
               <CardTitle className="flex justify-between items-center">
@@ -606,7 +610,7 @@ export const CollectionManager = () => {
                       <SheetTitle>Add Wallpapers to Collection</SheetTitle>
                     </SheetHeader>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-4">
-                      {(wallpapers || []).map((wallpaper: Wallpaper) => (
+                      {Array.isArray(wallpapers) && wallpapers.map((wallpaper: Wallpaper) => (
                         <div key={wallpaper.id} className="relative group">
                           <img
                             src={wallpaper.url}
@@ -642,4 +646,3 @@ export const CollectionManager = () => {
     </div>
   );
 };
-
