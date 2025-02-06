@@ -6,23 +6,28 @@ import type { Database } from "@/integrations/supabase/types";
 type Wallpaper = Database['public']['Tables']['wallpapers']['Row'];
 
 const fetchWallpapers = async () => {
-  const { data, error } = await supabase
-    .from('wallpapers')
-    .select('*')
-    .order('created_at', { ascending: false })
-    .limit(25);
+  try {
+    const { data, error } = await supabase
+      .from('wallpapers')
+      .select('*')
+      .order('created_at', { ascending: false })
+      .limit(25);
 
-  if (error) throw error;
-  return data;
+    if (error) throw error;
+    return data || [];
+  } catch (error) {
+    console.error('Error fetching wallpapers:', error);
+    throw error;
+  }
 };
 
 export const useWallpapers = (propWallpapers?: Wallpaper[]) => {
   const { data: fetchedWallpapers = [], isLoading, error, isRefetching } = useQuery({
     queryKey: ['wallpapers'],
     queryFn: fetchWallpapers,
-    staleTime: 1000 * 60 * 5, // 5 minutes
-    gcTime: 1000 * 60 * 30, // 30 minutes
-    refetchOnWindowFocus: true,
+    staleTime: 1000 * 60 * 10, // 10 minutes
+    gcTime: 1000 * 60 * 60, // 1 hour
+    refetchOnWindowFocus: false,
     refetchOnMount: true,
     retry: 2,
   });
