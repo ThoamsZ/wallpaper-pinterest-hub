@@ -199,12 +199,12 @@ const Header = ({ isDisabled = false }: HeaderProps) => {
     <header className="bg-white/95 backdrop-blur-md z-40 border-b shadow-sm">
       <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-3">
         <div className="flex flex-col gap-3">
-          <div className="flex items-center justify-between">
+          <div className="flex justify-center items-center gap-3">
             <h1 
               className={`text-xl font-bold ${isButtonDisabled ? 'text-gray-400' : 'text-primary cursor-pointer'}`}
               onClick={() => !isButtonDisabled && handleNavigation("/")}
             >
-              XXWallpaper
+              xxWallpaper
             </h1>
           </div>
 
