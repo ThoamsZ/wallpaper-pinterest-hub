@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -85,6 +86,24 @@ export const CollectionManager = () => {
       return true;
     },
     retry: false,
+  });
+
+  // Query collections
+  const { data: collections = [], refetch: refetchCollections } = useQuery({
+    queryKey: ['collections'],
+    queryFn: async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) throw new Error("Not authenticated");
+
+      const { data, error } = await supabase
+        .from('collections')
+        .select('*')
+        .eq('created_by', session.user.id);
+
+      if (error) throw error;
+      return data as Collection[];
+    },
+    enabled: !!adminStatus,
   });
 
   // Handle admin check error
@@ -395,7 +414,7 @@ export const CollectionManager = () => {
   };
 
   if (isViewingCollection && selectedCollection) {
-    const collectionData = collections.find(c => c.id === selectedCollection);
+    const collectionData = collections?.find(c => c.id === selectedCollection);
     if (!collectionData) return null;
 
     return (
@@ -525,7 +544,7 @@ export const CollectionManager = () => {
       </Card>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {Array.isArray(collections) && collections.map((collection: Collection) => (
+        {collections?.map((collection: Collection) => (
           <Card key={collection.id} className="cursor-pointer hover:shadow-lg transition-shadow">
             <CardHeader>
               <CardTitle className="flex justify-between items-center">
