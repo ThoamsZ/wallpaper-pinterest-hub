@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -99,24 +98,6 @@ export const CollectionManager = () => {
     return null;
   }
 
-  const { data: collections = [], refetch: refetchCollections } = useQuery({
-    queryKey: ['collections'],
-    queryFn: async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) throw new Error("Not authenticated");
-
-      const { data, error } = await supabase
-        .from('collections')
-        .select('*')
-        .eq('created_by', session.user.id)
-        .order('created_at', { ascending: false });
-
-      if (error) throw error;
-      return data || [];
-    },
-    enabled: !!adminStatus,
-  });
-
   const { data: wallpapers = [], refetch: refetchWallpapers } = useQuery({
     queryKey: ['wallpapers'],
     queryFn: async () => {
@@ -158,14 +139,17 @@ export const CollectionManager = () => {
 
       if (error) throw error;
       
-      // Ensure we have valid data before mapping
       if (!data) return [];
       
-      // Ensure each item has the required wallpaper data
       return data
         .filter(item => item.wallpapers) // Filter out any items without wallpaper data
         .map(item => ({
-          ...item.wallpapers,
+          id: item.wallpapers.id,
+          url: item.wallpapers.url,
+          type: item.wallpapers.type || 'unknown', // Add default value
+          file_path: item.wallpapers.file_path,
+          download_count: item.wallpapers.download_count || 0,
+          like_count: item.wallpapers.like_count || 0,
           collection_id: selectedCollection
         })) || [];
     },
@@ -214,22 +198,21 @@ export const CollectionManager = () => {
   };
 
   const getCollectionPreviewImages = (collection: Collection) => {
-    // Ensure we have valid collectionWallpapers array before mapping
-    return (collectionWallpapers || [])
-      .filter(w => w.collection_id === collection.id)
+    if (!collectionWallpapers || !Array.isArray(collectionWallpapers)) return [];
+    return collectionWallpapers
+      .filter(w => w?.collection_id === collection.id && w?.url)
       .slice(0, 4)
       .map(w => w.url);
   };
 
   const getCollectionWallpapers = (collection: Collection): Wallpaper[] => {
-    if (!collectionWallpapers) return [];
-    // Filter and map the wallpapers that belong to this collection
+    if (!collectionWallpapers || !Array.isArray(collectionWallpapers)) return [];
     return collectionWallpapers
-      .filter(cw => cw.collection_id === collection.id)
+      .filter(cw => cw?.collection_id === collection.id)
       .map(cw => ({
         id: cw.id,
         url: cw.url,
-        type: cw.type,
+        type: cw.type || 'unknown', // Add default value
         file_path: cw.file_path,
         download_count: cw.download_count || 0,
         like_count: cw.like_count || 0
@@ -459,57 +442,59 @@ export const CollectionManager = () => {
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 max-h-[calc(100vh-200px)] overflow-y-auto pr-2">
           {Array.isArray(collectionWallpapers) && collectionWallpapers.map((wallpaper: CollectionWallpaper) => (
-            <Card key={wallpaper.id} className={`relative ${selectedWallpapers.includes(wallpaper.id) ? 'ring-2 ring-primary' : ''}`}>
-              <div className="absolute top-2 left-2 z-10">
-                <Checkbox
-                  checked={selectedWallpapers.includes(wallpaper.id)}
-                  onCheckedChange={(checked) => {
-                    if (checked) {
-                      setSelectedWallpapers([...selectedWallpapers, wallpaper.id]);
-                    } else {
-                      setSelectedWallpapers(selectedWallpapers.filter(id => id !== wallpaper.id));
-                    }
-                  }}
-                />
-              </div>
-              <CardHeader>
-                <CardTitle className="text-lg">
-                  {wallpaper.type} Wallpaper
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <img
-                  src={wallpaper.url}
-                  alt="Wallpaper"
-                  className="w-full h-48 object-cover rounded-md"
-                />
-                <div className="flex justify-between items-center">
-                  <div className="flex items-center gap-2">
-                    <Download className="w-4 h-4" />
-                    <span>{wallpaper.download_count || 0}</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <Heart className="w-4 h-4" />
-                    <span>{wallpaper.like_count || 0}</span>
-                  </div>
+            wallpaper && (
+              <Card key={wallpaper.id} className={`relative ${selectedWallpapers.includes(wallpaper.id) ? 'ring-2 ring-primary' : ''}`}>
+                <div className="absolute top-2 left-2 z-10">
+                  <Checkbox
+                    checked={selectedWallpapers.includes(wallpaper.id)}
+                    onCheckedChange={(checked) => {
+                      if (checked) {
+                        setSelectedWallpapers([...selectedWallpapers, wallpaper.id]);
+                      } else {
+                        setSelectedWallpapers(selectedWallpapers.filter(id => id !== wallpaper.id));
+                      }
+                    }}
+                  />
                 </div>
-              </CardContent>
-              <CardFooter className="flex justify-between">
-                <Button
-                  variant="outline"
-                  onClick={() => removeFromCollection(selectedCollection, wallpaper.id)}
-                >
-                  Remove from Collection
-                </Button>
-                <Button
-                  variant="destructive"
-                  onClick={() => deleteWallpaper(wallpaper)}
-                >
-                  <Trash className="w-4 h-4 mr-2" />
-                  Delete
-                </Button>
-              </CardFooter>
-            </Card>
+                <CardHeader>
+                  <CardTitle className="text-lg">
+                    {wallpaper.type || 'Unknown'} Wallpaper
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <img
+                    src={wallpaper.url}
+                    alt="Wallpaper"
+                    className="w-full h-48 object-cover rounded-md"
+                  />
+                  <div className="flex justify-between items-center">
+                    <div className="flex items-center gap-2">
+                      <Download className="w-4 h-4" />
+                      <span>{wallpaper.download_count || 0}</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Heart className="w-4 h-4" />
+                      <span>{wallpaper.like_count || 0}</span>
+                    </div>
+                  </div>
+                </CardContent>
+                <CardFooter className="flex justify-between">
+                  <Button
+                    variant="outline"
+                    onClick={() => removeFromCollection(selectedCollection, wallpaper.id)}
+                  >
+                    Remove from Collection
+                  </Button>
+                  <Button
+                    variant="destructive"
+                    onClick={() => deleteWallpaper(wallpaper)}
+                  >
+                    <Trash className="w-4 h-4 mr-2" />
+                    Delete
+                  </Button>
+                </CardFooter>
+              </Card>
+            )
           ))}
         </div>
       </div>
