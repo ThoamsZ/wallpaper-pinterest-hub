@@ -4,11 +4,13 @@ import { useNavigate } from "react-router-dom";
 import Header from "@/components/Header";
 import WallpaperGrid from "@/components/WallpaperGrid";
 import { supabase } from "@/integrations/supabase/client";
+import { useQueryClient } from "@tanstack/react-query";
 
 const Index = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [session, setSession] = useState(null);
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
 
   useEffect(() => {
     let mounted = true;
@@ -49,7 +51,7 @@ const Index = () => {
       mounted = false;
       subscription?.unsubscribe();
     };
-  }, []);
+  }, [queryClient]);
 
   if (isLoading) {
     return (
