@@ -21,7 +21,7 @@ export const useWallpapers = (propWallpapers?: Wallpaper[]) => {
     queryKey: ['wallpapers'],
     queryFn: fetchWallpapers,
     staleTime: 1000 * 60 * 5, // 5 minutes
-    cacheTime: 1000 * 60 * 30, // 30 minutes
+    gcTime: 1000 * 60 * 30, // 30 minutes
     refetchOnWindowFocus: true,
     refetchOnMount: true,
     retry: 2,
