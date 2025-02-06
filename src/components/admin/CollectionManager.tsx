@@ -206,7 +206,27 @@ export const CollectionManager = () => {
     }
   };
 
-  const deleteCollection = async (collectionId: string) => {
+  const getCollectionPreviewImages = (collection: any) => {
+    // Ensure we have valid collectionWallpapers array before mapping
+    return (collectionWallpapers || [])
+      .filter(w => w.collection_id === collection.id)
+      .slice(0, 4)
+      .map(w => w.url);
+  };
+
+  const getCollectionWallpapers = (collection: any): Wallpaper[] => {
+    // Ensure we're working with a valid array
+    return (collectionWallpapers || [])
+      .map((cw: any) => cw.wallpapers)
+      .filter(Boolean);
+  };
+
+  const selectedCollectionData = collections.find(c => c.id === selectedCollection);
+  const selectedCollectionWallpapers = selectedCollectionData 
+    ? getCollectionWallpapers(selectedCollectionData)
+    : [];
+
+  const handleDelete = async (collectionId: string) => {
     try {
       const { error } = await supabase
         .from('collections')
@@ -232,8 +252,8 @@ export const CollectionManager = () => {
 
   const deleteMultipleWallpapers = async () => {
     try {
-      // First delete from storage
-      const wallpapersToDelete = collectionWallpapers.filter(w => selectedWallpapers.includes(w.id));
+      // Ensure we have valid arrays before operating on them
+      const wallpapersToDelete = (collectionWallpapers || []).filter(w => selectedWallpapers.includes(w.id));
       
       for (const wallpaper of wallpapersToDelete) {
         const { error: storageError } = await supabase.storage
@@ -243,7 +263,6 @@ export const CollectionManager = () => {
         if (storageError) throw storageError;
       }
 
-      // Then delete from database
       const { error: dbError } = await supabase
         .from('wallpapers')
         .delete()
@@ -375,19 +394,6 @@ export const CollectionManager = () => {
         variant: "destructive",
       });
     }
-  };
-
-  const getCollectionPreviewImages = (collection: any) => {
-    return collectionWallpapers
-      .filter(w => w.collection_id === collection.id)
-      .slice(0, 4)
-      .map(w => w.url);
-  };
-
-  const getCollectionWallpapers = (collection: any): Wallpaper[] => {
-    return collectionWallpapers
-      .map((cw: any) => cw.wallpapers)
-      .filter(Boolean);
   };
 
   const selectedCollectionData = collections.find(c => c.id === selectedCollection);
@@ -523,7 +529,7 @@ export const CollectionManager = () => {
       </Card>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {collections.map((collection: Collection) => (
+        {(collections || []).map((collection: Collection) => (
           <Card key={collection.id} className="cursor-pointer hover:shadow-lg transition-shadow">
             <CardHeader>
               <CardTitle className="flex justify-between items-center">
@@ -546,7 +552,7 @@ export const CollectionManager = () => {
                       <AlertDialogAction
                         onClick={(e) => {
                           e.stopPropagation();
-                          deleteCollection(collection.id);
+                          handleDelete(collection.id);
                         }}
                         className="bg-red-500 hover:bg-red-600"
                       >
