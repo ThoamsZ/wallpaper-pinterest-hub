@@ -1,5 +1,5 @@
 
-import { useState } from "react";
+import { useEffect, useRef } from "react";
 import { useWallpapers, type Wallpaper } from "@/hooks/use-wallpapers";
 import { useWallpaperLikes } from "@/hooks/use-wallpaper-likes";
 import WallpaperModal from "./WallpaperModal";
@@ -11,8 +11,34 @@ interface WallpaperGridProps {
 
 const WallpaperGrid = ({ wallpapers: propWallpapers }: WallpaperGridProps) => {
   const [selectedWallpaper, setSelectedWallpaper] = useState<Wallpaper | null>(null);
-  const { wallpapers, isLoading, error, isRefetching } = useWallpapers(propWallpapers);
+  const { 
+    wallpapers, 
+    isLoading, 
+    error, 
+    isRefetching,
+    fetchNextPage,
+    hasNextPage,
+    isFetchingNextPage 
+  } = useWallpapers(propWallpapers);
   const { likedWallpapers, handleLike } = useWallpaperLikes();
+  const loadMoreRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting && hasNextPage && !isFetchingNextPage) {
+          fetchNextPage();
+        }
+      },
+      { threshold: 0.1 }
+    );
+
+    if (loadMoreRef.current) {
+      observer.observe(loadMoreRef.current);
+    }
+
+    return () => observer.disconnect();
+  }, [fetchNextPage, hasNextPage, isFetchingNextPage]);
 
   if (isLoading && !propWallpapers) {
     return (
@@ -50,6 +76,17 @@ const WallpaperGrid = ({ wallpapers: propWallpapers }: WallpaperGridProps) => {
           />
         ))}
       </div>
+
+      {/* Infinite scroll trigger */}
+      <div 
+        ref={loadMoreRef} 
+        className="h-10 flex items-center justify-center mt-4"
+      >
+        {isFetchingNextPage && (
+          <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary" />
+        )}
+      </div>
+
       <WallpaperModal
         wallpaper={selectedWallpaper}
         isOpen={!!selectedWallpaper}
