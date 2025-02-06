@@ -13,7 +13,6 @@ const Index = () => {
   useEffect(() => {
     let mounted = true;
 
-    // Get initial session
     const initSession = async () => {
       try {
         const { data: { session: currentSession } } = await supabase.auth.getSession();
@@ -31,13 +30,18 @@ const Index = () => {
 
     initSession();
 
-    // Listen for auth changes
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, session) => {
-      if (mounted) {
-        setSession(session);
-        setIsLoading(false);
+    } = supabase.auth.onAuthStateChange((_event, newSession) => {
+      if (!mounted) return;
+      
+      console.log("Auth state changed:", _event, !!newSession);
+      setSession(newSession);
+      setIsLoading(false);
+
+      // Special handling for sign out
+      if (_event === 'SIGNED_OUT') {
+        queryClient.clear(); // Clear all queries on sign out
       }
     });
 
@@ -47,13 +51,15 @@ const Index = () => {
     };
   }, []);
 
-  // Show loading spinner only for initial load
   if (isLoading) {
     return (
       <div className="min-h-screen bg-background">
         <Header isDisabled={true} />
         <main className="container mx-auto px-4 sm:px-6 lg:px-8 flex items-center justify-center min-h-[60vh]">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+          <div className="flex flex-col items-center gap-4">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+            <p className="text-sm text-gray-500">Loading...</p>
+          </div>
         </main>
       </div>
     );
@@ -61,9 +67,9 @@ const Index = () => {
 
   return (
     <div className="min-h-screen bg-background">
-      <Header />
+      <Header isDisabled={isLoading} />
       <main className="container mx-auto px-4 sm:px-6 lg:px-8">
-        <WallpaperGrid key={session?.user?.id} />
+        <WallpaperGrid key={session?.user?.id || 'anonymous'} />
       </main>
     </div>
   );
