@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -19,25 +20,39 @@ const Auth = () => {
 
     try {
       if (isSignUp) {
-        const { error } = await supabase.auth.signUp({
+        // First check if user already exists
+        const { data: existingUser } = await supabase
+          .from('users')
+          .select('id')
+          .eq('id', email)
+          .maybeSingle();
+
+        if (existingUser) {
+          toast({
+            title: "Account exists",
+            description: "This email is already registered. Please sign in instead.",
+            variant: "destructive",
+          });
+          setIsSignUp(false);
+          setIsLoading(false);
+          return;
+        }
+
+        const { error: signUpError } = await supabase.auth.signUp({
           email,
           password,
+          options: {
+            emailRedirectTo: window.location.origin,
+          }
         });
         
-        if (error) {
-          if (error.message.includes("email_provider_disabled")) {
-            toast({
-              title: "Error",
-              description: "Email signup is currently disabled. Please contact administrator.",
-              variant: "destructive",
-            });
-          } else {
-            toast({
-              title: "Error",
-              description: error.message,
-              variant: "destructive",
-            });
-          }
+        if (signUpError) {
+          console.error("Sign up error:", signUpError);
+          toast({
+            title: "Sign up failed",
+            description: signUpError.message,
+            variant: "destructive",
+          });
           return;
         }
         
@@ -46,37 +61,34 @@ const Auth = () => {
           description: "Please check your email to verify your account",
         });
       } else {
-        const { error } = await supabase.auth.signInWithPassword({
+        const { error: signInError } = await supabase.auth.signInWithPassword({
           email,
           password,
         });
         
-        if (error) {
-          if (error.message.includes("email_provider_disabled")) {
+        if (signInError) {
+          console.error("Sign in error:", signInError);
+          if (signInError.message.includes("Invalid login credentials")) {
             toast({
-              title: "Error",
-              description: "Email login is currently disabled. Please contact administrator.",
-              variant: "destructive",
-            });
-          } else if (error.message.includes("email_not_confirmed")) {
-            toast({
-              title: "Error",
-              description: "Please verify your email before logging in.",
+              title: "Invalid credentials",
+              description: "Please check your email and password",
               variant: "destructive",
             });
           } else {
             toast({
-              title: "Error",
-              description: error.message,
+              title: "Sign in failed",
+              description: signInError.message,
               variant: "destructive",
             });
           }
           return;
         }
-        
+
+        console.log("Sign in successful, navigating to home...");
         navigate("/");
       }
     } catch (error: any) {
+      console.error("Auth error:", error);
       toast({
         title: "Error",
         description: error.message,
@@ -103,7 +115,9 @@ const Auth = () => {
               type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
+              placeholder="Enter your email"
               required
+              disabled={isLoading}
             />
           </div>
 
@@ -114,12 +128,19 @@ const Auth = () => {
               type="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
+              placeholder="Enter your password"
               required
+              disabled={isLoading}
+              minLength={6}
             />
           </div>
 
-          <Button type="submit" className="w-full" disabled={isLoading}>
-            {isLoading ? "Loading..." : isSignUp ? "Sign Up" : "Sign In"}
+          <Button 
+            type="submit" 
+            className="w-full" 
+            disabled={isLoading}
+          >
+            {isLoading ? "Processing..." : isSignUp ? "Sign Up" : "Sign In"}
           </Button>
         </form>
 
@@ -128,6 +149,7 @@ const Auth = () => {
             type="button"
             onClick={() => setIsSignUp(!isSignUp)}
             className="text-primary hover:underline"
+            disabled={isLoading}
           >
             {isSignUp ? "Already have an account? Sign in" : "Need an account? Sign up"}
           </button>
