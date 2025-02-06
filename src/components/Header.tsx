@@ -1,3 +1,4 @@
+
 import { Search, Heart, Archive } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -7,7 +8,11 @@ import { useEffect, useState } from "react";
 import { toast } from "@/hooks/use-toast";
 import { useIsMobile } from "@/hooks/use-mobile";
 
-const Header = () => {
+interface HeaderProps {
+  isDisabled?: boolean;
+}
+
+const Header = ({ isDisabled = false }: HeaderProps) => {
   const navigate = useNavigate();
   const location = useLocation();
   const isMobile = useIsMobile();
@@ -64,10 +69,10 @@ const Header = () => {
 
   const handleSearch = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
+    if (isDisabled) return;
     
     if (!searchQuery.trim()) return;
 
-    // First try to find by creator code
     const { data: creatorData, error: creatorError } = await supabase
       .from('users')
       .select('id')
@@ -80,7 +85,6 @@ const Header = () => {
     }
 
     if (creatorData) {
-      // If creator found, navigate to their profile
       navigate(`/creator/${searchQuery.trim()}`);
     } else {
       toast({
@@ -92,6 +96,8 @@ const Header = () => {
   };
 
   const handleLogout = async () => {
+    if (isDisabled) return;
+
     const { error } = await supabase.auth.signOut();
     if (error) {
       toast({
@@ -109,6 +115,7 @@ const Header = () => {
   };
 
   const handleNavigation = (path: string) => {
+    if (isDisabled) return;
     navigate(path);
   };
 
@@ -119,8 +126,8 @@ const Header = () => {
           {/* Logo */}
           <div className="flex items-center justify-between">
             <h1 
-              className="text-xl font-bold text-primary cursor-pointer" 
-              onClick={() => handleNavigation("/")}
+              className={`text-xl font-bold ${isDisabled ? 'text-gray-400' : 'text-primary cursor-pointer'}`}
+              onClick={() => !isDisabled && handleNavigation("/")}
             >
               XXWallpaper
             </h1>
@@ -131,7 +138,8 @@ const Header = () => {
             {!isAdminPanel && (
               <button 
                 onClick={() => handleNavigation("/")}
-                className="text-gray-600 hover:text-primary transition-colors"
+                className={`${isDisabled ? 'text-gray-400' : 'text-gray-600 hover:text-primary'} transition-colors`}
+                disabled={isDisabled}
               >
                 Explore
               </button>
@@ -140,14 +148,16 @@ const Header = () => {
               <>
                 <button 
                   onClick={() => handleNavigation("/collections")}
-                  className="text-gray-600 hover:text-primary transition-colors flex items-center gap-1"
+                  className={`${isDisabled ? 'text-gray-400' : 'text-gray-600 hover:text-primary'} transition-colors flex items-center gap-1`}
+                  disabled={isDisabled}
                 >
                   <Archive className="w-4 h-4" />
                   Collections
                 </button>
                 <button 
                   onClick={() => handleNavigation("/likes")}
-                  className="text-gray-600 hover:text-primary transition-colors flex items-center gap-1"
+                  className={`${isDisabled ? 'text-gray-400' : 'text-gray-600 hover:text-primary'} transition-colors flex items-center gap-1`}
+                  disabled={isDisabled}
                 >
                   <Heart className="w-4 h-4" />
                   Likes
@@ -169,6 +179,7 @@ const Header = () => {
                       onClick={() => handleNavigation("/admin-panel")}
                       className="text-sm py-1.5"
                       size="sm"
+                      disabled={isDisabled}
                     >
                       Admin
                     </Button>
@@ -178,6 +189,7 @@ const Header = () => {
                     onClick={handleLogout}
                     className="text-sm py-1.5"
                     size="sm"
+                    disabled={isDisabled}
                   >
                     Logout
                   </Button>
@@ -187,6 +199,7 @@ const Header = () => {
                   onClick={() => handleNavigation("/auth")}
                   className="text-sm py-1.5"
                   size="sm"
+                  disabled={isDisabled}
                 >
                   Login
                 </Button>
@@ -201,9 +214,10 @@ const Header = () => {
                 <Input
                   type="search"
                   placeholder="Search for creator codes..."
-                  className="w-full pl-10 pr-4 py-1.5 rounded-full border-gray-200 text-sm"
+                  className={`w-full pl-10 pr-4 py-1.5 rounded-full border-gray-200 text-sm ${isDisabled ? 'bg-gray-100 cursor-not-allowed' : ''}`}
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
+                  disabled={isDisabled}
                 />
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4" />
               </div>
