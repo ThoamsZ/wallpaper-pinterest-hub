@@ -30,8 +30,9 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { Checkbox } from "@/components/ui/checkbox";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Image, Trash, Download, Heart } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 
 interface Collection {
   id: string;
@@ -54,11 +55,49 @@ interface CollectionWallpaper extends Wallpaper {
 }
 
 export const CollectionManager = () => {
+  const navigate = useNavigate();
   const [newCollectionName, setNewCollectionName] = useState("");
   const [newCollectionDesc, setNewCollectionDesc] = useState("");
   const [selectedCollection, setSelectedCollection] = useState<string | null>(null);
   const [isViewingCollection, setIsViewingCollection] = useState(false);
   const [selectedWallpapers, setSelectedWallpapers] = useState<string[]>([]);
+  const queryClient = useQueryClient();
+
+  // Check admin status
+  const { data: adminStatus, isError: isAdminError } = useQuery({
+    queryKey: ['admin-status'],
+    queryFn: async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        throw new Error("Not authenticated");
+      }
+
+      const { data: userData, error: userError } = await supabase
+        .from('users')
+        .select('is_admin')
+        .eq('id', session.user.id)
+        .single();
+
+      if (userError) throw userError;
+      if (!userData?.is_admin) {
+        throw new Error("Not an admin");
+      }
+
+      return true;
+    },
+    retry: false,
+  });
+
+  // Handle admin check error
+  if (isAdminError) {
+    toast({
+      title: "Access Denied",
+      description: "Please log in with an admin account",
+      variant: "destructive",
+    });
+    navigate("/auth");
+    return null;
+  }
 
   const { data: collections = [], refetch: refetchCollections } = useQuery({
     queryKey: ['collections'],
@@ -69,12 +108,13 @@ export const CollectionManager = () => {
       const { data, error } = await supabase
         .from('collections')
         .select('*')
-        .eq('created_by', session.user.id) // Only get collections created by the current admin
+        .eq('created_by', session.user.id)
         .order('created_at', { ascending: false });
 
       if (error) throw error;
       return data || [];
-    }
+    },
+    enabled: !!adminStatus,
   });
 
   const { data: wallpapers = [] } = useQuery({
@@ -86,31 +126,20 @@ export const CollectionManager = () => {
       const { data, error } = await supabase
         .from('wallpapers')
         .select('id, url, type, file_path, download_count, like_count')
-        .eq('uploaded_by', session.user.id); // Only get wallpapers uploaded by the current admin
+        .eq('uploaded_by', session.user.id);
 
       if (error) throw error;
       return data || [];
-    }
+    },
+    enabled: !!adminStatus,
   });
 
   const { data: collectionWallpapers = [], refetch: refetchCollectionWallpapers } = useQuery({
     queryKey: ['collection_wallpapers', selectedCollection],
-    enabled: !!selectedCollection,
+    enabled: !!selectedCollection && !!adminStatus,
     queryFn: async () => {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) throw new Error("Not authenticated");
-
-      // First, verify this collection belongs to the current admin
-      const { data: collectionData, error: collectionError } = await supabase
-        .from('collections')
-        .select('id')
-        .eq('id', selectedCollection)
-        .eq('created_by', session.user.id)
-        .single();
-
-      if (collectionError || !collectionData) {
-        throw new Error("Collection not found or unauthorized");
-      }
 
       const { data, error } = await supabase
         .from('collection_wallpapers')
@@ -125,15 +154,15 @@ export const CollectionManager = () => {
             like_count
           )
         `)
-        .eq('collection_id', selectedCollection)
-        .eq('wallpapers.uploaded_by', session.user.id); // Only get wallpapers uploaded by the current admin
+        .eq('collection_id', selectedCollection);
 
       if (error) throw error;
       return data.map((item: any) => ({
         ...item.wallpapers,
         collection_id: selectedCollection
       })) || [];
-    }
+    },
+    retry: 1,
   });
 
   const createCollection = async () => {
@@ -348,12 +377,23 @@ export const CollectionManager = () => {
     }
   };
 
-  const getCollectionPreviewImages = (collectionId: string) => {
+  const getCollectionPreviewImages = (collection: any) => {
     return collectionWallpapers
-      .filter(w => w.collection_id === collectionId)
+      .filter(w => w.collection_id === collection.id)
       .slice(0, 4)
       .map(w => w.url);
   };
+
+  const getCollectionWallpapers = (collection: any): Wallpaper[] => {
+    return collectionWallpapers
+      .map((cw: any) => cw.wallpapers)
+      .filter(Boolean);
+  };
+
+  const selectedCollectionData = collections.find(c => c.id === selectedCollection);
+  const selectedCollectionWallpapers = selectedCollectionData 
+    ? getCollectionWallpapers(selectedCollectionData)
+    : [];
 
   if (isViewingCollection && selectedCollection) {
     return (
@@ -522,7 +562,7 @@ export const CollectionManager = () => {
                 {collection.description || "No description"}
               </p>
               <div className="grid grid-cols-2 gap-2 mb-4">
-                {getCollectionPreviewImages(collection.id).map((url, index) => (
+                {getCollectionPreviewImages(collection).map((url, index) => (
                   <img
                     key={index}
                     src={url}

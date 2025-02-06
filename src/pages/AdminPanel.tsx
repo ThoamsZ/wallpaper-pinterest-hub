@@ -1,4 +1,3 @@
-
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -49,64 +48,46 @@ interface Wallpaper {
 const AdminPanel = () => {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
-  const [adminEmail, setAdminEmail] = useState<string>("");
+  const [selectedWallpapers, setSelectedWallpapers] = useState<string[]>([]);
   const [creatorCode, setCreatorCode] = useState<string>("");
   const [currentCreatorCode, setCurrentCreatorCode] = useState<string>("");
-  const [selectedWallpapers, setSelectedWallpapers] = useState<string[]>([]);
 
   // Check admin status
-  const { data: isAdmin, isError: isAdminError } = useQuery({
+  const { data: adminData, isError: isAdminError } = useQuery({
     queryKey: ['admin-status'],
     queryFn: async () => {
       const { data: { session } } = await supabase.auth.getSession();
-      if (!session) return false;
+      if (!session) {
+        throw new Error("Not authenticated");
+      }
 
-      setAdminEmail(session.user.email || "");
-
-      const { data: userData } = await supabase
+      const { data: userData, error: userError } = await supabase
         .from('users')
-        .select('is_admin, creator_code')
+        .select('is_admin, creator_code, email')
         .eq('id', session.user.id)
         .single();
 
+      if (userError) throw userError;
       if (!userData?.is_admin) {
-        return false;
+        throw new Error("Not an admin");
       }
 
-      setCurrentCreatorCode(userData.creator_code || "");
-      return true;
+      return userData;
     },
     retry: false
   });
 
-  // Fetch wallpapers
-  const { data: wallpapers = [], refetch: refetchWallpapers } = useQuery({
-    queryKey: ['admin-wallpapers'],
-    queryFn: async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) throw new Error("Not authenticated");
-
-      const { data, error } = await supabase
-        .from('wallpapers')
-        .select('*')
-        .eq('uploaded_by', session.user.id);
-
-      if (error) throw error;
-      return data || [];
-    },
-    enabled: !!isAdmin
-  });
-
+  // Handle admin check error
   useEffect(() => {
-    if (isAdminError || isAdmin === false) {
-      navigate("/");
+    if (isAdminError) {
       toast({
         title: "Access Denied",
-        description: "You don't have permission to access this page",
+        description: "Please log in with an admin account",
         variant: "destructive",
       });
+      navigate("/auth");
     }
-  }, [isAdmin, isAdminError, navigate]);
+  }, [isAdminError, navigate]);
 
   const handleUpdateCreatorCode = async () => {
     try {
@@ -172,6 +153,13 @@ const AdminPanel = () => {
 
       if (dbError) throw dbError;
 
+      const { error: collectionError } = await supabase
+        .from('collection_wallpapers')
+        .delete()
+        .eq('wallpaper_id', id);
+
+      if (collectionError) throw collectionError;
+
       await refetchWallpapers();
       
       toast({
@@ -211,6 +199,14 @@ const AdminPanel = () => {
         .eq('uploaded_by', session.user.id);
 
       if (dbError) throw dbError;
+
+      // Also delete from collection_wallpapers
+      const { error: collectionError } = await supabase
+        .from('collection_wallpapers')
+        .delete()
+        .in('wallpaper_id', selectedWallpapers);
+
+      if (collectionError) throw collectionError;
 
       toast({
         title: "Success",
@@ -258,7 +254,32 @@ const AdminPanel = () => {
     }
   };
 
-  if (!isAdmin) {
+  // Fetch wallpapers
+  const { data: wallpapers = [], refetch: refetchWallpapers } = useQuery({
+    queryKey: ['admin-wallpapers'],
+    queryFn: async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) throw new Error("Not authenticated");
+
+      const { data, error } = await supabase
+        .from('wallpapers')
+        .select('*')
+        .eq('uploaded_by', session.user.id);
+
+      if (error) throw error;
+      return data || [];
+    },
+    enabled: !!adminData
+  });
+
+  useEffect(() => {
+    if (adminData) {
+      setCurrentCreatorCode(adminData.creator_code || "");
+    }
+  }, [adminData]);
+
+  // If not admin or loading, show nothing
+  if (!adminData) {
     return null;
   }
 
@@ -269,7 +290,7 @@ const AdminPanel = () => {
         <div className="flex justify-between items-center mb-8">
           <div>
             <h1 className="text-2xl font-bold">Admin Panel</h1>
-            <p className="text-gray-600">Logged in as: {adminEmail}</p>
+            <p className="text-gray-600">Logged in as: {adminData.email}</p>
           </div>
           <div className="space-x-4">
             <Button onClick={() => navigate("/upload")}>Upload Wallpapers</Button>
