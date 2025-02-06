@@ -19,8 +19,8 @@ const fetchWallpaperPage = async ({ pageParam = 0 }) => {
       .range(from, to);
 
     if (error) throw error;
-    // Ensure we always return an array, even if empty
-    return data || [];
+    // Always return an array, even if data is null
+    return data ?? [];
   } catch (error) {
     console.error('Error fetching wallpapers:', error);
     throw error;
@@ -40,8 +40,9 @@ export const useWallpapers = (propWallpapers?: Wallpaper[]) => {
     queryKey: ['wallpapers'],
     queryFn: fetchWallpaperPage,
     getNextPageParam: (lastPage, allPages) => {
-      // Only return next page if we got a full page of results
-      return lastPage && lastPage.length === PAGE_SIZE ? allPages.length : undefined;
+      // Ensure lastPage exists and has the expected length before calculating next page
+      if (!lastPage || !Array.isArray(lastPage)) return undefined;
+      return lastPage.length === PAGE_SIZE ? allPages.length : undefined;
     },
     initialPageParam: 0,
     staleTime: 1000 * 60 * 10, // 10 minutes
@@ -51,8 +52,9 @@ export const useWallpapers = (propWallpapers?: Wallpaper[]) => {
     retry: 2,
   });
 
-  // Ensure we always return an array, even if data is undefined
-  const wallpapers = propWallpapers || (data?.pages?.flat() ?? []);
+  // Ensure we always return a valid array
+  const wallpapers = propWallpapers || 
+    (data?.pages?.reduce((acc, page) => acc.concat(page || []), [] as Wallpaper[]) ?? []);
 
   return {
     wallpapers,
@@ -66,4 +68,3 @@ export const useWallpapers = (propWallpapers?: Wallpaper[]) => {
 };
 
 export type { Wallpaper };
-
