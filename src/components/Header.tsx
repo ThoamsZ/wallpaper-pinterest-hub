@@ -31,7 +31,7 @@ const Header = () => {
       if (!session?.user.id) return null;
       const { data, error } = await supabase
         .from('users')
-        .select('is_admin, email')
+        .select('is_admin')
         .eq('id', session.user.id)
         .maybeSingle();
       
