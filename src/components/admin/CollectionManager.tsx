@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -117,7 +118,7 @@ export const CollectionManager = () => {
     enabled: !!adminStatus,
   });
 
-  const { data: wallpapers = [] } = useQuery({
+  const { data: wallpapers = [], refetch: refetchWallpapers } = useQuery({
     queryKey: ['wallpapers'],
     queryFn: async () => {
       const { data: { session } } = await supabase.auth.getSession();
@@ -157,6 +158,10 @@ export const CollectionManager = () => {
         .eq('collection_id', selectedCollection);
 
       if (error) throw error;
+      
+      // Ensure we have valid data before mapping
+      if (!data) return [];
+      
       return data.map((item: any) => ({
         ...item.wallpapers,
         collection_id: selectedCollection
@@ -206,7 +211,7 @@ export const CollectionManager = () => {
     }
   };
 
-  const getCollectionPreviewImages = (collection: any) => {
+  const getCollectionPreviewImages = (collection: Collection) => {
     // Ensure we have valid collectionWallpapers array before mapping
     return (collectionWallpapers || [])
       .filter(w => w.collection_id === collection.id)
@@ -214,11 +219,18 @@ export const CollectionManager = () => {
       .map(w => w.url);
   };
 
-  const getCollectionWallpapers = (collection: any): Wallpaper[] => {
+  const getCollectionWallpapers = (collection: Collection): Wallpaper[] => {
     // Ensure we're working with a valid array
     return (collectionWallpapers || [])
-      .map((cw: any) => cw.wallpapers)
-      .filter(Boolean);
+      .filter(cw => cw.collection_id === collection.id)
+      .map(cw => ({
+        id: cw.id,
+        url: cw.url,
+        type: cw.type,
+        file_path: cw.file_path,
+        download_count: cw.download_count,
+        like_count: cw.like_count
+      }));
   };
 
   const selectedCollectionData = collections.find(c => c.id === selectedCollection);
@@ -442,7 +454,7 @@ export const CollectionManager = () => {
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 max-h-[calc(100vh-200px)] overflow-y-auto pr-2">
-          {collectionWallpapers.map((wallpaper: CollectionWallpaper) => (
+          {(collectionWallpapers || []).map((wallpaper: CollectionWallpaper) => (
             <Card key={wallpaper.id} className={`relative ${selectedWallpapers.includes(wallpaper.id) ? 'ring-2 ring-primary' : ''}`}>
               <div className="absolute top-2 left-2 z-10">
                 <Checkbox
@@ -594,7 +606,7 @@ export const CollectionManager = () => {
                       <SheetTitle>Add Wallpapers to Collection</SheetTitle>
                     </SheetHeader>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-4">
-                      {wallpapers.map((wallpaper: Wallpaper) => (
+                      {(wallpapers || []).map((wallpaper: Wallpaper) => (
                         <div key={wallpaper.id} className="relative group">
                           <img
                             src={wallpaper.url}
@@ -630,3 +642,4 @@ export const CollectionManager = () => {
     </div>
   );
 };
+
