@@ -1,5 +1,5 @@
 
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useIsMobile } from "@/hooks/use-mobile";
 import type { Wallpaper } from "@/hooks/use-wallpapers";
 
@@ -13,9 +13,37 @@ const WallpaperItem = ({ wallpaper, onSelect }: WallpaperItemProps) => {
   const [isHovered, setIsHovered] = useState(false);
   const [imageLoaded, setImageLoaded] = useState(false);
   const [isIntersecting, setIsIntersecting] = useState(false);
+  const elementRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (entry.isIntersecting) {
+            setIsIntersecting(true);
+            observer.unobserve(entry.target);
+          }
+        });
+      },
+      {
+        rootMargin: "50px",
+      }
+    );
+
+    if (elementRef.current) {
+      observer.observe(elementRef.current);
+    }
+
+    return () => {
+      if (elementRef.current) {
+        observer.unobserve(elementRef.current);
+      }
+    };
+  }, []);
 
   return (
     <div
+      ref={elementRef}
       id={wallpaper.id}
       className="wallpaper-item relative cursor-pointer transform transition-transform duration-200 hover:z-10"
       onMouseEnter={() => !isMobile && setIsHovered(true)}
