@@ -71,6 +71,7 @@ export type Database = {
           created_at: string
           creator_code: string | null
           download_count: number | null
+          email: string | null
           favor_collections: string[] | null
           favor_image: string[] | null
           id: string
@@ -82,6 +83,7 @@ export type Database = {
           created_at?: string
           creator_code?: string | null
           download_count?: number | null
+          email?: string | null
           favor_collections?: string[] | null
           favor_image?: string[] | null
           id: string
@@ -93,6 +95,7 @@ export type Database = {
           created_at?: string
           creator_code?: string | null
           download_count?: number | null
+          email?: string | null
           favor_collections?: string[] | null
           favor_image?: string[] | null
           id?: string
