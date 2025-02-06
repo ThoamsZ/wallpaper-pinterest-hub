@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery } from "@tanstack/react-query";
@@ -18,7 +19,7 @@ const fetchWallpapers = async () => {
     .from('wallpapers')
     .select('*')
     .order('created_at', { ascending: false })
-    .limit(50);
+    .limit(25); // Reduced limit for initial load
 
   if (error) throw error;
   return data;
@@ -30,17 +31,24 @@ const WallpaperGrid = ({ wallpapers: propWallpapers }: WallpaperGridProps) => {
   const [hoveredId, setHoveredId] = useState<string | null>(null);
   const [selectedWallpaper, setSelectedWallpaper] = useState<Wallpaper | null>(null);
   const [likedWallpapers, setLikedWallpapers] = useState<string[]>([]);
+  const [imagesLoaded, setImagesLoaded] = useState<Record<string, boolean>>({});
 
-  const { data: fetchedWallpapers = [], isLoading, error, isRefetching, refetch } = useQuery({
+  const { data: fetchedWallpapers = [], isLoading, error, isRefetching } = useQuery({
     queryKey: ['wallpapers'],
     queryFn: fetchWallpapers,
-    staleTime: 1000 * 60 * 5,
-    refetchOnWindowFocus: true,
-    retry: 2,
-    enabled: !propWallpapers,
+    staleTime: 1000 * 60 * 5, // Cache for 5 minutes
+    refetchOnWindowFocus: false, // Disable automatic refetch on window focus
+    retry: 1, // Reduce retry attempts
   });
 
   const wallpapers = propWallpapers || fetchedWallpapers;
+
+  const handleImageLoad = (wallpaperId: string) => {
+    setImagesLoaded(prev => ({
+      ...prev,
+      [wallpaperId]: true
+    }));
+  };
 
   const handleLike = async (wallpaperId: string) => {
     try {
@@ -105,9 +113,6 @@ const WallpaperGrid = ({ wallpapers: propWallpapers }: WallpaperGridProps) => {
         title: isLiked ? "Removed from favorites" : "Added to favorites",
         description: isLiked ? "Wallpaper removed from your collections" : "Wallpaper added to your collections",
       });
-
-      // Refetch to ensure data is fresh
-      refetch();
     } catch (error) {
       console.error('Like error:', error);
       toast({
@@ -136,7 +141,6 @@ const WallpaperGrid = ({ wallpapers: propWallpapers }: WallpaperGridProps) => {
 
     fetchLikedWallpapers();
 
-    // Subscribe to auth changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       if (session) {
         fetchLikedWallpapers();
@@ -152,10 +156,10 @@ const WallpaperGrid = ({ wallpapers: propWallpapers }: WallpaperGridProps) => {
 
   if (isLoading && !propWallpapers) {
     return (
-      <div className="grid grid-cols-3 gap-2 sm:gap-4">
-        {[...Array(9)].map((_, i) => (
+      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-2 sm:gap-4">
+        {[...Array(10)].map((_, i) => (
           <div key={i} className="relative aspect-[3/4]">
-            <div className="animate-pulse bg-gray-200 rounded-lg h-full w-full"></div>
+            <div className="animate-pulse bg-gray-200 dark:bg-gray-700 rounded-lg h-full w-full"></div>
           </div>
         ))}
       </div>
@@ -173,13 +177,11 @@ const WallpaperGrid = ({ wallpapers: propWallpapers }: WallpaperGridProps) => {
   return (
     <>
       {isRefetching && !propWallpapers && (
-        <div className="fixed top-20 right-4 bg-primary text-white px-4 py-2 rounded-md shadow-lg z-50">
+        <div className="fixed top-20 right-4 bg-primary text-primary-foreground px-4 py-2 rounded-md shadow-lg z-50">
           Updating...
         </div>
       )}
-      <div className={`grid grid-cols-3 gap-2 ${
-        !isMobile ? 'sm:grid-cols-4 lg:grid-cols-5 sm:gap-4' : ''
-      }`}>
+      <div className={`grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-2 sm:gap-4`}>
         {wallpapers.map((wallpaper: Wallpaper) => (
           <div
             key={wallpaper.id}
@@ -189,14 +191,18 @@ const WallpaperGrid = ({ wallpapers: propWallpapers }: WallpaperGridProps) => {
             onClick={() => setSelectedWallpaper(wallpaper)}
           >
             <div className="relative group overflow-hidden rounded-lg">
-              <div className="aspect-[3/4] w-full">
+              <div className="aspect-[3/4] w-full bg-gray-100 dark:bg-gray-800">
+                {!imagesLoaded[wallpaper.id] && (
+                  <div className="absolute inset-0 animate-pulse bg-gray-200 dark:bg-gray-700 rounded-lg" />
+                )}
                 <img
                   src={wallpaper.compressed_url}
                   alt={`Wallpaper ${wallpaper.id}`}
                   loading="lazy"
-                  className={`w-full h-full object-cover transition-transform duration-300 ${
-                    !isMobile && hoveredId === wallpaper.id ? "scale-105" : ""
-                  }`}
+                  onLoad={() => handleImageLoad(wallpaper.id)}
+                  className={`w-full h-full object-cover transition-opacity duration-300 ${
+                    imagesLoaded[wallpaper.id] ? 'opacity-100' : 'opacity-0'
+                  } ${!isMobile && hoveredId === wallpaper.id ? "scale-105" : ""}`}
                 />
               </div>
             </div>
