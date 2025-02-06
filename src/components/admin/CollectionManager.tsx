@@ -1,4 +1,5 @@
-import { useState } from "react";
+
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -87,6 +88,18 @@ export const CollectionManager = () => {
     retry: false,
   });
 
+  // Handle admin check error
+  useEffect(() => {
+    if (isAdminError) {
+      toast({
+        title: "Access Denied",
+        description: "Please log in with an admin account",
+        variant: "destructive",
+      });
+      navigate("/auth");
+    }
+  }, [isAdminError, navigate]);
+
   // Query collections
   const { data: collections = [], refetch: refetchCollections } = useQuery({
     queryKey: ['collections'],
@@ -100,17 +113,17 @@ export const CollectionManager = () => {
         .eq('created_by', session.user.id);
 
       if (error) throw error;
-      return data as Collection[];
+      return data;
     },
     enabled: !!adminStatus,
   });
 
-  // Update the collection wallpapers query to only run when selectedCollection is not null
+  // Update the collection wallpapers query
   const { data: collectionWallpapers = [], refetch: refetchCollectionWallpapers } = useQuery({
     queryKey: ['collection_wallpapers', selectedCollection],
-    enabled: !!selectedCollection && !!adminStatus, // Only run query when we have a selected collection
+    enabled: !!selectedCollection && !!adminStatus,
     queryFn: async () => {
-      if (!selectedCollection) return []; // Extra safety check
+      if (!selectedCollection) return [];
 
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) throw new Error("Not authenticated");
@@ -146,7 +159,6 @@ export const CollectionManager = () => {
           collection_id: selectedCollection
         }));
     },
-    retry: 1,
   });
 
   const { data: wallpapers = [], refetch: refetchWallpapers } = useQuery({

@@ -39,11 +39,7 @@ export const useWallpapers = (propWallpapers?: Wallpaper[]) => {
     queryKey: ['wallpapers'],
     queryFn: fetchWallpaperPage,
     getNextPageParam: (lastPage, allPages) => {
-      // Ensure lastPage is an array and has items
-      if (!Array.isArray(lastPage) || lastPage.length === 0) {
-        return undefined;
-      }
-      // Only return next page if we got a full page of results
+      if (!Array.isArray(lastPage)) return undefined;
       return lastPage.length === PAGE_SIZE ? allPages.length : undefined;
     },
     initialPageParam: 0,
@@ -55,16 +51,13 @@ export const useWallpapers = (propWallpapers?: Wallpaper[]) => {
   });
 
   // Ensure we're working with arrays before flattening
-  const pages = data?.pages ?? [];
-  const flattenedPages = pages.reduce<Wallpaper[]>((acc, page) => {
-    if (Array.isArray(page)) {
-      return [...acc, ...page];
-    }
-    return acc;
-  }, []);
-
-  // Use propWallpapers if provided, otherwise use flattened query data
-  const wallpapers = propWallpapers ?? flattenedPages;
+  const wallpapers = propWallpapers ?? 
+    data?.pages?.reduce<Wallpaper[]>((acc, page) => {
+      if (Array.isArray(page)) {
+        return [...acc, ...page];
+      }
+      return acc;
+    }, []) ?? [];
 
   return {
     wallpapers,
