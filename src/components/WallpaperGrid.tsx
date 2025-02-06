@@ -1,5 +1,5 @@
 
-import { useEffect, useRef } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useWallpapers, type Wallpaper } from "@/hooks/use-wallpapers";
 import { useWallpaperLikes } from "@/hooks/use-wallpaper-likes";
 import WallpaperModal from "./WallpaperModal";
