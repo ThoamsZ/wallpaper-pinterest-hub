@@ -122,7 +122,7 @@ const Header = () => {
               className="text-xl font-bold text-primary cursor-pointer" 
               onClick={() => handleNavigation("/")}
             >
-              XXWallpaper
+              xxWallpaper
             </h1>
           </div>
 
