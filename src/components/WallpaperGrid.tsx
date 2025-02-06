@@ -19,7 +19,7 @@ const fetchWallpapers = async () => {
     .from('wallpapers')
     .select('*')
     .order('created_at', { ascending: false })
-    .limit(25); // Reduced limit for initial load
+    .limit(15); // Further reduced initial load for better performance
 
   if (error) throw error;
   return data;
@@ -32,16 +32,41 @@ const WallpaperGrid = ({ wallpapers: propWallpapers }: WallpaperGridProps) => {
   const [selectedWallpaper, setSelectedWallpaper] = useState<Wallpaper | null>(null);
   const [likedWallpapers, setLikedWallpapers] = useState<string[]>([]);
   const [imagesLoaded, setImagesLoaded] = useState<Record<string, boolean>>({});
+  const [isIntersecting, setIsIntersecting] = useState<Record<string, boolean>>({});
 
   const { data: fetchedWallpapers = [], isLoading, error, isRefetching } = useQuery({
     queryKey: ['wallpapers'],
     queryFn: fetchWallpapers,
-    staleTime: 1000 * 60 * 5, // Cache for 5 minutes
-    refetchOnWindowFocus: false, // Disable automatic refetch on window focus
-    retry: 1, // Reduce retry attempts
+    staleTime: 1000 * 60 * 10, // Increased cache time to 10 minutes
+    refetchOnWindowFocus: false,
+    retry: 1,
   });
 
   const wallpapers = propWallpapers || fetchedWallpapers;
+
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          setIsIntersecting(prev => ({
+            ...prev,
+            [entry.target.id]: entry.isIntersecting
+          }));
+        });
+      },
+      {
+        rootMargin: '50px',
+        threshold: 0.1
+      }
+    );
+
+    const elements = document.querySelectorAll('.wallpaper-item');
+    elements.forEach((el) => observer.observe(el));
+
+    return () => {
+      elements.forEach((el) => observer.unobserve(el));
+    };
+  }, [wallpapers.length]);
 
   const handleImageLoad = (wallpaperId: string) => {
     setImagesLoaded(prev => ({
@@ -159,7 +184,7 @@ const WallpaperGrid = ({ wallpapers: propWallpapers }: WallpaperGridProps) => {
       <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-2 sm:gap-4">
         {[...Array(10)].map((_, i) => (
           <div key={i} className="relative aspect-[3/4]">
-            <div className="animate-pulse bg-gray-200 dark:bg-gray-700 rounded-lg h-full w-full"></div>
+            <div className="animate-pulse bg-gray-200 dark:bg-gray-700 rounded-lg h-full w-full" />
           </div>
         ))}
       </div>
@@ -177,15 +202,16 @@ const WallpaperGrid = ({ wallpapers: propWallpapers }: WallpaperGridProps) => {
   return (
     <>
       {isRefetching && !propWallpapers && (
-        <div className="fixed top-20 right-4 bg-primary text-primary-foreground px-4 py-2 rounded-md shadow-lg z-50">
+        <div className="fixed top-20 right-4 bg-primary text-primary-foreground px-4 py-2 rounded-md shadow-lg z-50 animate-fade-in">
           Updating...
         </div>
       )}
-      <div className={`grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-2 sm:gap-4`}>
+      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-2 sm:gap-4">
         {wallpapers.map((wallpaper: Wallpaper) => (
           <div
             key={wallpaper.id}
-            className="relative cursor-pointer"
+            id={wallpaper.id}
+            className="wallpaper-item relative cursor-pointer transform transition-transform duration-200 hover:z-10"
             onMouseEnter={() => !isMobile && setHoveredId(wallpaper.id)}
             onMouseLeave={() => !isMobile && setHoveredId(null)}
             onClick={() => setSelectedWallpaper(wallpaper)}
@@ -195,15 +221,17 @@ const WallpaperGrid = ({ wallpapers: propWallpapers }: WallpaperGridProps) => {
                 {!imagesLoaded[wallpaper.id] && (
                   <div className="absolute inset-0 animate-pulse bg-gray-200 dark:bg-gray-700 rounded-lg" />
                 )}
-                <img
-                  src={wallpaper.compressed_url}
-                  alt={`Wallpaper ${wallpaper.id}`}
-                  loading="lazy"
-                  onLoad={() => handleImageLoad(wallpaper.id)}
-                  className={`w-full h-full object-cover transition-opacity duration-300 ${
-                    imagesLoaded[wallpaper.id] ? 'opacity-100' : 'opacity-0'
-                  } ${!isMobile && hoveredId === wallpaper.id ? "scale-105" : ""}`}
-                />
+                {isIntersecting[wallpaper.id] && (
+                  <img
+                    src={wallpaper.compressed_url}
+                    alt={`Wallpaper ${wallpaper.id}`}
+                    loading="lazy"
+                    onLoad={() => handleImageLoad(wallpaper.id)}
+                    className={`w-full h-full object-cover transition-all duration-300 ${
+                      imagesLoaded[wallpaper.id] ? 'opacity-100 scale-100' : 'opacity-0 scale-95'
+                    } ${!isMobile && hoveredId === wallpaper.id ? "scale-105" : ""}`}
+                  />
+                )}
               </div>
             </div>
           </div>
