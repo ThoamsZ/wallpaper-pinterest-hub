@@ -1,122 +1,120 @@
+
 import { Search, Heart, Archive } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { useNavigate, useLocation } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { toast } from "@/hooks/use-toast";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { useQuery } from "@tanstack/react-query";
 
 const Header = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const isMobile = useIsMobile();
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [isAdmin, setIsAdmin] = useState(false);
-  const [userEmail, setUserEmail] = useState<string>("");
   const [searchQuery, setSearchQuery] = useState("");
   const isAdminPanel = location.pathname === "/admin-panel";
 
-  useEffect(() => {
-    const checkUser = async () => {
+  const { data: session } = useQuery({
+    queryKey: ['session'],
+    queryFn: async () => {
       const { data: { session } } = await supabase.auth.getSession();
-      if (session) {
-        setIsAuthenticated(true);
-        setUserEmail(session.user.email || "");
-        const { data: userData, error } = await supabase
-          .from('users')
-          .select('is_admin')
-          .eq('id', session.user.id)
-          .maybeSingle();
-        
-        if (error) {
-          console.error('Error fetching user data:', error);
-          return;
-        }
-        
-        setIsAdmin(userData?.is_admin || false);
-      }
-    };
+      return session;
+    },
+    staleTime: 1000 * 60 * 5, // 5 minutes
+  });
 
-    checkUser();
+  const { data: userData, isLoading: isUserLoading } = useQuery({
+    queryKey: ['user-data', session?.user.id],
+    queryFn: async () => {
+      if (!session?.user.id) return null;
+      const { data, error } = await supabase
+        .from('users')
+        .select('is_admin, email')
+        .eq('id', session.user.id)
+        .maybeSingle();
+      
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!session?.user.id,
+    staleTime: 1000 * 60 * 5, // 5 minutes
+  });
 
-    supabase.auth.onAuthStateChange(async (event, session) => {
-      setIsAuthenticated(!!session);
-      setUserEmail(session?.user?.email || "");
-      if (session) {
-        const { data: userData, error } = await supabase
-          .from('users')
-          .select('is_admin')
-          .eq('id', session.user.id)
-          .maybeSingle();
-        
-        if (error) {
-          console.error('Error fetching user data:', error);
-          return;
-        }
-
-        setIsAdmin(userData?.is_admin || false);
-      } else {
-        setIsAdmin(false);
-      }
-    });
-  }, []);
-
-  const handleSearch = async (e: React.FormEvent<HTMLFormElement>) => {
+  const handleSearch = useCallback(async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     
     if (!searchQuery.trim()) return;
 
-    // First try to find by creator code
-    const { data: creatorData, error: creatorError } = await supabase
-      .from('users')
-      .select('id')
-      .eq('creator_code', searchQuery.trim())
-      .single();
+    try {
+      const { data: creatorData, error: creatorError } = await supabase
+        .from('users')
+        .select('id')
+        .eq('creator_code', searchQuery.trim())
+        .maybeSingle();
 
-    if (creatorError && creatorError.code !== 'PGRST116') {
-      console.error('Error searching creator:', creatorError);
-      return;
-    }
+      if (creatorError && creatorError.code !== 'PGRST116') {
+        throw creatorError;
+      }
 
-    if (creatorData) {
-      // If creator found, navigate to their profile
-      navigate(`/creator/${searchQuery.trim()}`);
-    } else {
+      if (creatorData) {
+        navigate(`/creator/${searchQuery.trim()}`);
+      } else {
+        toast({
+          title: "Creator Not Found",
+          description: "No creator found with this code",
+          variant: "destructive",
+        });
+      }
+    } catch (error) {
+      console.error('Search error:', error);
       toast({
-        title: "Creator Not Found",
-        description: "No creator found with this code",
+        title: "Search Failed",
+        description: "An error occurred while searching",
         variant: "destructive",
       });
     }
-  };
+  }, [searchQuery, navigate]);
 
-  const handleLogout = async () => {
-    const { error } = await supabase.auth.signOut();
-    if (error) {
-      toast({
-        title: "Error",
-        description: "Failed to sign out",
-        variant: "destructive",
-      });
-    } else {
+  const handleLogout = useCallback(async () => {
+    try {
+      const { error } = await supabase.auth.signOut();
+      if (error) throw error;
+      
       navigate("/");
       toast({
         title: "Success",
         description: "Successfully logged out",
       });
+    } catch (error) {
+      console.error('Logout error:', error);
+      toast({
+        title: "Error",
+        description: "Failed to sign out",
+        variant: "destructive",
+      });
     }
-  };
+  }, [navigate]);
 
-  const handleNavigation = (path: string) => {
+  const handleNavigation = useCallback((path: string) => {
     navigate(path);
-  };
+  }, [navigate]);
+
+  if (isUserLoading) {
+    return (
+      <header className="bg-background/95 backdrop-blur-md z-40">
+        <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-3">
+          <div className="animate-pulse h-24"></div>
+        </div>
+      </header>
+    );
+  }
 
   return (
-    <header className="bg-white/95 backdrop-blur-md z-40 ">
+    <header className="bg-background/95 backdrop-blur-md z-40">
       <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-3">
         <div className="flex flex-col gap-3">
-          {/* Logo */}
           <div className="flex justify-center items-center gap-3">
             <h1 
               className="text-xl font-bold text-primary cursor-pointer" 
@@ -126,28 +124,27 @@ const Header = () => {
             </h1>
           </div>
 
-          {/* Navigation and Auth */}
           <div className="flex items-center gap-4 text-sm">
             {!isAdminPanel && (
               <button 
                 onClick={() => handleNavigation("/")}
-                className="text-gray-600 hover:text-primary transition-colors"
+                className="text-foreground/80 hover:text-primary transition-colors"
               >
                 Explore
               </button>
             )}
-            {isAuthenticated && !isAdminPanel && (
+            {session && !isAdminPanel && (
               <>
                 <button 
                   onClick={() => handleNavigation("/collections")}
-                  className="text-gray-600 hover:text-primary transition-colors flex items-center gap-1"
+                  className="text-foreground/80 hover:text-primary transition-colors flex items-center gap-1"
                 >
                   <Archive className="w-4 h-4" />
                   Collections
                 </button>
                 <button 
                   onClick={() => handleNavigation("/likes")}
-                  className="text-gray-600 hover:text-primary transition-colors flex items-center gap-1"
+                  className="text-foreground/80 hover:text-primary transition-colors flex items-center gap-1"
                 >
                   <Heart className="w-4 h-4" />
                   Likes
@@ -156,14 +153,14 @@ const Header = () => {
             )}
             
             <div className="flex items-center gap-2 ml-auto">
-              {isAuthenticated ? (
+              {session ? (
                 <>
-                  {userEmail && (
-                    <span className="text-xs text-gray-600 hidden sm:inline truncate max-w-[150px]">
-                      {userEmail}
+                  {session.user.email && (
+                    <span className="text-xs text-foreground/60 hidden sm:inline truncate max-w-[150px]">
+                      {session.user.email}
                     </span>
                   )}
-                  {isAdmin && !isAdminPanel && (
+                  {userData?.is_admin && !isAdminPanel && (
                     <Button 
                       variant="outline" 
                       onClick={() => handleNavigation("/admin-panel")}
@@ -194,18 +191,17 @@ const Header = () => {
             </div>
           </div>
 
-          {/* Search */}
           {!isAdminPanel && (
             <form onSubmit={handleSearch} className="w-full">
               <div className="relative">
                 <Input
                   type="search"
                   placeholder="Search for creator codes..."
-                  className="w-full pl-10 pr-4 py-1.5 rounded-full border-gray-200 text-sm"
+                  className="w-full pl-10 pr-4 py-1.5 rounded-full border-input text-sm"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                 />
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4" />
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-foreground/40 w-4 h-4" />
               </div>
             </form>
           )}

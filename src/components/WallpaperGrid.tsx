@@ -1,6 +1,7 @@
+
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import type { Database } from "@/integrations/supabase/types";
 import WallpaperModal from "./WallpaperModal";
 import { toast } from "@/hooks/use-toast";
@@ -27,16 +28,18 @@ const fetchWallpapers = async () => {
 const WallpaperGrid = ({ wallpapers: propWallpapers }: WallpaperGridProps) => {
   const navigate = useNavigate();
   const isMobile = useIsMobile();
+  const queryClient = useQueryClient();
   const [hoveredId, setHoveredId] = useState<string | null>(null);
   const [selectedWallpaper, setSelectedWallpaper] = useState<Wallpaper | null>(null);
   const [likedWallpapers, setLikedWallpapers] = useState<string[]>([]);
 
-  const { data: fetchedWallpapers = [], isLoading, error, isRefetching, refetch } = useQuery({
+  const { data: fetchedWallpapers = [], isLoading, error, isRefetching } = useQuery({
     queryKey: ['wallpapers'],
     queryFn: fetchWallpapers,
-    staleTime: 1000 * 60 * 5,
-    refetchOnWindowFocus: true,
-    retry: 2,
+    staleTime: 1000 * 60 * 5, // 5 minutes
+    gcTime: 1000 * 60 * 10, // 10 minutes
+    refetchOnWindowFocus: false,
+    retry: 1,
     enabled: !propWallpapers,
   });
 
@@ -101,13 +104,14 @@ const WallpaperGrid = ({ wallpapers: propWallpapers }: WallpaperGridProps) => {
 
       setLikedWallpapers(newFavorites);
       
+      // Invalidate relevant queries
+      await queryClient.invalidateQueries({ queryKey: ['wallpapers'] });
+      await queryClient.invalidateQueries({ queryKey: ['user-likes'] });
+      
       toast({
         title: isLiked ? "Removed from favorites" : "Added to favorites",
         description: isLiked ? "Wallpaper removed from your collections" : "Wallpaper added to your collections",
       });
-
-      // Refetch to ensure data is fresh
-      refetch();
     } catch (error) {
       console.error('Like error:', error);
       toast({
@@ -155,7 +159,7 @@ const WallpaperGrid = ({ wallpapers: propWallpapers }: WallpaperGridProps) => {
       <div className="grid grid-cols-3 gap-2 sm:gap-4">
         {[...Array(9)].map((_, i) => (
           <div key={i} className="relative aspect-[3/4]">
-            <div className="animate-pulse bg-gray-200 rounded-lg h-full w-full"></div>
+            <div className="animate-pulse bg-gray-200 dark:bg-gray-800 rounded-lg h-full w-full"></div>
           </div>
         ))}
       </div>
@@ -173,7 +177,7 @@ const WallpaperGrid = ({ wallpapers: propWallpapers }: WallpaperGridProps) => {
   return (
     <>
       {isRefetching && !propWallpapers && (
-        <div className="fixed top-20 right-4 bg-primary text-white px-4 py-2 rounded-md shadow-lg z-50">
+        <div className="fixed top-20 right-4 bg-primary text-primary-foreground px-4 py-2 rounded-md shadow-lg z-50">
           Updating...
         </div>
       )}
