@@ -24,31 +24,37 @@ const Header = ({ isDisabled = false }: HeaderProps) => {
   const isAdminPanel = location.pathname === "/admin-panel";
 
   useEffect(() => {
+    let mounted = true;
+
     const checkUser = async () => {
       try {
         const { data: { session } } = await supabase.auth.getSession();
         if (!session) {
-          setIsAuthenticated(false);
-          setUserEmail("");
-          setIsAdmin(false);
+          if (mounted) {
+            setIsAuthenticated(false);
+            setUserEmail("");
+            setIsAdmin(false);
+          }
           return;
         }
 
-        setIsAuthenticated(true);
-        setUserEmail(session.user.email || "");
+        if (mounted) {
+          setIsAuthenticated(true);
+          setUserEmail(session.user.email || "");
 
-        const { data: userData, error } = await supabase
-          .from('users')
-          .select('is_admin')
-          .eq('id', session.user.id)
-          .maybeSingle();
-        
-        if (error) {
-          console.error('Error fetching user data:', error);
-          return;
+          const { data: userData, error } = await supabase
+            .from('users')
+            .select('is_admin')
+            .eq('id', session.user.id)
+            .maybeSingle();
+          
+          if (error) {
+            console.error('Error fetching user data:', error);
+            return;
+          }
+          
+          setIsAdmin(userData?.is_admin || false);
         }
-        
-        setIsAdmin(userData?.is_admin || false);
       } catch (error) {
         console.error('Error checking user:', error);
       }
@@ -59,6 +65,8 @@ const Header = ({ isDisabled = false }: HeaderProps) => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
       console.log("Header auth state changed:", event);
       
+      if (!mounted) return;
+
       if (!session) {
         setIsAuthenticated(false);
         setUserEmail("");
@@ -81,13 +89,16 @@ const Header = ({ isDisabled = false }: HeaderProps) => {
           return;
         }
 
-        setIsAdmin(userData?.is_admin || false);
+        if (mounted) {
+          setIsAdmin(userData?.is_admin || false);
+        }
       } catch (error) {
         console.error('Error updating user state:', error);
       }
     });
 
     return () => {
+      mounted = false;
       subscription.unsubscribe();
     };
   }, []);
