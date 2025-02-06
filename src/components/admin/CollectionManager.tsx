@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -106,38 +105,13 @@ export const CollectionManager = () => {
     enabled: !!adminStatus,
   });
 
-  // Handle admin check error
-  if (isAdminError) {
-    toast({
-      title: "Access Denied",
-      description: "Please log in with an admin account",
-      variant: "destructive",
-    });
-    navigate("/auth");
-    return null;
-  }
-
-  const { data: wallpapers = [], refetch: refetchWallpapers } = useQuery({
-    queryKey: ['wallpapers'],
-    queryFn: async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) throw new Error("Not authenticated");
-
-      const { data, error } = await supabase
-        .from('wallpapers')
-        .select('id, url, type, file_path, download_count, like_count')
-        .eq('uploaded_by', session.user.id);
-
-      if (error) throw error;
-      return data || [];
-    },
-    enabled: !!adminStatus,
-  });
-
+  // Update the collection wallpapers query to only run when selectedCollection is not null
   const { data: collectionWallpapers = [], refetch: refetchCollectionWallpapers } = useQuery({
     queryKey: ['collection_wallpapers', selectedCollection],
-    enabled: !!selectedCollection && !!adminStatus,
+    enabled: !!selectedCollection && !!adminStatus, // Only run query when we have a selected collection
     queryFn: async () => {
+      if (!selectedCollection) return []; // Extra safety check
+
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) throw new Error("Not authenticated");
 
@@ -165,14 +139,31 @@ export const CollectionManager = () => {
         .map(item => ({
           id: item.wallpapers.id,
           url: item.wallpapers.url,
-          type: item.wallpapers.type || 'unknown', // Add default value
+          type: item.wallpapers.type || 'unknown',
           file_path: item.wallpapers.file_path,
           download_count: item.wallpapers.download_count || 0,
           like_count: item.wallpapers.like_count || 0,
           collection_id: selectedCollection
-        })) || [];
+        }));
     },
     retry: 1,
+  });
+
+  const { data: wallpapers = [], refetch: refetchWallpapers } = useQuery({
+    queryKey: ['wallpapers'],
+    queryFn: async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) throw new Error("Not authenticated");
+
+      const { data, error } = await supabase
+        .from('wallpapers')
+        .select('id, url, type, file_path, download_count, like_count')
+        .eq('uploaded_by', session.user.id);
+
+      if (error) throw error;
+      return data || [];
+    },
+    enabled: !!adminStatus,
   });
 
   const createCollection = async () => {
