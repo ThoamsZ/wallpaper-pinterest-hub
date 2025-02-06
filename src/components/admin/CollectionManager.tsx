@@ -396,11 +396,6 @@ export const CollectionManager = () => {
     }
   };
 
-  const selectedCollectionData = collections.find(c => c.id === selectedCollection);
-  const selectedCollectionWallpapers = selectedCollectionData 
-    ? getCollectionWallpapers(selectedCollectionData)
-    : [];
-
   if (isViewingCollection && selectedCollection) {
     return (
       <div className="space-y-6">
