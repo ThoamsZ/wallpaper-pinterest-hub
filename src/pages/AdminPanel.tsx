@@ -1,3 +1,4 @@
+
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -21,7 +22,7 @@ import {
   TabsList,
   TabsTrigger,
 } from "@/components/ui/tabs";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
   AlertDialog,
@@ -47,16 +48,20 @@ interface Wallpaper {
 
 const AdminPanel = () => {
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const [adminEmail, setAdminEmail] = useState<string>("");
   const [creatorCode, setCreatorCode] = useState<string>("");
   const [currentCreatorCode, setCurrentCreatorCode] = useState<string>("");
   const [selectedWallpapers, setSelectedWallpapers] = useState<string[]>([]);
 
-  const { data: wallpapers = [], refetch: refetchWallpapers } = useQuery({
-    queryKey: ['admin-wallpapers'],
+  // Check admin status
+  const { data: isAdmin, isError: isAdminError } = useQuery({
+    queryKey: ['admin-status'],
     queryFn: async () => {
       const { data: { session } } = await supabase.auth.getSession();
-      if (!session) throw new Error("Not authenticated");
+      if (!session) return false;
+
+      setAdminEmail(session.user.email || "");
 
       const { data: userData } = await supabase
         .from('users')
@@ -65,11 +70,21 @@ const AdminPanel = () => {
         .single();
 
       if (!userData?.is_admin) {
-        navigate("/");
-        throw new Error("Not authorized");
+        return false;
       }
 
       setCurrentCreatorCode(userData.creator_code || "");
+      return true;
+    },
+    retry: false
+  });
+
+  // Fetch wallpapers
+  const { data: wallpapers = [], refetch: refetchWallpapers } = useQuery({
+    queryKey: ['admin-wallpapers'],
+    queryFn: async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) throw new Error("Not authenticated");
 
       const { data, error } = await supabase
         .from('wallpapers')
@@ -78,87 +93,62 @@ const AdminPanel = () => {
 
       if (error) throw error;
       return data || [];
-    }
+    },
+    enabled: !!isAdmin
   });
 
   useEffect(() => {
-    checkAdminAndLoadData();
-  }, []);
-
-  const checkAdminAndLoadData = async () => {
-    const { data: { session } } = await supabase.auth.getSession();
-    if (!session) {
-      navigate("/");
-      return;
-    }
-
-    setAdminEmail(session.user.email || "");
-
-    const { data: userData } = await supabase
-      .from('users')
-      .select('is_admin')
-      .eq('id', session.user.id)
-      .single();
-
-    if (!userData?.is_admin) {
+    if (isAdminError || isAdmin === false) {
       navigate("/");
       toast({
         title: "Access Denied",
         description: "You don't have permission to access this page",
         variant: "destructive",
       });
-      return;
     }
-  };
+  }, [isAdmin, isAdminError, navigate]);
 
   const handleUpdateCreatorCode = async () => {
-    if (!creatorCode.trim()) {
-      toast({
-        title: "Error",
-        description: "Creator code cannot be empty",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    const { data: { session } } = await supabase.auth.getSession();
-    if (!session) {
-      toast({
-        title: "Error",
-        description: "Not authenticated",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    const { error } = await supabase
-      .from('users')
-      .update({ creator_code: creatorCode.trim() })
-      .eq('id', session.user.id);
-
-    if (error) {
-      if (error.code === '23505') {
+    try {
+      if (!creatorCode.trim()) {
         toast({
           title: "Error",
-          description: "This creator code is already taken",
+          description: "Creator code cannot be empty",
           variant: "destructive",
         });
-      } else {
-        toast({
-          title: "Error",
-          description: "Failed to update creator code",
-          variant: "destructive",
-        });
+        return;
       }
-      return;
-    }
 
-    setCurrentCreatorCode(creatorCode.trim());
-    setCreatorCode("");
-    toast({
-      title: "Success",
-      description: "Creator code updated successfully",
-    });
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) throw new Error("Not authenticated");
+
+      const { error } = await supabase
+        .from('users')
+        .update({ creator_code: creatorCode.trim() })
+        .eq('id', session.user.id);
+
+      if (error) {
+        if (error.code === '23505') {
+          throw new Error("This creator code is already taken");
+        }
+        throw error;
+      }
+
+      setCurrentCreatorCode(creatorCode.trim());
+      setCreatorCode("");
+      queryClient.invalidateQueries({ queryKey: ['admin-status'] });
+      
+      toast({
+        title: "Success",
+        description: "Creator code updated successfully",
+      });
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to update creator code",
+        variant: "destructive",
+      });
+    }
   };
 
   const handleDelete = async (id: string, filePath: string) => {
@@ -171,10 +161,7 @@ const AdminPanel = () => {
         .from('wallpapers')
         .remove([filePath]);
 
-      if (storageError) {
-        console.error('Storage deletion error:', storageError);
-        throw storageError;
-      }
+      if (storageError) throw storageError;
 
       // Then, delete the record from the database
       const { error: dbError } = await supabase
@@ -183,19 +170,15 @@ const AdminPanel = () => {
         .eq('id', id)
         .eq('uploaded_by', session.user.id);
 
-      if (dbError) {
-        console.error('Database deletion error:', dbError);
-        throw dbError;
-      }
+      if (dbError) throw dbError;
 
-      refetchWallpapers();
+      await refetchWallpapers();
       
       toast({
         title: "Success",
         description: "Wallpaper deleted successfully",
       });
     } catch (error: any) {
-      console.error('Delete operation failed:', error);
       toast({
         title: "Error",
         description: error.message || "Failed to delete wallpaper",
@@ -235,7 +218,7 @@ const AdminPanel = () => {
       });
       
       setSelectedWallpapers([]);
-      refetchWallpapers();
+      await refetchWallpapers();
     } catch (error: any) {
       toast({
         title: "Error",
@@ -260,7 +243,7 @@ const AdminPanel = () => {
 
       if (error) throw error;
 
-      refetchWallpapers();
+      await refetchWallpapers();
 
       toast({
         title: "Success",
@@ -269,11 +252,15 @@ const AdminPanel = () => {
     } catch (error: any) {
       toast({
         title: "Error",
-        description: "Failed to update tags",
+        description: error.message || "Failed to update tags",
         variant: "destructive",
       });
     }
   };
+
+  if (!isAdmin) {
+    return null;
+  }
 
   return (
     <>
