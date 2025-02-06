@@ -20,7 +20,7 @@ export const useWallpapers = (propWallpapers?: Wallpaper[]) => {
   const { data: fetchedWallpapers = [], isLoading, error, isRefetching } = useQuery({
     queryKey: ['wallpapers'],
     queryFn: fetchWallpapers,
-    staleTime: 1000 * 60 * 10,
+    staleTime: 1000 * 60 * 10, // 10 minutes
     refetchOnWindowFocus: false,
     retry: 1,
   });

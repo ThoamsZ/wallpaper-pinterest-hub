@@ -26,7 +26,8 @@ const WallpaperItem = ({ wallpaper, onSelect }: WallpaperItemProps) => {
         });
       },
       {
-        rootMargin: "50px",
+        threshold: 0,
+        rootMargin: "0px",
       }
     );
 
@@ -59,7 +60,7 @@ const WallpaperItem = ({ wallpaper, onSelect }: WallpaperItemProps) => {
             <img
               src={wallpaper.compressed_url}
               alt={`Wallpaper ${wallpaper.id}`}
-              loading="lazy"
+              loading="eager"
               onLoad={() => setImageLoaded(true)}
               className={`w-full h-full object-cover transition-all duration-300 ${
                 imageLoaded ? 'opacity-100 scale-100' : 'opacity-0 scale-95'
