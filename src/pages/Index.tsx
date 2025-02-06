@@ -8,50 +8,35 @@ import { useQueryClient } from "@tanstack/react-query";
 
 const Index = () => {
   const [isLoading, setIsLoading] = useState(true);
-  const [session, setSession] = useState(null);
   const navigate = useNavigate();
   const queryClient = useQueryClient();
 
   useEffect(() => {
-    let mounted = true;
-
-    const initSession = async () => {
+    const getSession = async () => {
       try {
-        const { data: { session: currentSession } } = await supabase.auth.getSession();
-        if (mounted) {
-          setSession(currentSession);
-          setIsLoading(false);
-        }
+        const { data: { session } } = await supabase.auth.getSession();
+        setIsLoading(false);
       } catch (error) {
-        console.error("Error fetching session:", error);
-        if (mounted) {
-          setIsLoading(false);
-        }
+        console.error("Session check error:", error);
+        setIsLoading(false);
       }
     };
 
-    initSession();
+    getSession();
 
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, newSession) => {
-      if (!mounted) return;
-      
-      console.log("Auth state changed:", _event, !!newSession);
-      setSession(newSession);
-      setIsLoading(false);
-
-      // Special handling for sign out
-      if (_event === 'SIGNED_OUT') {
-        queryClient.clear(); // Clear all queries on sign out
+    } = supabase.auth.onAuthStateChange(async (event, session) => {
+      if (event === 'SIGNED_OUT') {
+        queryClient.clear();
+        navigate('/auth');
       }
     });
 
     return () => {
-      mounted = false;
       subscription?.unsubscribe();
     };
-  }, [queryClient]);
+  }, [navigate, queryClient]);
 
   if (isLoading) {
     return (
@@ -71,7 +56,7 @@ const Index = () => {
     <div className="min-h-screen bg-background">
       <Header isDisabled={isLoading} />
       <main className="container mx-auto px-4 sm:px-6 lg:px-8">
-        <WallpaperGrid key={session?.user?.id || 'anonymous'} />
+        <WallpaperGrid />
       </main>
     </div>
   );

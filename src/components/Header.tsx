@@ -7,6 +7,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useEffect, useState } from "react";
 import { toast } from "@/hooks/use-toast";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { useQueryClient } from "@tanstack/react-query";
 
 interface HeaderProps {
   isDisabled?: boolean;
@@ -16,6 +17,7 @@ const Header = ({ isDisabled = false }: HeaderProps) => {
   const navigate = useNavigate();
   const location = useLocation();
   const isMobile = useIsMobile();
+  const queryClient = useQueryClient();
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
   const [userEmail, setUserEmail] = useState<string>("");
@@ -158,6 +160,7 @@ const Header = ({ isDisabled = false }: HeaderProps) => {
         return;
       }
       
+      queryClient.clear();
       navigate("/");
       toast({
         title: "Success",
@@ -175,8 +178,18 @@ const Header = ({ isDisabled = false }: HeaderProps) => {
     }
   };
 
-  const handleNavigation = (path: string) => {
+  const handleNavigation = async (path: string) => {
     if (isDisabled || isProcessing) return;
+    
+    // Check auth state before navigation to protected routes
+    if ((path === '/collections' || path === '/likes') && !isAuthenticated) {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        navigate('/auth');
+        return;
+      }
+    }
+    
     navigate(path);
   };
 

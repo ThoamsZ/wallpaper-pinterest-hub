@@ -1,4 +1,5 @@
-import { useEffect } from "react";
+
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -8,18 +9,39 @@ import { toast } from "@/hooks/use-toast";
 
 const Likes = () => {
   const navigate = useNavigate();
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     const checkAuth = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) {
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!session) {
+          navigate('/auth');
+          return;
+        }
+        setIsLoading(false);
+      } catch (error) {
+        console.error('Auth check error:', error);
         navigate('/auth');
       }
     };
+
     checkAuth();
+
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((event, session) => {
+      if (event === 'SIGNED_OUT' || !session) {
+        navigate('/auth');
+      }
+    });
+
+    return () => {
+      subscription?.unsubscribe();
+    };
   }, [navigate]);
 
-  const { data: likedWallpapers = [], isLoading } = useQuery({
+  const { data: likedWallpapers = [], isLoading: isWallpapersLoading } = useQuery({
     queryKey: ['liked-wallpapers'],
     queryFn: async () => {
       const { data: { session } } = await supabase.auth.getSession();
@@ -44,9 +66,10 @@ const Likes = () => {
 
       return wallpapers || [];
     },
+    enabled: !isLoading,
   });
 
-  if (isLoading) {
+  if (isLoading || isWallpapersLoading) {
     return (
       <div className="min-h-screen bg-background">
         <Header />
