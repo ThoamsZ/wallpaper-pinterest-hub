@@ -7,32 +7,26 @@ type Wallpaper = Database['public']['Tables']['wallpapers']['Row'];
 
 const PAGE_SIZE = 25;
 
-const fetchWallpaperPage = async ({ pageParam = 0, selectedTag }: { pageParam?: number, selectedTag?: string | null }) => {
+const fetchWallpaperPage = async ({ pageParam = 0 }) => {
   try {
     const from = pageParam * PAGE_SIZE;
     const to = from + PAGE_SIZE - 1;
 
-    let query = supabase
+    const { data, error } = await supabase
       .from('wallpapers')
       .select('*')
       .order('created_at', { ascending: false })
       .range(from, to);
 
-    if (selectedTag) {
-      query = query.contains('tags', [selectedTag]);
-    }
-
-    const { data, error } = await query;
-
     if (error) throw error;
     return data ?? [];
   } catch (error) {
     console.error('Error fetching wallpapers:', error);
-    throw error; // Let the error propagate to be handled by the UI
+    return [];
   }
 };
 
-export const useWallpapers = (props?: { wallpapers?: Wallpaper[], selectedTag?: string | null }) => {
+export const useWallpapers = (propWallpapers?: Wallpaper[]) => {
   const {
     data,
     fetchNextPage,
@@ -42,27 +36,30 @@ export const useWallpapers = (props?: { wallpapers?: Wallpaper[], selectedTag?: 
     isRefetching,
     isFetchingNextPage
   } = useInfiniteQuery({
-    queryKey: ['wallpapers', props?.selectedTag],
-    queryFn: ({ pageParam }) => fetchWallpaperPage({ pageParam, selectedTag: props?.selectedTag }),
+    queryKey: ['wallpapers'],
+    queryFn: fetchWallpaperPage,
     getNextPageParam: (lastPage, allPages) => {
+      // Ensure we have valid data to check
       if (!lastPage || !Array.isArray(lastPage)) {
         return undefined;
       }
+      // Return next page number if we got a full page of results
       return lastPage.length >= PAGE_SIZE ? allPages.length : undefined;
     },
-    initialData: props?.wallpapers ? {
-      pages: [props.wallpapers],
+    initialData: propWallpapers ? {
+      pages: [propWallpapers],
       pageParams: [0]
     } : undefined,
     initialPageParam: 0,
-    staleTime: 1000 * 60 * 5, // Data considered fresh for 5 minutes
-    gcTime: 1000 * 60 * 10, // Keep unused data in cache for 10 minutes
+    staleTime: 1000 * 60 * 10,
+    gcTime: 1000 * 60 * 60,
     refetchOnWindowFocus: false,
     refetchOnMount: true,
     retry: 2,
   });
 
-  const wallpapers = props?.wallpapers ?? 
+  // Safely handle data transformation
+  const wallpapers = propWallpapers ?? 
     data?.pages?.reduce<Wallpaper[]>((acc, page) => {
       if (Array.isArray(page)) {
         return [...acc, ...page];
