@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -23,30 +22,19 @@ const Collections = () => {
       try {
         const { data: { session } } = await supabase.auth.getSession();
         if (!session) {
-          navigate('/');
+          console.log("Collections: No session found, redirecting to /auth");
+          navigate('/auth');
           return;
         }
       } catch (error) {
         console.error('Auth check error:', error);
-        navigate('/');
+        navigate('/auth');
       } finally {
         setIsAuthChecking(false);
       }
     };
 
     checkAuth();
-
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange((event, session) => {
-      if (event === 'SIGNED_OUT' || !session) {
-        navigate('/');
-      }
-    });
-
-    return () => {
-      subscription?.unsubscribe();
-    };
   }, [navigate]);
 
   const { data: currentUser, isLoading: isUserLoading } = useQuery({
