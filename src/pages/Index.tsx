@@ -12,34 +12,29 @@ const Index = () => {
   const queryClient = useQueryClient();
 
   useEffect(() => {
-    let mounted = true;
-
-    const checkSession = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      
-      if (!mounted) return;
-
-      if (!session) {
-        navigate('/auth');
-      } else {
+    const getSession = async () => {
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        setIsLoading(false);
+      } catch (error) {
+        console.error("Session check error:", error);
         setIsLoading(false);
       }
     };
 
-    checkSession();
+    getSession();
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-      if (!mounted) return;
-      
-      if (event === 'SIGNED_OUT' || !session) {
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange(async (event, session) => {
+      if (event === 'SIGNED_OUT') {
         queryClient.clear();
         navigate('/auth');
       }
     });
 
     return () => {
-      mounted = false;
-      subscription.unsubscribe();
+      subscription?.unsubscribe();
     };
   }, [navigate, queryClient]);
 
