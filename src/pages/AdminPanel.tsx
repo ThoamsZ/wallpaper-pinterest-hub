@@ -51,6 +51,7 @@ const AdminPanel = () => {
   const [selectedWallpapers, setSelectedWallpapers] = useState<string[]>([]);
   const [creatorCode, setCreatorCode] = useState<string>("");
   const [currentCreatorCode, setCurrentCreatorCode] = useState<string>("");
+  const [deleteConfirmEmail, setDeleteConfirmEmail] = useState<string>("");
 
   // Check admin status
   const { data: adminData, isError: isAdminError } = useQuery({
@@ -254,6 +255,44 @@ const AdminPanel = () => {
     }
   };
 
+  const handleDeleteAccount = async () => {
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) throw new Error("Not authenticated");
+
+      if (deleteConfirmEmail !== adminData?.email) {
+        toast({
+          title: "Error",
+          description: "Email confirmation does not match",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      // Delete the user account (this will cascade delete wallpapers due to our foreign key)
+      const { error: deleteError } = await supabase.auth.admin.deleteUser(
+        session.user.id
+      );
+
+      if (deleteError) throw deleteError;
+
+      // Sign out after successful deletion
+      await supabase.auth.signOut();
+      navigate("/auth");
+
+      toast({
+        title: "Success",
+        description: "Account deleted successfully",
+      });
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to delete account",
+        variant: "destructive",
+      });
+    }
+  };
+
   // Fetch wallpapers
   const { data: wallpapers = [], refetch: refetchWallpapers } = useQuery({
     queryKey: ['admin-wallpapers'],
@@ -299,7 +338,7 @@ const AdminPanel = () => {
 
         <Card className="mb-8">
           <CardHeader>
-            <CardTitle>Creator Code Management</CardTitle>
+            <CardTitle>Account Management</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
@@ -318,6 +357,40 @@ const AdminPanel = () => {
                   {currentCreatorCode ? "Update" : "Set"} Creator Code
                 </Button>
               </div>
+              
+              <AlertDialog>
+                <AlertDialogTrigger asChild>
+                  <Button variant="destructive">Delete Account</Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>Delete Account</AlertDialogTitle>
+                    <AlertDialogDescription>
+                      This action cannot be undone. This will permanently delete your account
+                      and all associated wallpapers. Please type your email address to confirm.
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <div className="py-4">
+                    <Input
+                      type="email"
+                      placeholder="Enter your email to confirm"
+                      value={deleteConfirmEmail}
+                      onChange={(e) => setDeleteConfirmEmail(e.target.value)}
+                    />
+                  </div>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel onClick={() => setDeleteConfirmEmail("")}>
+                      Cancel
+                    </AlertDialogCancel>
+                    <AlertDialogAction
+                      onClick={handleDeleteAccount}
+                      className="bg-red-500 hover:bg-red-600"
+                    >
+                      Delete Account
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
             </div>
           </CardContent>
         </Card>
