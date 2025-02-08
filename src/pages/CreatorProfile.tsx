@@ -36,6 +36,20 @@ const CreatorProfile = () => {
     },
   });
 
+  const checkGuestAndRedirect = async () => {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session || session.user.email === 'guest@wallpaperhub.com') {
+      toast({
+        title: "Authentication Required",
+        description: "Please sign in to perform this action",
+        variant: "destructive",
+      });
+      navigate('/auth');
+      return true;
+    }
+    return false;
+  };
+
   const { data: creatorData, isLoading: isCreatorLoading } = useQuery({
     queryKey: ['creator', creatorCode],
     queryFn: async () => {
@@ -126,6 +140,9 @@ const CreatorProfile = () => {
 
   const handleCollectionLike = async (collectionId: string) => {
     try {
+      const isGuest = await checkGuestAndRedirect();
+      if (isGuest) return;
+
       const { data: { session } } = await supabase.auth.getSession();
       
       if (!session) {
@@ -151,7 +168,6 @@ const CreatorProfile = () => {
 
       if (updateError) throw updateError;
 
-      // Invalidate both current-user and liked-collections queries
       await queryClient.invalidateQueries({ queryKey: ['current-user'] });
       await queryClient.invalidateQueries({ queryKey: ['liked-collections'] });
 
@@ -252,7 +268,12 @@ const CreatorProfile = () => {
                     <div
                       key={collection.id}
                       className="p-6 rounded-lg border bg-card text-card-foreground shadow-sm hover:shadow-md transition-shadow cursor-pointer relative"
-                      onClick={() => setSelectedCollection(collection.id)}
+                      onClick={async () => {
+                        const isGuest = await checkGuestAndRedirect();
+                        if (!isGuest) {
+                          setSelectedCollection(collection.id);
+                        }
+                      }}
                     >
                       <Button
                         variant="ghost"
