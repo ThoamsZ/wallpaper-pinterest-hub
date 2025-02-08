@@ -15,6 +15,8 @@ const Index = () => {
   const queryClient = useQueryClient();
 
   useEffect(() => {
+    let mounted = true;
+
     const checkSession = async () => {
       try {
         const { data: { session }, error } = await supabase.auth.getSession();
@@ -27,6 +29,11 @@ const Index = () => {
             variant: "destructive",
           });
         }
+
+        // If we're on a protected route and there's no session, redirect to auth
+        if (!session && window.location.pathname !== '/') {
+          navigate('/auth');
+        }
       } catch (error) {
         console.error("Session check error:", error);
         toast({
@@ -35,7 +42,9 @@ const Index = () => {
           variant: "destructive",
         });
       } finally {
-        setIsLoading(false);
+        if (mounted) {
+          setIsLoading(false);
+        }
       }
     };
 
@@ -45,14 +54,24 @@ const Index = () => {
       data: { subscription },
     } = supabase.auth.onAuthStateChange(async (event, session) => {
       console.log("Auth state changed:", event);
+      
+      if (!mounted) return;
+
       if (event === 'SIGNED_OUT') {
+        // Clear all queries when signing out
         queryClient.clear();
+        queryClient.removeQueries();
         navigate('/auth');
+      } else if (event === 'SIGNED_IN') {
+        // Invalidate queries when signing in to fetch fresh data
+        queryClient.invalidateQueries();
       }
+
       setIsLoading(false);
     });
 
     return () => {
+      mounted = false;
       subscription?.unsubscribe();
     };
   }, [navigate, queryClient]);

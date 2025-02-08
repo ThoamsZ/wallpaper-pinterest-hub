@@ -28,7 +28,7 @@ const fetchWallpaperPage = async ({ pageParam = 0, selectedTag }: { pageParam?: 
     return data ?? [];
   } catch (error) {
     console.error('Error fetching wallpapers:', error);
-    return [];
+    throw error; // Let the error propagate to be handled by the UI
   }
 };
 
@@ -55,8 +55,8 @@ export const useWallpapers = (props?: { wallpapers?: Wallpaper[], selectedTag?: 
       pageParams: [0]
     } : undefined,
     initialPageParam: 0,
-    staleTime: 1000 * 60 * 10,
-    gcTime: 1000 * 60 * 60,
+    staleTime: 1000 * 60 * 5, // Data considered fresh for 5 minutes
+    gcTime: 1000 * 60 * 10, // Keep unused data in cache for 10 minutes
     refetchOnWindowFocus: false,
     refetchOnMount: true,
     retry: 2,
