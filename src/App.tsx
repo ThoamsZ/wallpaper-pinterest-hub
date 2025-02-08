@@ -43,20 +43,10 @@ function App() {
   }
 
   return (
-    <Router>
-      <Routes>
-        <Route path="/" element={<Index />} />
-        <Route path="/auth" element={<Auth />} />
-        <Route path="/collections" element={<Collections />} />
-        <Route path="/likes" element={<Likes />} />
-        <Route path="/creator/:creatorCode" element={<CreatorProfile />} />
-        <Route path="/admin-panel" element={<AdminPanel />} />
-        <Route path="/upload" element={<Upload />} />
-        <Route path="*" element={<NotFound />} />
-      </Routes>
-      <Toaster />
-    </Router>
-  );
+    <div>
+      {session ? <div>已登录状态，欢迎回来！</div> : <div>请登录</div>}
+    </div>
+  )
 }
 
 export default App;
