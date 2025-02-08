@@ -109,18 +109,6 @@ const Auth = () => {
     }
   };
 
-  const handleGuestAccess = () => {
-    console.log("Auth: Handling guest access");
-    toast({
-      title: "Guest Access",
-      description: "Browsing as a guest. Some features may be limited.",
-    });
-    setTimeout(() => {
-      console.log("Auth: Navigating to / as guest");
-      navigate("/", { replace: true });
-    }, 100);
-  };
-
   return (
     <div className="container mx-auto flex items-center justify-center min-h-screen">
       <div className="w-full max-w-md space-y-8 p-8 border rounded-lg shadow-lg">
@@ -166,7 +154,7 @@ const Auth = () => {
           </Button>
         </form>
 
-        <div className="text-center space-y-4">
+        <div className="text-center">
           <button
             type="button"
             onClick={() => setIsSignUp(!isSignUp)}
@@ -175,26 +163,6 @@ const Auth = () => {
           >
             {isSignUp ? "Already have an account? Sign in" : "Need an account? Sign up"}
           </button>
-
-          <div className="relative">
-            <div className="absolute inset-0 flex items-center">
-              <span className="w-full border-t" />
-            </div>
-            <div className="relative flex justify-center text-xs uppercase">
-              <span className="bg-background px-2 text-muted-foreground">
-                Or
-              </span>
-            </div>
-          </div>
-
-          <Button
-            variant="outline"
-            className="w-full"
-            onClick={handleGuestAccess}
-            disabled={isLoading}
-          >
-            继续以访客身份浏览
-          </Button>
         </div>
       </div>
     </div>
