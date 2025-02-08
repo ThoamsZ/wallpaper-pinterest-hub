@@ -6,6 +6,7 @@ import WallpaperGrid from "@/components/WallpaperGrid";
 import TagFilterBar from "@/components/TagFilterBar";
 import { supabase } from "@/integrations/supabase/client";
 import { useQueryClient } from "@tanstack/react-query";
+import { toast } from "@/hooks/use-toast";
 
 const Index = () => {
   const [isLoading, setIsLoading] = useState(true);
@@ -14,25 +15,41 @@ const Index = () => {
   const queryClient = useQueryClient();
 
   useEffect(() => {
-    const getSession = async () => {
+    const checkSession = async () => {
       try {
-        const { data: { session } } = await supabase.auth.getSession();
-        setIsLoading(false);
+        const { data: { session }, error } = await supabase.auth.getSession();
+        
+        if (error) {
+          console.error("Session check error:", error);
+          toast({
+            title: "Error",
+            description: "Failed to check authentication status",
+            variant: "destructive",
+          });
+        }
       } catch (error) {
         console.error("Session check error:", error);
+        toast({
+          title: "Error",
+          description: "Failed to check authentication status",
+          variant: "destructive",
+        });
+      } finally {
         setIsLoading(false);
       }
     };
 
-    getSession();
+    checkSession();
 
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange(async (event, session) => {
+      console.log("Auth state changed:", event);
       if (event === 'SIGNED_OUT') {
         queryClient.clear();
         navigate('/auth');
       }
+      setIsLoading(false);
     });
 
     return () => {
