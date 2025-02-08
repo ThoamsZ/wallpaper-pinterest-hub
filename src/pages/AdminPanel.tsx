@@ -284,12 +284,36 @@ const AdminPanel = () => {
         return;
       }
 
-      // Delete the user account (this will cascade delete wallpapers due to our foreign key)
-      const { error: deleteError } = await supabase.auth.admin.deleteUser(
-        session.user.id
-      );
+      // Delete all user's wallpapers first
+      const { error: deleteWallpapersError } = await supabase
+        .from('wallpapers')
+        .delete()
+        .eq('uploaded_by', session.user.id);
 
-      if (deleteError) throw deleteError;
+      if (deleteWallpapersError) throw deleteWallpapersError;
+
+      // Delete all user's collections
+      const { error: deleteCollectionsError } = await supabase
+        .from('collections')
+        .delete()
+        .eq('created_by', session.user.id);
+
+      if (deleteCollectionsError) throw deleteCollectionsError;
+
+      // Delete user record from users table
+      const { error: deleteUserError } = await supabase
+        .from('users')
+        .delete()
+        .eq('id', session.user.id);
+
+      if (deleteUserError) throw deleteUserError;
+
+      // Finally, delete the user's auth account
+      const { error: deleteAuthError } = await supabase.auth.updateUser({
+        data: { deleted: true }
+      });
+
+      if (deleteAuthError) throw deleteAuthError;
 
       // Sign out after successful deletion
       await supabase.auth.signOut();
