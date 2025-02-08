@@ -9,29 +9,23 @@ import NotFound from "@/pages/NotFound";
 import Upload from "@/pages/Upload";
 import { Toaster } from "@/components/ui/toaster";
 import "./App.css";
-import { useState, useEffect } from 'react'
-import { supabase } from './supabaseClient'
-import { AuthProvider } from './contexts/AuthContext'
-import AppContent from './components/AppContent'
-import { ErrorBoundary } from 'react-error-boundary'
-
-function ErrorFallback({ error }) {
-  return (
-    <div role="alert">
-      <p>出现错误:</p>
-      <pre>{error.message}</pre>
-    </div>
-  )
-}
 
 function App() {
   return (
-    <ErrorBoundary FallbackComponent={ErrorFallback}>
-      <AuthProvider>
-        <AppContent />
-      </AuthProvider>
-    </ErrorBoundary>
-  )
+    <Router>
+      <Routes>
+        <Route path="/" element={<Index />} />
+        <Route path="/auth" element={<Auth />} />
+        <Route path="/collections" element={<Collections />} />
+        <Route path="/likes" element={<Likes />} />
+        <Route path="/creator/:creatorCode" element={<CreatorProfile />} />
+        <Route path="/admin-panel" element={<AdminPanel />} />
+        <Route path="/upload" element={<Upload />} />
+        <Route path="*" element={<NotFound />} />
+      </Routes>
+      <Toaster />
+    </Router>
+  );
 }
 
 export default App;
