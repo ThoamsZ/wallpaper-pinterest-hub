@@ -1,4 +1,3 @@
-
 import { BrowserRouter as Router, Routes, Route, useNavigate } from "react-router-dom";
 import { createContext, useContext, useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
@@ -45,14 +44,9 @@ function AuthProvider({ children }: { children: React.ReactNode }) {
     const navigationEntries = performance.getEntriesByType("navigation") as PerformanceNavigationTiming[];
     const isPageRefresh = navigationEntries.length > 0 && navigationEntries[0].type === "reload";
 
-    // 仅在 `collections` 页面刷新时跳转到 `/`
+    // 如果需要特定逻辑（如跳转到主页），可以在这里判断
     if (isPageRefresh && currentPath === "/collections") {
       navigate("/", { replace: true });
-
-      // **解决刷新后无法再次进入 `/collections` 的问题**
-      setTimeout(() => {
-        window.history.pushState({}, "", "/");
-      }, 100);
     }
 
     // 初始 session 检查
