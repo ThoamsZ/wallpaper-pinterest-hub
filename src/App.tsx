@@ -12,27 +12,30 @@ import { Toaster } from "@/components/ui/toaster";
 import "./App.css";
 import { createContext, useContext, useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
-import { useNavigate } from 'react-router-dom';
 
 const AuthContext = createContext<any>(null);
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const navigate = useNavigate();
   const [session, setSession] = useState<any>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Add page refresh listener
-    const handleRefresh = () => {
-      navigate('/auth');
-    };
+    // Get initial session
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setSession(session);
+      setLoading(false);
+    });
 
-    window.addEventListener('beforeunload', handleRefresh);
+    // Listen for auth changes
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_event, session) => {
+      setSession(session);
+      setLoading(false);
+    });
 
-    return () => {
-      window.removeEventListener('beforeunload', handleRefresh);
-    };
-  }, [navigate]);
+    return () => subscription.unsubscribe();
+  }, []);
 
   // Create the value object to be provided by the context
   const value = {
@@ -52,17 +55,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 function App() {
   return (
     <Router>
-      <Routes>
-        <Route path="/" element={<Index />} />
-        <Route path="/auth" element={<Auth />} />
-        <Route path="/collections" element={<Collections />} />
-        <Route path="/likes" element={<Likes />} />
-        <Route path="/creator/:creatorCode" element={<CreatorProfile />} />
-        <Route path="/admin-panel" element={<AdminPanel />} />
-        <Route path="/upload" element={<Upload />} />
-        <Route path="*" element={<NotFound />} />
-      </Routes>
-      <Toaster />
+      <AuthProvider>
+        <Routes>
+          <Route path="/" element={<Index />} />
+          <Route path="/auth" element={<Auth />} />
+          <Route path="/collections" element={<Collections />} />
+          <Route path="/likes" element={<Likes />} />
+          <Route path="/creator/:creatorCode" element={<CreatorProfile />} />
+          <Route path="/admin-panel" element={<AdminPanel />} />
+          <Route path="/upload" element={<Upload />} />
+          <Route path="*" element={<NotFound />} />
+        </Routes>
+        <Toaster />
+      </AuthProvider>
     </Router>
   );
 }

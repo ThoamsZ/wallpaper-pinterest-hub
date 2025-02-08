@@ -16,13 +16,19 @@ const Index = () => {
 
     const getSession = async () => {
       try {
-        const { data: { session } } = await supabase.auth.getSession();
+        const { data: { session }, error } = await supabase.auth.getSession();
+        if (error) throw error;
+        
         if (mounted) {
+          if (!session) {
+            navigate('/auth');
+          }
           setIsLoading(false);
         }
       } catch (error) {
         console.error("Session check error:", error);
         if (mounted) {
+          navigate('/auth');
           setIsLoading(false);
         }
       }
@@ -33,7 +39,7 @@ const Index = () => {
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange(async (event, session) => {
-      if (event === 'SIGNED_OUT') {
+      if (event === 'SIGNED_OUT' || !session) {
         queryClient.clear();
         navigate('/auth');
       }
