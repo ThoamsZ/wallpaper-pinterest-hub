@@ -37,14 +37,14 @@ function AuthProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     // **获取 session 状态**
     supabase.auth.getSession().then(({ data: { session: currentSession } }) => {
-      console.log("🚀 Supabase Session:", currentSession);
+      console.log("🚀 Debug: Supabase Session =", currentSession);
       setSession(currentSession ?? null);
       setLoading(false);
     });
 
     // **监听身份验证状态变化**
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, newSession) => {
-      console.log("🚀 Auth state changed:", _event, newSession);
+      console.log("🚀 Debug: Auth state changed:", _event, newSession);
       setSession(newSession ?? null);
       setLoading(false);
     });
@@ -54,7 +54,7 @@ function AuthProvider({ children }: { children: React.ReactNode }) {
     };
   }, []);
 
-  // **✅ 如果 session 还在加载，不要渲染页面**
+  // **✅ session 还没加载完，先不渲染页面**
   if (loading) {
     return <div>Loading...</div>;
   }
