@@ -12,10 +12,14 @@ const Index = () => {
   const queryClient = useQueryClient();
 
   useEffect(() => {
-    // Initial session check
+    let mounted = true;
+
     const checkSession = async () => {
-      const { data } = await supabase.auth.getSession();
-      if (!data.session) {
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      if (!mounted) return;
+
+      if (!session) {
         navigate('/auth');
       } else {
         setIsLoading(false);
@@ -24,8 +28,9 @@ const Index = () => {
 
     checkSession();
 
-    // Listen for auth changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      if (!mounted) return;
+      
       if (event === 'SIGNED_OUT' || !session) {
         queryClient.clear();
         navigate('/auth');
@@ -33,6 +38,7 @@ const Index = () => {
     });
 
     return () => {
+      mounted = false;
       subscription.unsubscribe();
     };
   }, [navigate, queryClient]);
