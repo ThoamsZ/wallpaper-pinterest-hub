@@ -11,18 +11,6 @@ const Index = () => {
   const { session } = useAuth();
   const queryClient = useQueryClient();
 
-  useEffect(() => {
-    if (!session) {
-      console.log("Index: No session found, redirecting to /auth");
-      queryClient.clear();
-      navigate('/auth');
-    }
-  }, [session, navigate, queryClient]);
-
-  if (!session) {
-    return null;
-  }
-
   return (
     <div className="min-h-screen bg-background">
       <Header isDisabled={false} />
@@ -34,3 +22,4 @@ const Index = () => {
 };
 
 export default Index;
+
