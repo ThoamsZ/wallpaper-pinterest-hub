@@ -30,17 +30,12 @@ const Index = () => {
           });
         }
 
-        // If we're on a protected route and there's no session, redirect to auth
+        // Only redirect if we're on a protected route and there's no session
         if (!session && window.location.pathname !== '/') {
           navigate('/auth');
         }
       } catch (error) {
         console.error("Session check error:", error);
-        toast({
-          title: "Error",
-          description: "Failed to check authentication status",
-          variant: "destructive",
-        });
       } finally {
         if (mounted) {
           setIsLoading(false);
@@ -53,18 +48,21 @@ const Index = () => {
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange(async (event, session) => {
-      console.log("Auth state changed:", event);
-      
       if (!mounted) return;
 
+      console.log("Auth state changed:", event);
+      
       if (event === 'SIGNED_OUT') {
-        // Clear all queries when signing out
-        queryClient.clear();
-        queryClient.removeQueries();
+        // Only remove authentication-related queries
+        queryClient.removeQueries({ queryKey: ['user'] });
+        queryClient.removeQueries({ queryKey: ['likes'] });
+        queryClient.removeQueries({ queryKey: ['collections'] });
         navigate('/auth');
       } else if (event === 'SIGNED_IN') {
-        // Invalidate queries when signing in to fetch fresh data
-        queryClient.invalidateQueries();
+        // Only invalidate user-specific queries
+        queryClient.invalidateQueries({ queryKey: ['user'] });
+        queryClient.invalidateQueries({ queryKey: ['likes'] });
+        queryClient.invalidateQueries({ queryKey: ['collections'] });
       }
 
       setIsLoading(false);
