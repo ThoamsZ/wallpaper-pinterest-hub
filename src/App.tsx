@@ -43,6 +43,7 @@ function AuthProvider({ children }: { children: React.ReactNode }) {
       try {
         // Check for existing session
         const { data: { session: currentSession } } = await supabase.auth.getSession();
+        setSession(currentSession);
         
         if (!currentSession) {
           // If no session exists, try to sign in as guest
@@ -54,12 +55,14 @@ function AuthProvider({ children }: { children: React.ReactNode }) {
 
           if (error) {
             console.error("Guest login error:", error);
-            // If guest login fails, we'll remain logged out
+            // If guest login fails, we'll redirect to auth page
+            setSession(null);
           } else if (data.session) {
             console.log("Successfully logged in as guest");
+            setSession(data.session);
             toast({
               title: "Welcome to WallpaperHub",
-              description: "You're browsing as a guest. Some features may be limited.",
+              description: "You're browsing as a guest. Sign up to like and collect wallpapers!",
             });
           }
         }
@@ -75,6 +78,7 @@ function AuthProvider({ children }: { children: React.ReactNode }) {
         };
       } catch (error) {
         console.error("Auth initialization error:", error);
+        setSession(null);
       } finally {
         setIsInitializing(false);
       }

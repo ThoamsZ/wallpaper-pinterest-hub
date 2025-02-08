@@ -19,9 +19,12 @@ const Auth = () => {
     console.log("Auth: Checking session");
     const checkSession = async () => {
       const { data: { session } } = await supabase.auth.getSession();
-      if (session && session.user.email !== 'guest@wallpaperhub.com') {
-        console.log("Auth: Non-guest session found, redirecting to /");
-        navigate("/");
+      if (session) {
+        const isGuest = session.user.email === 'guest@wallpaperhub.com';
+        if (!isGuest) {
+          console.log("Auth: Non-guest session found, redirecting to /");
+          navigate("/", { replace: true });
+        }
       }
     };
     checkSession();
@@ -91,7 +94,7 @@ const Auth = () => {
         }
 
         if (signInData.session) {
-          navigate("/");
+          navigate("/", { replace: true });
         }
       }
     } catch (error: any) {
