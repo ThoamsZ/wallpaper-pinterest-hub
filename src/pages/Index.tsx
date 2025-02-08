@@ -12,20 +12,11 @@ const Index = () => {
   const queryClient = useQueryClient();
 
   useEffect(() => {
-    const checkAuth = async () => {
-      try {
-        if (!session) {
-          console.log("Index: No session found, redirecting to /auth");
-          queryClient.clear();
-          navigate('/auth');
-        }
-      } catch (error) {
-        console.error("Auth check error:", error);
-        navigate('/auth');
-      }
-    };
-
-    checkAuth();
+    if (!session) {
+      console.log("Index: No session found, redirecting to /auth");
+      queryClient.clear();
+      navigate('/auth');
+    }
   }, [session, navigate, queryClient]);
 
   if (!session) {

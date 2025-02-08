@@ -1,51 +1,26 @@
 
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
-import { supabase } from "@/integrations/supabase/client";
 import Header from "@/components/Header";
 import WallpaperGrid from "@/components/WallpaperGrid";
-import { toast } from "@/hooks/use-toast";
+import { useAuth } from "@/App";
 
 const Likes = () => {
   const navigate = useNavigate();
-  const [isLoading, setIsLoading] = useState(true);
+  const { session } = useAuth();
 
   useEffect(() => {
-    const checkAuth = async () => {
-      try {
-        const { data: { session } } = await supabase.auth.getSession();
-        if (!session) {
-          navigate('/auth');
-          return;
-        }
-        setIsLoading(false);
-      } catch (error) {
-        console.error('Auth check error:', error);
-        navigate('/auth');
-      }
-    };
-
-    checkAuth();
-
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange((event, session) => {
-      if (event === 'SIGNED_OUT' || !session) {
-        navigate('/auth');
-      }
-    });
-
-    return () => {
-      subscription?.unsubscribe();
-    };
-  }, [navigate]);
+    if (!session) {
+      console.log("Likes: No session found, redirecting to /auth");
+      navigate('/auth');
+    }
+  }, [session, navigate]);
 
   const { data: likedWallpapers = [], isLoading: isWallpapersLoading } = useQuery({
     queryKey: ['liked-wallpapers'],
     queryFn: async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) throw new Error('Not authenticated');
+      if (!session) return [];
 
       const { data: userData, error: userError } = await supabase
         .from('users')
@@ -66,10 +41,14 @@ const Likes = () => {
 
       return wallpapers || [];
     },
-    enabled: !isLoading,
+    enabled: !!session,
   });
 
-  if (isLoading || isWallpapersLoading) {
+  if (!session) {
+    return null;
+  }
+
+  if (isWallpapersLoading) {
     return (
       <div className="min-h-screen bg-background">
         <Header />
