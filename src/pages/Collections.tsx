@@ -16,17 +16,18 @@ const Collections = () => {
   const queryClient = useQueryClient();
   const [selectedCollection, setSelectedCollection] = useState<string | null>(null);
   const [isAuthChecking, setIsAuthChecking] = useState(true);
-  const [userId, setUserId] = useState<string | null>(null);
 
   useEffect(() => {
     const checkAuth = async () => {
       try {
         const { data: { session } } = await supabase.auth.getSession();
-        if (session) {
-          setUserId(session.user.id);
+        if (!session) {
+          navigate('/auth');
+          return;
         }
       } catch (error) {
         console.error('Auth check error:', error);
+        navigate('/auth');
       } finally {
         setIsAuthChecking(false);
       }
@@ -37,7 +38,9 @@ const Collections = () => {
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((event, session) => {
-      setUserId(session?.user.id || null);
+      if (event === 'SIGNED_OUT' || !session) {
+        navigate('/auth');
+      }
     });
 
     return () => {
@@ -46,20 +49,24 @@ const Collections = () => {
   }, [navigate]);
 
   const { data: currentUser, isLoading: isUserLoading } = useQuery({
-    queryKey: ['current-user', userId],
+    queryKey: ['current-user'],
     queryFn: async () => {
-      if (!userId) return null;
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        navigate('/auth');
+        return null;
+      }
 
       const { data, error } = await supabase
         .from('users')
         .select('*')
-        .eq('id', userId)
+        .eq('id', session.user.id)
         .maybeSingle();
 
       if (error) throw error;
       return data;
     },
-    enabled: !!userId,
+    enabled: !isAuthChecking,
   });
 
   const { data: collections = [], isLoading: isCollectionsLoading } = useQuery({
@@ -178,7 +185,7 @@ const Collections = () => {
       <Header />
       <main className="container mx-auto pt-20">
         <div className="mb-8">
-          <h1 className="text-3xl font-bold mb-2">Collections</h1>
+          <h1 className="text-3xl font-bold mb-2">My Collections</h1>
           {selectedCollection && (
             <Button 
               variant="outline" 

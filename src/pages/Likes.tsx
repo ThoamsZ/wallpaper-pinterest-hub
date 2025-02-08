@@ -11,6 +11,13 @@ const Likes = () => {
   const navigate = useNavigate();
   const { session } = useAuth();
 
+  useEffect(() => {
+    if (!session) {
+      console.log("Likes: No session found, redirecting to /auth");
+      navigate('/auth');
+    }
+  }, [session, navigate]);
+
   const { data: likedWallpapers = [], isLoading: isWallpapersLoading } = useQuery({
     queryKey: ['liked-wallpapers'],
     queryFn: async () => {
@@ -35,8 +42,12 @@ const Likes = () => {
 
       return wallpapers || [];
     },
-    enabled: true,
+    enabled: !!session,
   });
+
+  if (!session) {
+    return null;
+  }
 
   if (isWallpapersLoading) {
     return (
@@ -56,17 +67,7 @@ const Likes = () => {
       <Header />
       <main className="container mx-auto pt-20">
         <h1 className="text-3xl font-bold mb-8">Liked Wallpapers</h1>
-        {!session ? (
-          <div className="text-center py-12">
-            <p className="text-muted-foreground mb-4">Sign in to see your liked wallpapers</p>
-            <button
-              onClick={() => navigate('/auth')}
-              className="text-primary hover:underline"
-            >
-              Sign in
-            </button>
-          </div>
-        ) : likedWallpapers.length === 0 ? (
+        {likedWallpapers.length === 0 ? (
           <div className="text-center py-12">
             <p className="text-muted-foreground">No liked wallpapers yet</p>
           </div>
@@ -79,4 +80,3 @@ const Likes = () => {
 };
 
 export default Likes;
-
