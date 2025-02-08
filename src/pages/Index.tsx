@@ -13,12 +13,29 @@ const Index = () => {
   const queryClient = useQueryClient();
 
   useEffect(() => {
+    // Handle resource load errors
+    const handleError = (event: ErrorEvent) => {
+      if (event.error?.toString().includes('404') || 
+          event.message.includes('404') ||
+          event.message.includes('Failed to load resource')) {
+        console.error('Resource load error:', event);
+        queryClient.clear();
+        navigate('/auth', { replace: true });
+      }
+    };
+
+    window.addEventListener('error', handleError);
+    
     // Only redirect if there's no session at all
     if (!session) {
       console.log("Index: No session found, redirecting to /auth");
       queryClient.clear();
       navigate('/auth');
     }
+
+    return () => {
+      window.removeEventListener('error', handleError);
+    };
   }, [session, navigate, queryClient]);
 
   // Check if user is guest
