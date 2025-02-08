@@ -34,16 +34,6 @@ function AuthProvider({ children }: { children: React.ReactNode }) {
   const navigate = useNavigate();
 
   useEffect(() => {
-    const currentPath = window.location.pathname;
-    const navigationEntries = performance.getEntriesByType("navigation") as PerformanceNavigationTiming[];
-    const isPageRefresh = navigationEntries.length > 0 && navigationEntries[0].type === "reload";
-
-    // Only redirect on refresh for protected routes
-    if (isPageRefresh && (currentPath === "/collections" || currentPath === "/likes")) {
-      window.location.href = "/";
-      return;
-    }
-
     const initializeAuth = async () => {
       try {
         const { data: { session: currentSession }, error } = await supabase.auth.getSession();
