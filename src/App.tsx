@@ -38,6 +38,7 @@ function AuthProvider({ children }: { children: React.ReactNode }) {
     const navigationEntries = performance.getEntriesByType("navigation") as PerformanceNavigationTiming[];
     const isPageRefresh = navigationEntries.length > 0 && navigationEntries[0].type === "reload";
 
+    // Only redirect on refresh for protected routes
     if (isPageRefresh && (currentPath === "/collections" || currentPath === "/likes")) {
       window.location.href = "/";
       return;
