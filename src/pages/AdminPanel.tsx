@@ -51,7 +51,6 @@ const AdminPanel = () => {
   const [selectedWallpapers, setSelectedWallpapers] = useState<string[]>([]);
   const [creatorCode, setCreatorCode] = useState<string>("");
   const [currentCreatorCode, setCurrentCreatorCode] = useState<string>("");
-  const [deletePassword, setDeletePassword] = useState<string>("");
 
   // Check admin status
   const { data: adminData, isError: isAdminError } = useQuery({
@@ -255,83 +254,6 @@ const AdminPanel = () => {
     }
   };
 
-  const handleDeleteAccount = async () => {
-    try {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) throw new Error("Not authenticated");
-
-      if (!deletePassword.trim()) {
-        toast({
-          title: "Error",
-          description: "Please enter your password",
-          variant: "destructive",
-        });
-        return;
-      }
-
-      // Verify the password by attempting to sign in
-      const { error: signInError } = await supabase.auth.signInWithPassword({
-        email: session.user.email!,
-        password: deletePassword.trim()
-      });
-
-      if (signInError) {
-        toast({
-          title: "Error",
-          description: "Invalid password",
-          variant: "destructive",
-        });
-        return;
-      }
-
-      // Delete all user's wallpapers first
-      const { error: deleteWallpapersError } = await supabase
-        .from('wallpapers')
-        .delete()
-        .eq('uploaded_by', session.user.id);
-
-      if (deleteWallpapersError) throw deleteWallpapersError;
-
-      // Delete all user's collections
-      const { error: deleteCollectionsError } = await supabase
-        .from('collections')
-        .delete()
-        .eq('created_by', session.user.id);
-
-      if (deleteCollectionsError) throw deleteCollectionsError;
-
-      // Delete user record from users table
-      const { error: deleteUserError } = await supabase
-        .from('users')
-        .delete()
-        .eq('id', session.user.id);
-
-      if (deleteUserError) throw deleteUserError;
-
-      // Finally, delete the user's auth account
-      const { error: deleteAuthError } = await supabase.auth.updateUser({
-        data: { deleted: true }
-      });
-
-      if (deleteAuthError) throw deleteAuthError;
-
-      // Sign out after successful deletion
-      await supabase.auth.signOut();
-      navigate("/auth");
-
-      toast({
-        title: "Success",
-        description: "Account deleted successfully",
-      });
-    } catch (error: any) {
-      toast({
-        title: "Error",
-        description: error.message || "Failed to delete account",
-        variant: "destructive",
-      });
-    }
-  };
-
   // Fetch wallpapers
   const { data: wallpapers = [], refetch: refetchWallpapers } = useQuery({
     queryKey: ['admin-wallpapers'],
@@ -377,7 +299,7 @@ const AdminPanel = () => {
 
         <Card className="mb-8">
           <CardHeader>
-            <CardTitle>Account Management</CardTitle>
+            <CardTitle>Creator Code Management</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
@@ -396,40 +318,6 @@ const AdminPanel = () => {
                   {currentCreatorCode ? "Update" : "Set"} Creator Code
                 </Button>
               </div>
-              
-              <AlertDialog>
-                <AlertDialogTrigger asChild>
-                  <Button variant="destructive">Delete Account</Button>
-                </AlertDialogTrigger>
-                <AlertDialogContent>
-                  <AlertDialogHeader>
-                    <AlertDialogTitle>Delete Account</AlertDialogTitle>
-                    <AlertDialogDescription>
-                      This action cannot be undone. This will permanently delete your account
-                      and all associated wallpapers. Please enter your password to confirm.
-                    </AlertDialogDescription>
-                  </AlertDialogHeader>
-                  <div className="py-4">
-                    <Input
-                      type="password"
-                      placeholder="Enter your password to confirm"
-                      value={deletePassword}
-                      onChange={(e) => setDeletePassword(e.target.value)}
-                    />
-                  </div>
-                  <AlertDialogFooter>
-                    <AlertDialogCancel onClick={() => setDeletePassword("")}>
-                      Cancel
-                    </AlertDialogCancel>
-                    <AlertDialogAction
-                      onClick={handleDeleteAccount}
-                      className="bg-red-500 hover:bg-red-600"
-                    >
-                      Delete Account
-                    </AlertDialogAction>
-                  </AlertDialogFooter>
-                </AlertDialogContent>
-              </AlertDialog>
             </div>
           </CardContent>
         </Card>
