@@ -13,8 +13,8 @@ const Likes = () => {
 
   useEffect(() => {
     if (!session) {
-      console.log("Likes: No session found, redirecting to /auth");
-      navigate('/auth');
+      console.log("Likes: No session found, redirecting to /");
+      navigate('/');
     }
   }, [session, navigate]);
 
