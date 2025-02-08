@@ -40,12 +40,16 @@ function AuthProvider({ children }: { children: React.ReactNode }) {
     // 获取当前路径
     const currentPath = window.location.pathname;
 
+    // 判断是否是页面刷新
+    const navigationEntries = performance.getEntriesByType("navigation") as PerformanceNavigationTiming[];
+    const isPageRefresh = navigationEntries.length > 0 && navigationEntries[0].type === "reload";
+
     // 初始 session 检查
     supabase.auth.getSession().then(({ data: { session: currentSession } }) => {
       setSession(currentSession);
 
-      // 如果当前路径是 `/collections`，刷新时跳转到 `/`
-      if (currentPath === "/collections") {
+      // 仅在 `collections` 页面刷新时跳转到 `/`
+      if (isPageRefresh && currentPath === "/collections") {
         navigate("/", { replace: true });
       }
     });
