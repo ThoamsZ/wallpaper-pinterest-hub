@@ -47,13 +47,7 @@ function AuthProvider({ children }: { children: React.ReactNode }) {
     // 仅在 `collections` 页面刷新时跳转到 `/`
     if (isPageRefresh && currentPath === "/collections") {
       sessionStorage.setItem("redirectedFromCollections", "true"); // 记录跳转状态
-      navigate("/", { replace: true });
-
-      // **清除 `replace: true` 影响，确保 `/collections` 可点击**
-      setTimeout(() => {
-        window.history.replaceState({}, "", "/"); // 让 `/collections` 能正常点击
-        sessionStorage.removeItem("redirectedFromCollections");
-      }, 100);
+      window.location.href = "/"; // **直接使用 window.location.href 避免影响 React Router**
     }
 
     // 初始 session 检查
@@ -70,7 +64,7 @@ function AuthProvider({ children }: { children: React.ReactNode }) {
     return () => {
       subscription.unsubscribe();
     };
-  }, [navigate]);
+  }, []);
 
   return (
     <AuthContext.Provider value={{ session }}>
