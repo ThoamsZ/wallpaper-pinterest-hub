@@ -55,7 +55,6 @@ function AuthProvider({ children }: { children: React.ReactNode }) {
 
           if (error) {
             console.error("Guest login error:", error);
-            // If guest login fails, we'll redirect to auth page
             setSession(null);
           } else if (data.session) {
             console.log("Successfully logged in as guest");
@@ -87,8 +86,13 @@ function AuthProvider({ children }: { children: React.ReactNode }) {
     initializeAuth();
   }, []);
 
+  // Show loading state while initializing
   if (isInitializing) {
-    return null; // Or a loading spinner
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+      </div>
+    );
   }
 
   return (
