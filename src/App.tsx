@@ -15,7 +15,6 @@ import { supabase } from '@/integrations/supabase/client';
 
 interface AuthContextType {
   session: any | null;
-  isLoading: boolean;
 }
 
 const AuthContext = createContext<AuthContextType | null>(null);
@@ -29,49 +28,13 @@ export const useAuth = () => {
 };
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [session, setSession] = useState<any | null>(() => {
-    // Try to get session from localStorage first
-    const saved = localStorage.getItem('session');
-    return saved ? JSON.parse(saved) : null;
-  });
-  const [isLoading, setIsLoading] = useState(true);
+  const [session, setSession] = useState<any | null>(null);
 
   useEffect(() => {
-    // Get initial session
-    const initSession = async () => {
-      try {
-        const { data: { session: currentSession } } = await supabase.auth.getSession();
-        console.log("Initial session check:", currentSession);
-        if (currentSession) {
-          setSession(currentSession);
-          localStorage.setItem('session', JSON.stringify(currentSession));
-        } else {
-          setSession(null);
-          localStorage.removeItem('session');
-        }
-      } catch (error) {
-        console.error("Session check error:", error);
-        setSession(null);
-        localStorage.removeItem('session');
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    initSession();
-
     // Listen for auth changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, newSession) => {
       console.log("Auth state changed:", _event, newSession);
       setSession(newSession);
-      
-      if (newSession) {
-        localStorage.setItem('session', JSON.stringify(newSession));
-      } else {
-        localStorage.removeItem('session');
-      }
-      
-      setIsLoading(false);
     });
 
     return () => {
@@ -80,8 +43,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const value = {
-    session,
-    isLoading
+    session
   };
 
   return (
