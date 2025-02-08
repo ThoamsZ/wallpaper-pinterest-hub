@@ -1,4 +1,3 @@
-
 import { Search, Heart, Archive } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -166,18 +165,47 @@ const Header = ({ isDisabled = false }: HeaderProps) => {
 
     setIsProcessing(true);
     try {
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      if (!session) {
+        queryClient.clear();
+        setIsAuthenticated(false);
+        setUserEmail("");
+        setIsAdmin(false);
+        navigate("/auth");
+        toast({
+          title: "Logged out",
+          description: "You have been successfully logged out",
+        });
+        return;
+      }
+
       const { error } = await supabase.auth.signOut();
       if (error) {
+        console.error('Logout error:', error);
+        if (error.message.includes('session_not_found')) {
+          queryClient.clear();
+          setIsAuthenticated(false);
+          setUserEmail("");
+          setIsAdmin(false);
+          navigate("/auth");
+          toast({
+            title: "Logged out",
+            description: "You have been successfully logged out",
+          });
+          return;
+        }
+        
         toast({
           title: "Error",
-          description: "Failed to sign out",
+          description: "Failed to sign out properly. Please try again.",
           variant: "destructive",
         });
         return;
       }
       
       queryClient.clear();
-      navigate("/");
+      navigate("/auth");
       toast({
         title: "Success",
         description: "Successfully logged out",
