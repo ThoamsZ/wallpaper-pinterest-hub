@@ -1,4 +1,4 @@
-import { BrowserRouter as Router, Routes, Route, useNavigate } from "react-router-dom";
+import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
 import { createContext, useContext, useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -34,23 +34,9 @@ export const useAuth = () => {
 // AuthProvider 组件
 function AuthProvider({ children }: { children: React.ReactNode }) {
   const [session, setSession] = useState<any | null>(null);
-  const navigate = useNavigate();
 
   useEffect(() => {
-    // 获取当前路径
-    const currentPath = window.location.pathname;
-
-    // 判断是否是页面刷新
-    const navigationEntries = performance.getEntriesByType("navigation") as PerformanceNavigationTiming[];
-    const isPageRefresh = navigationEntries.length > 0 && navigationEntries[0].type === "reload";
-
-    // 仅在 `collections` 页面刷新时跳转到 `/`
-    if (isPageRefresh && currentPath === "/collections") {
-      sessionStorage.setItem("redirectedFromCollections", "true"); // 记录跳转状态
-      window.location.href = "/"; // **直接使用 window.location.href 避免影响 React Router**
-    }
-
-    // 初始 session 检查
+    // 获取 session 状态
     supabase.auth.getSession().then(({ data: { session: currentSession } }) => {
       setSession(currentSession);
     });
@@ -79,7 +65,8 @@ function App() {
     <Router>
       <AuthProvider>
         <Routes>
-          <Route path="/" element={<Index />} />
+          <Route path="/" element={<Index />} />  {/* 确保 "/" 显示 Index 页面 */}
+          <Route path="/index" element={<Index />} />  {/* 允许访问 "/index" */}
           <Route path="/auth" element={<Auth />} />
           <Route path="/collections" element={<Collections />} />
           <Route path="/likes" element={<Likes />} />
