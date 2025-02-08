@@ -14,11 +14,15 @@ const Index = () => {
   useEffect(() => {
     const getSession = async () => {
       try {
-        const { data: { session } } = await supabase.auth.getSession();
+        const { data: { session }, error } = await supabase.auth.getSession();
+        if (error) {
+          console.error("Session check error:", error);
+          navigate('/auth');
+        }
         setIsLoading(false);
       } catch (error) {
         console.error("Session check error:", error);
-        setIsLoading(false);
+        navigate('/auth');
       }
     };
 
