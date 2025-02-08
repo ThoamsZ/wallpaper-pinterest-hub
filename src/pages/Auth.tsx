@@ -14,13 +14,12 @@ const Auth = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [isSignUp, setIsSignUp] = useState(false);
 
-  // Check session on mount and redirect if already authenticated
   useEffect(() => {
     console.log("Auth: Checking session");
     const checkSession = async () => {
       const { data: { session } } = await supabase.auth.getSession();
       if (session) {
-        const isGuest = session.user.email === 'guest@wallpaperhub.com';
+        const isGuest = session.user.email === 'guest@xxwallpaper.com';
         if (!isGuest) {
           console.log("Auth: Non-guest session found, redirecting to /");
           navigate("/", { replace: true });
@@ -113,7 +112,7 @@ const Auth = () => {
     setIsLoading(true);
     try {
       const { data, error } = await supabase.auth.signInWithPassword({
-        email: 'guest@wallpaperhub.com',
+        email: 'guest@xxwallpaper.com',
         password: 'guest123',
       });
 
@@ -147,7 +146,7 @@ const Auth = () => {
       <div className="w-full max-w-md space-y-8 p-8 border rounded-lg shadow-lg">
         <div className="text-center">
           <h1 className="text-2xl font-bold">{isSignUp ? "Create Account" : "Sign In"}</h1>
-          <p className="text-gray-600 mt-2">to access all features of WallpaperHub</p>
+          <p className="text-gray-600 mt-2">to access all features of xxWallpaper</p>
         </div>
 
         <form onSubmit={handleAuth} className="space-y-6">
