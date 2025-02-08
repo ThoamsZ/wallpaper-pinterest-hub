@@ -66,6 +66,24 @@ export type Database = {
         }
         Relationships: []
       }
+      tags_stats: {
+        Row: {
+          download_count: number | null
+          last_updated: string | null
+          tag: string
+        }
+        Insert: {
+          download_count?: number | null
+          last_updated?: string | null
+          tag: string
+        }
+        Update: {
+          download_count?: number | null
+          last_updated?: string | null
+          tag?: string
+        }
+        Relationships: []
+      }
       users: {
         Row: {
           created_at: string

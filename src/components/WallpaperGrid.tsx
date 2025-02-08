@@ -7,9 +7,10 @@ import WallpaperItem from "./WallpaperItem";
 
 interface WallpaperGridProps {
   wallpapers?: Wallpaper[];
+  selectedTag?: string | null;
 }
 
-const WallpaperGrid = ({ wallpapers: propWallpapers }: WallpaperGridProps) => {
+const WallpaperGrid = ({ wallpapers: propWallpapers, selectedTag }: WallpaperGridProps) => {
   const [selectedWallpaper, setSelectedWallpaper] = useState<Wallpaper | null>(null);
   const { 
     wallpapers, 
@@ -19,7 +20,7 @@ const WallpaperGrid = ({ wallpapers: propWallpapers }: WallpaperGridProps) => {
     fetchNextPage,
     hasNextPage,
     isFetchingNextPage 
-  } = useWallpapers(propWallpapers);
+  } = useWallpapers(propWallpapers, selectedTag);
   const { likedWallpapers, handleLike } = useWallpaperLikes();
   const loadMoreRef = useRef<HTMLDivElement>(null);
 
@@ -77,7 +78,6 @@ const WallpaperGrid = ({ wallpapers: propWallpapers }: WallpaperGridProps) => {
         ))}
       </div>
 
-      {/* Infinite scroll trigger */}
       <div 
         ref={loadMoreRef} 
         className="h-10 flex items-center justify-center mt-4"
