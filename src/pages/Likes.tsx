@@ -12,16 +12,11 @@ const Likes = () => {
   const { session } = useAuth();
 
   useEffect(() => {
-    const checkAuth = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) {
-        console.log("Likes: No session found, redirecting to /auth");
-        navigate('/auth');
-      }
-    };
-    
-    checkAuth();
-  }, [navigate]);
+    if (!session) {
+      console.log("Likes: No session found, redirecting to /auth");
+      navigate('/auth');
+    }
+  }, [session, navigate]);
 
   const { data: likedWallpapers = [], isLoading: isWallpapersLoading } = useQuery({
     queryKey: ['liked-wallpapers'],
@@ -49,6 +44,10 @@ const Likes = () => {
     },
     enabled: !!session,
   });
+
+  if (!session) {
+    return null;
+  }
 
   if (isWallpapersLoading) {
     return (

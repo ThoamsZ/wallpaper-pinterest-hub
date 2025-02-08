@@ -22,7 +22,6 @@ const Collections = () => {
       try {
         const { data: { session } } = await supabase.auth.getSession();
         if (!session) {
-          console.log("Collections: No session found, redirecting to /auth");
           navigate('/auth');
           return;
         }
@@ -35,6 +34,18 @@ const Collections = () => {
     };
 
     checkAuth();
+
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((event, session) => {
+      if (event === 'SIGNED_OUT' || !session) {
+        navigate('/auth');
+      }
+    });
+
+    return () => {
+      subscription?.unsubscribe();
+    };
   }, [navigate]);
 
   const { data: currentUser, isLoading: isUserLoading } = useQuery({
