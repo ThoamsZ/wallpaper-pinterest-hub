@@ -109,15 +109,10 @@ const Header = ({ isDisabled = false }: HeaderProps) => {
     e.preventDefault();
     if (isDisabled || isProcessing) return;
     
+    if (!searchQuery.trim()) return;
+
     setIsProcessing(true);
     try {
-      if (!searchQuery.trim()) {
-        // Reset to show all wallpapers when search is empty
-        queryClient.invalidateQueries({ queryKey: ['wallpapers'] });
-        setIsProcessing(false);
-        return;
-      }
-
       const { data: creatorData, error: creatorError } = await supabase
         .from('users')
         .select('id')
@@ -146,8 +141,6 @@ const Header = ({ isDisabled = false }: HeaderProps) => {
           description: "No wallpapers or creators found with your search term",
           variant: "destructive",
         });
-        // Reset to show all wallpapers when no results found
-        queryClient.invalidateQueries({ queryKey: ['wallpapers'] });
       }
     } catch (error) {
       console.error('Search error:', error);
@@ -203,12 +196,6 @@ const Header = ({ isDisabled = false }: HeaderProps) => {
         navigate('/auth');
         return;
       }
-    }
-    
-    // Reset search query and wallpapers when navigating to home
-    if (path === '/') {
-      setSearchQuery('');
-      queryClient.invalidateQueries({ queryKey: ['wallpapers'] });
     }
     
     navigate(path);
@@ -310,14 +297,7 @@ const Header = ({ isDisabled = false }: HeaderProps) => {
                   placeholder="Search for wallpapers or creator codes..."
                   className={`w-full pl-10 pr-4 py-1.5 rounded-full border-gray-200 text-sm ${isButtonDisabled ? 'bg-gray-100 cursor-not-allowed' : ''}`}
                   value={searchQuery}
-                  onChange={(e) => {
-                    setSearchQuery(e.target.value);
-                    // If search is cleared, trigger the form submission
-                    if (!e.target.value.trim()) {
-                      const form = e.target.form;
-                      if (form) form.requestSubmit();
-                    }
-                  }}
+                  onChange={(e) => setSearchQuery(e.target.value)}
                   disabled={isButtonDisabled}
                 />
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4" />
@@ -331,3 +311,4 @@ const Header = ({ isDisabled = false }: HeaderProps) => {
 };
 
 export default Header;
+
