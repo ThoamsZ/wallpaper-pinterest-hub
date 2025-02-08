@@ -260,7 +260,10 @@ const AdminPanel = () => {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) throw new Error("Not authenticated");
 
-      if (deleteConfirmEmail !== adminData?.email) {
+      console.log('Entered email:', deleteConfirmEmail);
+      console.log('Admin email:', adminData?.email);
+      
+      if (!adminData?.email || deleteConfirmEmail.trim() !== adminData.email.trim()) {
         toast({
           title: "Error",
           description: "Email confirmation does not match",
