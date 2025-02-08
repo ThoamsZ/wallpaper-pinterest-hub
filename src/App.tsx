@@ -2,6 +2,7 @@
 import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
 import { createContext, useContext, useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { toast } from "@/hooks/use-toast";
 
 import Index from "@/pages/Index";
 import Auth from "@/pages/Auth";
@@ -35,23 +36,56 @@ export const useAuth = () => {
 // AuthProvider component
 function AuthProvider({ children }: { children: React.ReactNode }) {
   const [session, setSession] = useState<any | null>(null);
+  const [isInitializing, setIsInitializing] = useState(true);
 
   useEffect(() => {
-    // Initial session check
-    supabase.auth.getSession().then(({ data: { session: currentSession } }) => {
-      setSession(currentSession);
-    });
+    const initializeAuth = async () => {
+      try {
+        // Check for existing session
+        const { data: { session: currentSession } } = await supabase.auth.getSession();
+        
+        if (!currentSession) {
+          // If no session exists, try to sign in as guest
+          console.log("No session found, attempting guest login");
+          const { data, error } = await supabase.auth.signInWithPassword({
+            email: 'guest@wallpaperhub.com',
+            password: 'guest123',
+          });
 
-    // Listen for auth state changes
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, newSession) => {
-      console.log("Auth state changed:", _event, newSession);
-      setSession(newSession);
-    });
+          if (error) {
+            console.error("Guest login error:", error);
+            // If guest login fails, we'll remain logged out
+          } else if (data.session) {
+            console.log("Successfully logged in as guest");
+            toast({
+              title: "Welcome to WallpaperHub",
+              description: "You're browsing as a guest. Some features may be limited.",
+            });
+          }
+        }
 
-    return () => {
-      subscription.unsubscribe();
+        // Listen for auth state changes
+        const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, newSession) => {
+          console.log("Auth state changed:", _event, newSession?.user?.email);
+          setSession(newSession);
+        });
+
+        return () => {
+          subscription.unsubscribe();
+        };
+      } catch (error) {
+        console.error("Auth initialization error:", error);
+      } finally {
+        setIsInitializing(false);
+      }
     };
+
+    initializeAuth();
   }, []);
+
+  if (isInitializing) {
+    return null; // Or a loading spinner
+  }
 
   return (
     <AuthContext.Provider value={{ session }}>

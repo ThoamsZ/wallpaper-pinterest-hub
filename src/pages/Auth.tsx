@@ -19,66 +19,13 @@ const Auth = () => {
     console.log("Auth: Checking session");
     const checkSession = async () => {
       const { data: { session } } = await supabase.auth.getSession();
-      if (session) {
-        console.log("Auth: Session found, redirecting to /");
+      if (session && session.user.email !== 'guest@wallpaperhub.com') {
+        console.log("Auth: Non-guest session found, redirecting to /");
         navigate("/");
       }
     };
     checkSession();
   }, [navigate]);
-
-  const handleGuestAccess = async () => {
-    setIsLoading(true);
-    console.log("Auth: Handling guest access");
-
-    try {
-      const { data, error } = await supabase.auth.signInWithPassword({
-        email: 'guest@wallpaperhub.com',
-        password: 'guest123',
-      });
-
-      if (error) {
-        // If guest account doesn't exist, create it
-        if (error.message.includes("Invalid login credentials")) {
-          const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
-            email: 'guest@wallpaperhub.com',
-            password: 'guest123',
-          });
-
-          if (signUpError) {
-            throw signUpError;
-          }
-
-          if (signUpData.session) {
-            toast({
-              title: "Welcome Guest User",
-              description: "You are now browsing as a guest. Some features may be limited.",
-            });
-            navigate("/", { replace: true });
-            return;
-          }
-        }
-        throw error;
-      }
-
-      if (data.session) {
-        toast({
-          title: "Welcome Back Guest User",
-          description: "You are now browsing as a guest. Some features may be limited.",
-        });
-        navigate("/", { replace: true });
-      }
-    } catch (error: any) {
-      console.error("Guest access error:", error);
-      toast({
-        title: "Error",
-        description: "Failed to access as guest. Please try again.",
-        variant: "destructive",
-      });
-    } finally {
-      setIsLoading(false);
-    }
-  };
 
   const handleAuth = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -164,27 +111,7 @@ const Auth = () => {
       <div className="w-full max-w-md space-y-8 p-8 border rounded-lg shadow-lg">
         <div className="text-center">
           <h1 className="text-2xl font-bold">{isSignUp ? "Create Account" : "Sign In"}</h1>
-          <p className="text-gray-600 mt-2">to continue to WallpaperHub</p>
-        </div>
-
-        <Button
-          onClick={handleGuestAccess}
-          variant="outline"
-          className="w-full"
-          disabled={isLoading}
-        >
-          Continue as Guest
-        </Button>
-
-        <div className="relative">
-          <div className="absolute inset-0 flex items-center">
-            <span className="w-full border-t" />
-          </div>
-          <div className="relative flex justify-center text-xs uppercase">
-            <span className="bg-background px-2 text-muted-foreground">
-              Or continue with
-            </span>
-          </div>
+          <p className="text-gray-600 mt-2">to access all features of WallpaperHub</p>
         </div>
 
         <form onSubmit={handleAuth} className="space-y-6">

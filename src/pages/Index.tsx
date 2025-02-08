@@ -5,6 +5,7 @@ import Header from "@/components/Header";
 import WallpaperGrid from "@/components/WallpaperGrid";
 import { useAuth } from "@/App";
 import { useQueryClient } from "@tanstack/react-query";
+import { toast } from "@/hooks/use-toast";
 
 const Index = () => {
   const navigate = useNavigate();
@@ -12,12 +13,26 @@ const Index = () => {
   const queryClient = useQueryClient();
 
   useEffect(() => {
+    // Only redirect if there's no session at all
     if (!session) {
       console.log("Index: No session found, redirecting to /auth");
       queryClient.clear();
       navigate('/auth');
     }
   }, [session, navigate, queryClient]);
+
+  // Check if user is guest
+  const isGuestUser = session?.user?.email === 'guest@wallpaperhub.com';
+
+  useEffect(() => {
+    if (isGuestUser) {
+      // Show welcome toast only once when page loads
+      toast({
+        title: "Welcome to WallpaperHub",
+        description: "Browse freely! Sign up to like and collect wallpapers.",
+      });
+    }
+  }, []);
 
   if (!session) {
     return null;
