@@ -1,3 +1,4 @@
+
 import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
 import Index from "@/pages/Index";
 import Auth from "@/pages/Auth";
@@ -9,35 +10,43 @@ import NotFound from "@/pages/NotFound";
 import Upload from "@/pages/Upload";
 import { Toaster } from "@/components/ui/toaster";
 import "./App.css";
-import { createContext, useContext, useState, useEffect } from 'react'
-import { supabase } from '../supabaseClient'
-import { useNavigate } from 'react-router-dom'
+import { createContext, useContext, useState, useEffect } from 'react';
+import { supabase } from '@/integrations/supabase/client';
+import { useNavigate } from 'react-router-dom';
 
-const AuthContext = createContext<any>(null)
+const AuthContext = createContext<any>(null);
 
-export function AuthProvider({ children }) {
-  const navigate = useNavigate()
+export function AuthProvider({ children }: { children: React.ReactNode }) {
+  const navigate = useNavigate();
+  const [session, setSession] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // 添加页面刷新的监听器
+    // Add page refresh listener
     const handleRefresh = () => {
-      navigate('/auth')
-    }
+      navigate('/auth');
+    };
 
-    window.addEventListener('beforeunload', handleRefresh)
+    window.addEventListener('beforeunload', handleRefresh);
 
     return () => {
-      window.removeEventListener('beforeunload', handleRefresh)
-    }
-  }, [navigate])
+      window.removeEventListener('beforeunload', handleRefresh);
+    };
+  }, [navigate]);
 
-  // ... 保持其他现有的 AuthContext 代码不变 ...
+  // Create the value object to be provided by the context
+  const value = {
+    session,
+    setSession,
+    loading,
+    setLoading
+  };
 
   return (
     <AuthContext.Provider value={value}>
       {children}
     </AuthContext.Provider>
-  )
+  );
 }
 
 function App() {
