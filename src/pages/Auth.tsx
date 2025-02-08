@@ -20,7 +20,7 @@ const Auth = () => {
     const checkSession = async () => {
       const { data: { session } } = await supabase.auth.getSession();
       if (session) {
-        const isGuest = session.user.email === 'guest@xxwallpaper.com';
+        const isGuest = session.user.email === 'guest@wallpaperhub.com';
         if (!isGuest) {
           console.log("Auth: Non-guest session found, redirecting to /");
           navigate("/", { replace: true });
@@ -113,7 +113,7 @@ const Auth = () => {
     setIsLoading(true);
     try {
       const { data, error } = await supabase.auth.signInWithPassword({
-        email: 'guest@xxwallpaper.com',
+        email: 'guest@wallpaperhub.com',
         password: 'guest123',
       });
 
@@ -147,7 +147,7 @@ const Auth = () => {
       <div className="w-full max-w-md space-y-8 p-8 border rounded-lg shadow-lg">
         <div className="text-center">
           <h1 className="text-2xl font-bold">{isSignUp ? "Create Account" : "Sign In"}</h1>
-          <p className="text-gray-600 mt-2">to access all features of XXWallpaper</p>
+          <p className="text-gray-600 mt-2">to access all features of WallpaperHub</p>
         </div>
 
         <form onSubmit={handleAuth} className="space-y-6">
