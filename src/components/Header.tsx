@@ -166,28 +166,36 @@ const Header = ({ isDisabled = false }: HeaderProps) => {
 
     setIsProcessing(true);
     try {
-      const { error } = await supabase.auth.signOut();
-      if (error) {
-        toast({
-          title: "Error",
-          description: "Failed to sign out",
-          variant: "destructive",
-        });
-        return;
-      }
-      
+      // First, clear all query cache to ensure clean state
       queryClient.clear();
-      navigate("/");
+      
+      // Try to sign out from Supabase
+      await supabase.auth.signOut();
+      
+      // Reset local state
+      setIsAuthenticated(false);
+      setUserEmail("");
+      setIsAdmin(false);
+      
+      // Navigate to auth page
+      navigate("/auth");
+      
       toast({
         title: "Success",
         description: "Successfully logged out",
       });
     } catch (error) {
       console.error('Logout error:', error);
+      // Even if Supabase logout fails, we still want to clear local state
+      setIsAuthenticated(false);
+      setUserEmail("");
+      setIsAdmin(false);
+      queryClient.clear();
+      navigate("/auth");
+      
       toast({
-        title: "Error",
-        description: "An error occurred during logout",
-        variant: "destructive",
+        title: "Notice",
+        description: "You have been logged out",
       });
     } finally {
       setIsProcessing(false);
