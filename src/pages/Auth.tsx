@@ -14,7 +14,6 @@ const Auth = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [isSignUp, setIsSignUp] = useState(false);
 
-  // Check session on mount and redirect if already authenticated
   useEffect(() => {
     console.log("Auth: Checking session");
     const checkSession = async () => {
@@ -34,6 +33,23 @@ const Auth = () => {
 
     try {
       if (isSignUp) {
+        // First check if email exists
+        const { error: checkError } = await supabase.auth.signInWithPassword({
+          email,
+          password: "dummy-password-for-check"
+        });
+
+        // If no error about invalid credentials, the email exists
+        if (!checkError || !checkError.message.includes("Invalid")) {
+          toast({
+            title: "Email already exists",
+            description: "Please try signing in instead",
+            variant: "destructive",
+          });
+          setIsSignUp(false);
+          return;
+        }
+
         const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
           email,
           password,
@@ -81,8 +97,8 @@ const Auth = () => {
           // Provide more specific error messages
           if (signInError.message === "Email not confirmed") {
             errorMessage = "Please verify your email address before signing in";
-          } else if (signInError.message.includes("Invalid credentials")) {
-            errorMessage = "Invalid email or password";
+          } else if (signInError.message.includes("Invalid")) {
+            errorMessage = "Invalid email or password. If you haven't registered yet, please sign up.";
           }
           
           toast({
