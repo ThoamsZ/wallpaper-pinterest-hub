@@ -11,23 +11,23 @@ const Index = () => {
 
   useEffect(() => {
     if (session === null) {
-      setLoading(true); // 避免页面直接卡死
+      setLoading(true);
     } else {
       setLoading(false);
     }
   }, [session]);
 
-  // **确保：只有 session === undefined 且当前路径不是 /，才跳转 /auth**
+  // **修正逻辑：只有在 session === undefined 且当前路径不是 `/`，才跳转 `/auth`**
   useEffect(() => {
-    if (session === undefined && window.location.pathname !== "/") {
-      console.log("Index: No session found, redirecting to /auth");
+    if (session === undefined && window.location.pathname !== "/" && window.location.pathname !== "/index") {
+      console.log("Redirecting to /auth because session is undefined.");
       queryClient.clear();
       navigate("/auth");
     }
   }, [session, navigate, queryClient]);
 
   if (loading) {
-    return <div>Loading...</div>;  // 避免 return null 让页面卡死
+    return <div>Loading...</div>;
   }
 
   return (

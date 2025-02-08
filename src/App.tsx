@@ -38,13 +38,13 @@ function AuthProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     // 获取 session 状态
     supabase.auth.getSession().then(({ data: { session: currentSession } }) => {
-      setSession(currentSession);
+      setSession(currentSession ?? null);
     });
 
     // 监听身份验证状态变化
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, newSession) => {
       console.log("Auth state changed:", _event, newSession);
-      setSession(newSession);
+      setSession(newSession ?? null);
     });
 
     return () => {
@@ -65,8 +65,8 @@ function App() {
     <Router>
       <AuthProvider>
         <Routes>
-          <Route path="/" element={<Index />} />  {/* 确保 "/" 访问 Index */}
-          <Route path="/index" element={<Index />} />  {/* 允许 "/index" 访问 */}
+          <Route path="/" element={<Index />} />  
+          <Route path="/index" element={<Index />} />  
           <Route path="/auth" element={<Auth />} />
           <Route path="/collections" element={<Collections />} />
           <Route path="/likes" element={<Likes />} />
