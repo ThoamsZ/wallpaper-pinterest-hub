@@ -166,18 +166,18 @@ const Header = ({ isDisabled = false }: HeaderProps) => {
 
     setIsProcessing(true);
     try {
-      // First, check if we have a valid session
       const { data: { session } } = await supabase.auth.getSession();
       
-      // Clear all query cache first to ensure clean state
+      // First clear query cache to ensure clean state
       queryClient.clear();
       
       // Only attempt to sign out if we have a valid session
       if (session) {
-        await supabase.auth.signOut();
+        const { error } = await supabase.auth.signOut();
+        if (error) throw error;
       }
       
-      // Reset local state
+      // Reset local state regardless of session status
       setIsAuthenticated(false);
       setUserEmail("");
       setIsAdmin(false);
@@ -191,7 +191,7 @@ const Header = ({ isDisabled = false }: HeaderProps) => {
       });
     } catch (error) {
       console.error('Logout error:', error);
-      // Even if there's an error, clear local state
+      // Even if there's an error, clear local state and redirect
       setIsAuthenticated(false);
       setUserEmail("");
       setIsAdmin(false);
