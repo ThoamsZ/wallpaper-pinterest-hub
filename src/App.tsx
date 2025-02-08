@@ -38,13 +38,41 @@ function App() {
     }
   }, [])
 
+  useEffect(() => {
+    async function fetchData() {
+      try {
+        const { data, error } = await supabase.from('your_table').select('*')
+        if (error) {
+          console.error('数据获取错误:', error)
+        } else {
+          console.log('获取到的数据:', data)
+          // 更新状态
+        }
+      } catch (err) {
+        console.error('请求失败:', err)
+      }
+    }
+
+    if (session) {
+      fetchData()
+    }
+  }, [session])
+
   if (isLoading) {
     return <div>加载中...</div>
   }
 
   return (
     <div>
-      {session ? <div>已登录状态，欢迎回来！</div> : <div>请登录</div>}
+      {isLoading ? (
+        <div>加载中...</div>
+      ) : (
+        session ? (
+          <div>已登录状态，欢迎回来！</div>
+        ) : (
+          <div>请登录</div>
+        )
+      )}
     </div>
   )
 }
