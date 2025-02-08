@@ -44,14 +44,16 @@ function AuthProvider({ children }: { children: React.ReactNode }) {
     const navigationEntries = performance.getEntriesByType("navigation") as PerformanceNavigationTiming[];
     const isPageRefresh = navigationEntries.length > 0 && navigationEntries[0].type === "reload";
 
-    // 解决刷新后 `/collections` 只能跳到 `/`，但后续点击 `/collections` 仍然被阻止的问题
-    if (isPageRefresh && currentPath === "/collections" && !sessionStorage.getItem("collectionsRedirected")) {
-      sessionStorage.setItem("collectionsRedirected", "true"); // 只跳转一次
+    // 仅在 `collections` 页面刷新时跳转到 `/`
+    if (isPageRefresh && currentPath === "/collections") {
+      sessionStorage.setItem("redirectedFromCollections", "true"); // 记录跳转状态
       navigate("/", { replace: true });
+    }
 
-      // **清除 `replace: true` 影响，确保 `/collections` 可点击**
+    // 监听 sessionStorage，防止 `/collections` 被错误拦截
+    if (sessionStorage.getItem("redirectedFromCollections")) {
       setTimeout(() => {
-        sessionStorage.removeItem("collectionsRedirected"); // 允许再次点击 `/collections`
+        sessionStorage.removeItem("redirectedFromCollections");
       }, 500);
     }
 
