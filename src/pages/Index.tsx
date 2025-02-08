@@ -5,7 +5,6 @@ import Header from "@/components/Header";
 import WallpaperGrid from "@/components/WallpaperGrid";
 import { useAuth } from "@/App";
 import { useQueryClient } from "@tanstack/react-query";
-import { supabase } from "@/integrations/supabase/client";
 
 const Index = () => {
   const navigate = useNavigate();
@@ -13,12 +12,20 @@ const Index = () => {
   const queryClient = useQueryClient();
 
   useEffect(() => {
-    if (!session) {
-      console.log("Index: No session found, redirecting to /auth");
-      queryClient.clear();
-      supabase.auth.signOut();
-      navigate('/auth');
-    }
+    const checkAuth = async () => {
+      try {
+        if (!session) {
+          console.log("Index: No session found, redirecting to /auth");
+          queryClient.clear();
+          navigate('/auth');
+        }
+      } catch (error) {
+        console.error("Auth check error:", error);
+        navigate('/auth');
+      }
+    };
+
+    checkAuth();
   }, [session, navigate, queryClient]);
 
   if (!session) {
