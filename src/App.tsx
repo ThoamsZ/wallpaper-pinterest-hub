@@ -1,3 +1,4 @@
+
 import { BrowserRouter as Router, Routes, Route, useNavigate } from "react-router-dom";
 import { createContext, useContext, useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
@@ -44,27 +45,50 @@ function AuthProvider({ children }: { children: React.ReactNode }) {
     const navigationEntries = performance.getEntriesByType("navigation") as PerformanceNavigationTiming[];
     const isPageRefresh = navigationEntries.length > 0 && navigationEntries[0].type === "reload";
 
-    // 仅在 `collections` 页面刷新时跳转到 `/`
-    if (isPageRefresh && currentPath === "/collections") {
-      sessionStorage.setItem("redirectedFromCollections", "true"); // 记录跳转状态
-      window.location.href = "/"; // **直接使用 window.location.href 避免影响 React Router**
+    // 仅在 `collections` 或 `likes` 页面刷新时跳转到 `/`
+    if (isPageRefresh && (currentPath === "/collections" || currentPath === "/likes")) {
+      window.location.href = "/";
+      return;
     }
 
     // 初始 session 检查
-    supabase.auth.getSession().then(({ data: { session: currentSession } }) => {
-      setSession(currentSession);
-    });
+    const initializeAuth = async () => {
+      try {
+        const { data: { session: currentSession }, error } = await supabase.auth.getSession();
+        
+        if (error) {
+          console.error("Session error:", error);
+          setSession(null);
+          return;
+        }
+
+        setSession(currentSession);
+      } catch (error) {
+        console.error("Auth initialization error:", error);
+        setSession(null);
+      }
+    };
+
+    initializeAuth();
 
     // 监听身份验证状态变化
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, newSession) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, newSession) => {
       console.log("Auth state changed:", _event, newSession);
-      setSession(newSession);
+      
+      if (_event === 'TOKEN_REFRESHED') {
+        setSession(newSession);
+      } else if (_event === 'SIGNED_OUT') {
+        setSession(null);
+        navigate('/');
+      } else {
+        setSession(newSession);
+      }
     });
 
     return () => {
       subscription.unsubscribe();
     };
-  }, []);
+  }, [navigate]);
 
   return (
     <AuthContext.Provider value={{ session }}>
