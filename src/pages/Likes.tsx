@@ -5,6 +5,7 @@ import { useQuery } from "@tanstack/react-query";
 import Header from "@/components/Header";
 import WallpaperGrid from "@/components/WallpaperGrid";
 import { useAuth } from "@/App";
+import { supabase } from "@/integrations/supabase/client";
 
 const Likes = () => {
   const navigate = useNavigate();
