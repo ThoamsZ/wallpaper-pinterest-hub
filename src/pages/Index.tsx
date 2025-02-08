@@ -17,10 +17,11 @@ const Index = () => {
     }
   }, [session]);
 
-  // **修正逻辑：只有在 session === undefined 且当前路径不是 `/`，才跳转 `/auth`**
+  // ✅ **只在用户未登录并访问受保护页面时，才跳转 /auth**
   useEffect(() => {
-    if (session === undefined && window.location.pathname !== "/" && window.location.pathname !== "/index") {
-      console.log("Redirecting to /auth because session is undefined.");
+    const protectedPages = ["/likes", "/collections", "/upload"];
+    if (!session && protectedPages.includes(window.location.pathname)) {
+      console.log("Redirecting to /auth because session is missing.");
       queryClient.clear();
       navigate("/auth");
     }

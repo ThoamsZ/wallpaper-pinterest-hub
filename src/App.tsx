@@ -36,7 +36,7 @@ function AuthProvider({ children }: { children: React.ReactNode }) {
   const [session, setSession] = useState<any | null>(null);
 
   useEffect(() => {
-    // 获取 session 状态
+    // ✅ **确保 session 初始化为 null，而不是 undefined**
     supabase.auth.getSession().then(({ data: { session: currentSession } }) => {
       setSession(currentSession ?? null);
     });
