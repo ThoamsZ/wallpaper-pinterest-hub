@@ -48,13 +48,12 @@ function AuthProvider({ children }: { children: React.ReactNode }) {
     if (isPageRefresh && currentPath === "/collections") {
       sessionStorage.setItem("redirectedFromCollections", "true"); // 记录跳转状态
       navigate("/", { replace: true });
-    }
 
-    // 监听 sessionStorage，防止 `/collections` 被错误拦截
-    if (sessionStorage.getItem("redirectedFromCollections")) {
+      // **清除 `replace: true` 影响，确保 `/collections` 可点击**
       setTimeout(() => {
+        window.history.replaceState({}, "", "/"); // 让 `/collections` 能正常点击
         sessionStorage.removeItem("redirectedFromCollections");
-      }, 500);
+      }, 100);
     }
 
     // 初始 session 检查
