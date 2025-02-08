@@ -18,7 +18,7 @@ const Auth = () => {
   useEffect(() => {
     console.log("Auth: Checking session");
     const checkSession = async () => {
-      const { data: { session }, error } = await supabase.auth.getSession();
+      const { data: { session } } = await supabase.auth.getSession();
       if (session) {
         console.log("Auth: Session found, redirecting to /");
         navigate("/");
@@ -34,24 +34,6 @@ const Auth = () => {
 
     try {
       if (isSignUp) {
-        // First check if user already exists
-        const { data: existingUser } = await supabase
-          .from('users')
-          .select('id')
-          .eq('id', email)
-          .maybeSingle();
-
-        if (existingUser) {
-          toast({
-            title: "Account exists",
-            description: "This email is already registered. Please sign in instead.",
-            variant: "destructive",
-          });
-          setIsSignUp(false);
-          setIsLoading(false);
-          return;
-        }
-
         const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
           email,
           password,
@@ -76,13 +58,15 @@ const Auth = () => {
           return;
         }
 
-        if (signUpData.session) {
-          navigate("/");
-        } else {
+        // Check if email verification is required
+        if (!signUpData.session) {
           toast({
             title: "Success",
             description: "Please check your email to verify your account",
           });
+        } else {
+          // If email verification is disabled, redirect to home
+          navigate("/");
         }
       } else {
         const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
@@ -92,21 +76,20 @@ const Auth = () => {
 
         if (signInError) {
           console.error("Sign in error:", signInError);
+          let errorMessage = "Invalid login credentials";
           
-          if (signInError.message === "Invalid login credentials" || 
-              signInError.message.includes("Invalid")) {
-            toast({
-              title: "Invalid credentials",
-              description: "Please check your email and password",
-              variant: "destructive",
-            });
-          } else {
-            toast({
-              title: "Sign in failed",
-              description: signInError.message,
-              variant: "destructive",
-            });
+          // Provide more specific error messages
+          if (signInError.message === "Email not confirmed") {
+            errorMessage = "Please verify your email address before signing in";
+          } else if (signInError.message.includes("Invalid credentials")) {
+            errorMessage = "Invalid email or password";
           }
+          
+          toast({
+            title: "Sign in failed",
+            description: errorMessage,
+            variant: "destructive",
+          });
           return;
         }
 
@@ -118,7 +101,7 @@ const Auth = () => {
       console.error("Auth error:", error);
       toast({
         title: "Error",
-        description: error.message,
+        description: error.message || "An unexpected error occurred",
         variant: "destructive",
       });
     } finally {
