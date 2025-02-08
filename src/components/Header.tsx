@@ -1,3 +1,4 @@
+
 import { Search, Heart, Archive } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -116,7 +117,7 @@ const Header = ({ isDisabled = false }: HeaderProps) => {
         .from('users')
         .select('id')
         .eq('creator_code', searchQuery.trim())
-        .single();
+        .maybeSingle();
 
       if (creatorData) {
         navigate(`/creator/${searchQuery.trim()}`);
@@ -310,3 +311,4 @@ const Header = ({ isDisabled = false }: HeaderProps) => {
 };
 
 export default Header;
+
