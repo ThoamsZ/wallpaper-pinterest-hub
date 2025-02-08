@@ -1,57 +1,27 @@
 
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import Header from "@/components/Header";
 import WallpaperGrid from "@/components/WallpaperGrid";
-import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/App";
 import { useQueryClient } from "@tanstack/react-query";
 
 const Index = () => {
-  const [isLoading, setIsLoading] = useState(true);
   const navigate = useNavigate();
+  const { session, loading } = useAuth();
   const queryClient = useQueryClient();
 
   useEffect(() => {
-    let mounted = true;
+    console.log("Index: Current session state:", { session, loading });
+    
+    if (!loading && !session) {
+      console.log("Index: No session found, redirecting to /auth");
+      queryClient.clear();
+      navigate('/auth');
+    }
+  }, [session, loading, navigate, queryClient]);
 
-    const getSession = async () => {
-      try {
-        const { data: { session }, error } = await supabase.auth.getSession();
-        if (error) throw error;
-        
-        if (mounted) {
-          if (!session) {
-            navigate('/auth');
-          }
-          setIsLoading(false);
-        }
-      } catch (error) {
-        console.error("Session check error:", error);
-        if (mounted) {
-          navigate('/auth');
-          setIsLoading(false);
-        }
-      }
-    };
-
-    getSession();
-
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange(async (event, session) => {
-      if (event === 'SIGNED_OUT' || !session) {
-        queryClient.clear();
-        navigate('/auth');
-      }
-    });
-
-    return () => {
-      mounted = false;
-      subscription?.unsubscribe();
-    };
-  }, [navigate, queryClient]);
-
-  if (isLoading) {
+  if (loading) {
     return (
       <div className="min-h-screen bg-background">
         <Header isDisabled={true} />
@@ -67,7 +37,7 @@ const Index = () => {
 
   return (
     <div className="min-h-screen bg-background">
-      <Header isDisabled={isLoading} />
+      <Header isDisabled={loading} />
       <main className="container mx-auto px-4 sm:px-6 lg:px-8">
         <WallpaperGrid />
       </main>

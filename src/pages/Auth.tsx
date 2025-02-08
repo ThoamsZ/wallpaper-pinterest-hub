@@ -16,9 +16,11 @@ const Auth = () => {
 
   // Check session on mount and redirect if already authenticated
   useEffect(() => {
+    console.log("Auth: Checking session");
     const checkSession = async () => {
       const { data: { session }, error } = await supabase.auth.getSession();
       if (session) {
+        console.log("Auth: Session found, redirecting to /");
         navigate("/");
       }
     };
@@ -28,6 +30,7 @@ const Auth = () => {
   const handleAuth = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
+    console.log("Auth: Handling auth", { isSignUp });
 
     try {
       if (isSignUp) {
