@@ -7,22 +7,16 @@ type Wallpaper = Database['public']['Tables']['wallpapers']['Row'];
 
 const PAGE_SIZE = 25;
 
-const fetchWallpaperPage = async ({ pageParam = 0, selectedTag }: { pageParam?: number, selectedTag?: string | null }) => {
+const fetchWallpaperPage = async ({ pageParam = 0 }) => {
   try {
     const from = pageParam * PAGE_SIZE;
     const to = from + PAGE_SIZE - 1;
 
-    let query = supabase
+    const { data, error } = await supabase
       .from('wallpapers')
       .select('*')
       .order('created_at', { ascending: false })
       .range(from, to);
-
-    if (selectedTag) {
-      query = query.contains('tags', [selectedTag]);
-    }
-
-    const { data, error } = await query;
 
     if (error) throw error;
     return data ?? [];
@@ -32,7 +26,7 @@ const fetchWallpaperPage = async ({ pageParam = 0, selectedTag }: { pageParam?: 
   }
 };
 
-export const useWallpapers = (propWallpapers?: Wallpaper[], selectedTag?: string | null) => {
+export const useWallpapers = (propWallpapers?: Wallpaper[]) => {
   const {
     data,
     fetchNextPage,
@@ -42,12 +36,14 @@ export const useWallpapers = (propWallpapers?: Wallpaper[], selectedTag?: string
     isRefetching,
     isFetchingNextPage
   } = useInfiniteQuery({
-    queryKey: ['wallpapers', selectedTag],
-    queryFn: ({ pageParam }) => fetchWallpaperPage({ pageParam, selectedTag }),
+    queryKey: ['wallpapers'],
+    queryFn: fetchWallpaperPage,
     getNextPageParam: (lastPage, allPages) => {
+      // Ensure we have valid data to check
       if (!lastPage || !Array.isArray(lastPage)) {
         return undefined;
       }
+      // Return next page number if we got a full page of results
       return lastPage.length >= PAGE_SIZE ? allPages.length : undefined;
     },
     initialData: propWallpapers ? {
@@ -62,6 +58,7 @@ export const useWallpapers = (propWallpapers?: Wallpaper[], selectedTag?: string
     retry: 2,
   });
 
+  // Safely handle data transformation
   const wallpapers = propWallpapers ?? 
     data?.pages?.reduce<Wallpaper[]>((acc, page) => {
       if (Array.isArray(page)) {

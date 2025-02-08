@@ -3,13 +3,11 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import Header from "@/components/Header";
 import WallpaperGrid from "@/components/WallpaperGrid";
-import TagFilterBar from "@/components/TagFilterBar";
 import { supabase } from "@/integrations/supabase/client";
 import { useQueryClient } from "@tanstack/react-query";
 
 const Index = () => {
   const [isLoading, setIsLoading] = useState(true);
-  const [selectedTag, setSelectedTag] = useState<string | null>(null);
   const navigate = useNavigate();
   const queryClient = useQueryClient();
 
@@ -58,10 +56,7 @@ const Index = () => {
     <div className="min-h-screen bg-background">
       <Header isDisabled={isLoading} />
       <main className="container mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="mb-6">
-          <TagFilterBar onTagSelect={setSelectedTag} selectedTag={selectedTag} />
-        </div>
-        <WallpaperGrid selectedTag={selectedTag} />
+        <WallpaperGrid />
       </main>
     </div>
   );
