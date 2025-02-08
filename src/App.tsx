@@ -44,14 +44,19 @@ function AuthProvider({ children }: { children: React.ReactNode }) {
     const navigationEntries = performance.getEntriesByType("navigation") as PerformanceNavigationTiming[];
     const isPageRefresh = navigationEntries.length > 0 && navigationEntries[0].type === "reload";
 
+    // 仅在 `collections` 页面刷新时跳转到 `/`
+    if (isPageRefresh && currentPath === "/collections") {
+      navigate("/", { replace: true });
+
+      // **解决刷新后无法再次进入 `/collections` 的问题**
+      setTimeout(() => {
+        window.history.pushState({}, "", "/");
+      }, 100);
+    }
+
     // 初始 session 检查
     supabase.auth.getSession().then(({ data: { session: currentSession } }) => {
       setSession(currentSession);
-
-      // 仅在 `collections` 页面刷新时跳转到 `/`
-      if (isPageRefresh && currentPath === "/collections") {
-        navigate("/", { replace: true });
-      }
     });
 
     // 监听身份验证状态变化
