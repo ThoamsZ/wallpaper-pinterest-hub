@@ -1,4 +1,3 @@
-
 import { Search, Heart, Archive } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -119,17 +118,26 @@ const Header = ({ isDisabled = false }: HeaderProps) => {
         .eq('creator_code', searchQuery.trim())
         .single();
 
-      if (creatorError && creatorError.code !== 'PGRST116') {
-        console.error('Error searching creator:', creatorError);
+      if (creatorData) {
+        navigate(`/creator/${searchQuery.trim()}`);
+        setIsProcessing(false);
         return;
       }
 
-      if (creatorData) {
-        navigate(`/creator/${searchQuery.trim()}`);
+      const { data: wallpaperData, error: wallpaperError } = await supabase
+        .from('wallpapers')
+        .select('*')
+        .contains('tags', [searchQuery.trim()]);
+
+      if (wallpaperData && wallpaperData.length > 0) {
+        queryClient.setQueryData(['wallpapers'], {
+          pages: [wallpaperData],
+          pageParams: [0],
+        });
       } else {
         toast({
-          title: "Creator Not Found",
-          description: "No creator found with this code",
+          title: "No Results",
+          description: "No wallpapers or creators found with your search term",
           variant: "destructive",
         });
       }
@@ -181,7 +189,6 @@ const Header = ({ isDisabled = false }: HeaderProps) => {
   const handleNavigation = async (path: string) => {
     if (isDisabled || isProcessing) return;
     
-    // Check auth state before navigation to protected routes
     if ((path === '/collections' || path === '/likes') && !isAuthenticated) {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) {
@@ -196,7 +203,7 @@ const Header = ({ isDisabled = false }: HeaderProps) => {
   const isButtonDisabled = isDisabled || isProcessing;
 
   return (
-    <header className="bg-white/95 backdrop-blur-md z-40 ">
+    <header className="bg-white/95 backdrop-blur-md z-40">
       <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-3 pb-6">
         <div className="flex flex-col gap-3">
           <div className="flex justify-center items-center gap-3">
@@ -286,7 +293,7 @@ const Header = ({ isDisabled = false }: HeaderProps) => {
               <div className="relative">
                 <Input
                   type="search"
-                  placeholder="Search for creator codes..."
+                  placeholder="Search for wallpapers or creator codes..."
                   className={`w-full pl-10 pr-4 py-1.5 rounded-full border-gray-200 text-sm ${isButtonDisabled ? 'bg-gray-100 cursor-not-allowed' : ''}`}
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}

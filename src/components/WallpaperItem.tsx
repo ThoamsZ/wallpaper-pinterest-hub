@@ -52,7 +52,7 @@ const WallpaperItem = ({ wallpaper, onSelect }: WallpaperItemProps) => {
       onClick={() => onSelect(wallpaper)}
     >
       <div className="relative group overflow-hidden rounded-lg">
-        <div className="aspect-[3/4] w-full bg-gray-100 dark:bg-gray-800">
+        <div className="relative pt-[166.67%] w-full bg-gray-100 dark:bg-gray-800">
           {!imageLoaded && (
             <div className="absolute inset-0 animate-pulse bg-gray-200 dark:bg-gray-700 rounded-lg" />
           )}
@@ -62,7 +62,7 @@ const WallpaperItem = ({ wallpaper, onSelect }: WallpaperItemProps) => {
               alt={`Wallpaper ${wallpaper.id}`}
               loading="eager"
               onLoad={() => setImageLoaded(true)}
-              className={`w-full h-full object-cover transition-all duration-300 ${
+              className={`absolute inset-0 w-full h-full object-cover transition-all duration-300 ${
                 imageLoaded ? 'opacity-100 scale-100' : 'opacity-0 scale-95'
               } ${!isMobile && isHovered ? "scale-105" : ""}`}
             />
@@ -74,3 +74,4 @@ const WallpaperItem = ({ wallpaper, onSelect }: WallpaperItemProps) => {
 };
 
 export default WallpaperItem;
+
