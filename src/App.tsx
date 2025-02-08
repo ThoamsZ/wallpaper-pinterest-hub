@@ -1,5 +1,7 @@
-
 import { BrowserRouter as Router, Routes, Route, useNavigate } from "react-router-dom";
+import { createContext, useContext, useState, useEffect } from "react";
+import { supabase } from "@/integrations/supabase/client";
+
 import Index from "@/pages/Index";
 import Auth from "@/pages/Auth";
 import Collections from "@/pages/Collections";
@@ -9,41 +11,46 @@ import AdminPanel from "@/pages/AdminPanel";
 import NotFound from "@/pages/NotFound";
 import Upload from "@/pages/Upload";
 import { Toaster } from "@/components/ui/toaster";
-import "./App.css";
-import { createContext, useContext, useState, useEffect } from 'react';
-import { supabase } from '@/integrations/supabase/client';
 
+import "./App.css";
+
+// 定义 AuthContext 类型
 interface AuthContextType {
   session: any | null;
 }
 
+// 创建 AuthContext
 const AuthContext = createContext<AuthContextType | null>(null);
 
+// 自定义 Hook 方便组件访问 AuthContext
 export const useAuth = () => {
   const context = useContext(AuthContext);
   if (!context) {
-    throw new Error('useAuth must be used within an AuthProvider');
+    throw new Error("useAuth must be used within an AuthProvider");
   }
   return context;
 };
 
+// AuthProvider 组件
 function AuthProvider({ children }: { children: React.ReactNode }) {
   const [session, setSession] = useState<any | null>(null);
   const navigate = useNavigate();
 
   useEffect(() => {
-    // Check if this is a page refresh
-    const isPageRefresh = performance.navigation.type === 1;
+    // 获取当前路径
+    const currentPath = window.location.pathname;
 
-    // Initial session check
+    // 初始 session 检查
     supabase.auth.getSession().then(({ data: { session: currentSession } }) => {
       setSession(currentSession);
-      if (isPageRefresh) {
-        navigate('/', { replace: true });
+
+      // 如果当前路径是 `/collections`，刷新时跳转到 `/`
+      if (currentPath === "/collections") {
+        navigate("/", { replace: true });
       }
     });
 
-    // Listen for auth changes
+    // 监听身份验证状态变化
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, newSession) => {
       console.log("Auth state changed:", _event, newSession);
       setSession(newSession);
@@ -61,6 +68,7 @@ function AuthProvider({ children }: { children: React.ReactNode }) {
   );
 }
 
+// App 组件
 function App() {
   return (
     <Router>
