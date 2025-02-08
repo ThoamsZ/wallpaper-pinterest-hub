@@ -19,7 +19,7 @@ const Auth = () => {
     console.log("Auth: Checking session");
     const checkSession = async () => {
       const { data: { session }, error } = await supabase.auth.getSession();
-      if (session) {
+      if (session && window.location.pathname === '/auth') {
         console.log("Auth: Session found, redirecting to /");
         navigate("/");
       }
