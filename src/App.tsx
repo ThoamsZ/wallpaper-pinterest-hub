@@ -44,9 +44,14 @@ function AuthProvider({ children }: { children: React.ReactNode }) {
     const navigationEntries = performance.getEntriesByType("navigation") as PerformanceNavigationTiming[];
     const isPageRefresh = navigationEntries.length > 0 && navigationEntries[0].type === "reload";
 
-    // 如果需要特定逻辑（如跳转到主页），可以在这里判断
+    // 仅在刷新 `/collections` 时跳转到 `/`
     if (isPageRefresh && currentPath === "/collections") {
       navigate("/", { replace: true });
+
+      // 解决“点击 collections 仍然跳转到 index”的问题
+      setTimeout(() => {
+        window.history.pushState({}, "", "/");
+      }, 100);
     }
 
     // 初始 session 检查
