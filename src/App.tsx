@@ -65,8 +65,8 @@ function App() {
     <Router>
       <AuthProvider>
         <Routes>
-          <Route path="/" element={<Index />} />  {/* 确保 "/" 显示 Index 页面 */}
-          <Route path="/index" element={<Index />} />  {/* 允许访问 "/index" */}
+          <Route path="/" element={<Index />} />  {/* 确保 "/" 访问 Index */}
+          <Route path="/index" element={<Index />} />  {/* 允许 "/index" 访问 */}
           <Route path="/auth" element={<Auth />} />
           <Route path="/collections" element={<Collections />} />
           <Route path="/likes" element={<Likes />} />

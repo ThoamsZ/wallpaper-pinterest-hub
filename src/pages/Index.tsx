@@ -17,9 +17,9 @@ const Index = () => {
     }
   }, [session]);
 
-  // 只有 session 是 `undefined`（代表未登录）时才跳转 `/auth`
+  // **确保：只有 session === undefined 且当前路径不是 /，才跳转 /auth**
   useEffect(() => {
-    if (session === undefined) {
+    if (session === undefined && window.location.pathname !== "/") {
       console.log("Index: No session found, redirecting to /auth");
       queryClient.clear();
       navigate("/auth");
