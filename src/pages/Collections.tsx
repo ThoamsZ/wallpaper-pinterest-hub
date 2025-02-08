@@ -22,7 +22,6 @@ const Collections = () => {
       try {
         const { data: { session } } = await supabase.auth.getSession();
         if (!session) {
-          console.log("Collections: No session found, redirecting to /auth");
           navigate('/auth');
           return;
         }

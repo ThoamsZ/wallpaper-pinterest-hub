@@ -1,5 +1,4 @@
-
-import { BrowserRouter as Router, Routes, Route, useNavigate, Navigate } from "react-router-dom";
+import { BrowserRouter as Router, Routes, Route, useNavigate } from "react-router-dom";
 import { createContext, useContext, useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -15,12 +14,15 @@ import { Toaster } from "@/components/ui/toaster";
 
 import "./App.css";
 
+// 定义 AuthContext 类型
 interface AuthContextType {
   session: any | null;
 }
 
+// 创建 AuthContext
 const AuthContext = createContext<AuthContextType | null>(null);
 
+// 自定义 Hook 方便组件访问 AuthContext
 export const useAuth = () => {
   const context = useContext(AuthContext);
   if (!context) {
@@ -29,47 +31,40 @@ export const useAuth = () => {
   return context;
 };
 
+// AuthProvider 组件
 function AuthProvider({ children }: { children: React.ReactNode }) {
   const [session, setSession] = useState<any | null>(null);
   const navigate = useNavigate();
 
   useEffect(() => {
-    const initializeAuth = async () => {
-      try {
-        const { data: { session: currentSession }, error } = await supabase.auth.getSession();
-        
-        if (error) {
-          console.error("Session error:", error);
-          setSession(null);
-          return;
-        }
+    // 获取当前路径
+    const currentPath = window.location.pathname;
 
-        setSession(currentSession);
-      } catch (error) {
-        console.error("Auth initialization error:", error);
-        setSession(null);
-      }
-    };
+    // 判断是否是页面刷新
+    const navigationEntries = performance.getEntriesByType("navigation") as PerformanceNavigationTiming[];
+    const isPageRefresh = navigationEntries.length > 0 && navigationEntries[0].type === "reload";
 
-    initializeAuth();
+    // 仅在 `collections` 页面刷新时跳转到 `/`
+    if (isPageRefresh && currentPath === "/collections") {
+      sessionStorage.setItem("redirectedFromCollections", "true"); // 记录跳转状态
+      window.location.href = "/"; // **直接使用 window.location.href 避免影响 React Router**
+    }
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, newSession) => {
+    // 初始 session 检查
+    supabase.auth.getSession().then(({ data: { session: currentSession } }) => {
+      setSession(currentSession);
+    });
+
+    // 监听身份验证状态变化
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, newSession) => {
       console.log("Auth state changed:", _event, newSession);
-      
-      if (_event === 'TOKEN_REFRESHED') {
-        setSession(newSession);
-      } else if (_event === 'SIGNED_OUT') {
-        setSession(null);
-        navigate('/');
-      } else {
-        setSession(newSession);
-      }
+      setSession(newSession);
     });
 
     return () => {
       subscription.unsubscribe();
     };
-  }, [navigate]);
+  }, []);
 
   return (
     <AuthContext.Provider value={{ session }}>
@@ -78,6 +73,7 @@ function AuthProvider({ children }: { children: React.ReactNode }) {
   );
 }
 
+// App 组件
 function App() {
   return (
     <Router>
@@ -90,7 +86,7 @@ function App() {
           <Route path="/creator/:creatorCode" element={<CreatorProfile />} />
           <Route path="/admin-panel" element={<AdminPanel />} />
           <Route path="/upload" element={<Upload />} />
-          <Route path="*" element={<Navigate to="/" replace />} />
+          <Route path="*" element={<NotFound />} />
         </Routes>
         <Toaster />
       </AuthProvider>
