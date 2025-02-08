@@ -165,57 +165,35 @@ const Header = ({ isDisabled = false }: HeaderProps) => {
 
     setIsProcessing(true);
     try {
-      const { data: { session } } = await supabase.auth.getSession();
+      // First try to clear the existing session gracefully
+      await supabase.auth.signOut();
       
-      if (!session) {
-        queryClient.clear();
-        setIsAuthenticated(false);
-        setUserEmail("");
-        setIsAdmin(false);
-        navigate("/auth");
-        toast({
-          title: "Logged out",
-          description: "You have been successfully logged out",
-        });
-        return;
-      }
-
-      const { error } = await supabase.auth.signOut();
-      if (error) {
-        console.error('Logout error:', error);
-        if (error.message.includes('session_not_found')) {
-          queryClient.clear();
-          setIsAuthenticated(false);
-          setUserEmail("");
-          setIsAdmin(false);
-          navigate("/auth");
-          toast({
-            title: "Logged out",
-            description: "You have been successfully logged out",
-          });
-          return;
-        }
-        
-        toast({
-          title: "Error",
-          description: "Failed to sign out properly. Please try again.",
-          variant: "destructive",
-        });
-        return;
-      }
-      
+      // Clear client state regardless of signOut result
       queryClient.clear();
+      setIsAuthenticated(false);
+      setUserEmail("");
+      setIsAdmin(false);
+      
+      // Navigate to auth page
       navigate("/auth");
+      
       toast({
         title: "Success",
         description: "Successfully logged out",
       });
     } catch (error) {
       console.error('Logout error:', error);
+      
+      // Even if there's an error, we want to clear the client state
+      queryClient.clear();
+      setIsAuthenticated(false);
+      setUserEmail("");
+      setIsAdmin(false);
+      navigate("/auth");
+      
       toast({
-        title: "Error",
-        description: "An error occurred during logout",
-        variant: "destructive",
+        title: "Logged out",
+        description: "You have been logged out",
       });
     } finally {
       setIsProcessing(false);
