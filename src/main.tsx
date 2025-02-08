@@ -9,9 +9,9 @@ const queryClient = new QueryClient({
     queries: {
       gcTime: 1000 * 60 * 60, // 1 hour
       staleTime: 1000 * 60 * 5, // 5 minutes
-      retry: 0, // Don't retry failed queries
+      retry: false,
       refetchOnWindowFocus: false,
-      refetchOnMount: true
+      refetchOnMount: false
     },
   },
 });
@@ -21,4 +21,3 @@ createRoot(document.getElementById("root")!).render(
     <App />
   </QueryClientProvider>
 );
-

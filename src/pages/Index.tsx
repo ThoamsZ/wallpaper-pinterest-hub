@@ -12,25 +12,25 @@ const Index = () => {
   const queryClient = useQueryClient();
 
   useEffect(() => {
-    let mounted = true;
-
     const getSession = async () => {
       try {
         const { data: { session }, error } = await supabase.auth.getSession();
-        if (error) throw error;
         
-        if (!session && mounted) {
+        if (error) {
+          console.error("Session check error:", error);
           navigate('/auth');
+          return;
         }
-        
-        if (mounted) {
-          setIsLoading(false);
+
+        if (!session) {
+          navigate('/auth');
+          return;
         }
+
+        setIsLoading(false);
       } catch (error) {
         console.error("Session check error:", error);
-        if (mounted) {
-          navigate('/auth');
-        }
+        navigate('/auth');
       }
     };
 
@@ -46,7 +46,6 @@ const Index = () => {
     });
 
     return () => {
-      mounted = false;
       subscription?.unsubscribe();
     };
   }, [navigate, queryClient]);
@@ -76,4 +75,3 @@ const Index = () => {
 };
 
 export default Index;
-
