@@ -1,9 +1,11 @@
+
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Heart, Download, X } from "lucide-react";
 import { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
+import { useNavigate } from "react-router-dom";
 import type { Database } from "@/integrations/supabase/types";
 
 type Wallpaper = Database['public']['Tables']['wallpapers']['Row'];
@@ -18,6 +20,7 @@ interface WallpaperModalProps {
 
 const WallpaperModal = ({ wallpaper, isOpen, onClose, onLike, isLiked }: WallpaperModalProps) => {
   const [isDownloading, setIsDownloading] = useState(false);
+  const navigate = useNavigate();
 
   const handleDownload = async () => {
     if (!wallpaper) return;
@@ -32,6 +35,18 @@ const WallpaperModal = ({ wallpaper, isOpen, onClose, onLike, isLiked }: Wallpap
           description: "Please login to download wallpapers",
           variant: "destructive",
         });
+        navigate('/auth');
+        return;
+      }
+
+      // Check if user is guest
+      if (session.user.email === 'guest@wallpaperhub.com') {
+        toast({
+          title: "Guest account",
+          description: "Please sign up to download wallpapers",
+          variant: "destructive",
+        });
+        navigate('/auth');
         return;
       }
 
