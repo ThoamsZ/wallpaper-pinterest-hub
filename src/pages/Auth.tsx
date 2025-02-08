@@ -147,7 +147,7 @@ const Auth = () => {
       <div className="w-full max-w-md space-y-8 p-8 border rounded-lg shadow-lg">
         <div className="text-center">
           <h1 className="text-2xl font-bold">{isSignUp ? "Create Account" : "Sign In"}</h1>
-          <p className="text-gray-600 mt-2">to access all features of WallpaperHub</p>
+          <p className="text-gray-600 mt-2">to access all features of xxWallpaper</p>
         </div>
 
         <form onSubmit={handleAuth} className="space-y-6">
