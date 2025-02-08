@@ -13,12 +13,24 @@ import { useState, useEffect } from 'react'
 import { supabase } from './supabaseClient'
 import { AuthProvider } from './contexts/AuthContext'
 import AppContent from './components/AppContent'
+import { ErrorBoundary } from 'react-error-boundary'
+
+function ErrorFallback({ error }) {
+  return (
+    <div role="alert">
+      <p>出现错误:</p>
+      <pre>{error.message}</pre>
+    </div>
+  )
+}
 
 function App() {
   return (
-    <AuthProvider>
-      <AppContent />
-    </AuthProvider>
+    <ErrorBoundary FallbackComponent={ErrorFallback}>
+      <AuthProvider>
+        <AppContent />
+      </AuthProvider>
+    </ErrorBoundary>
   )
 }
 

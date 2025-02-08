@@ -1,10 +1,17 @@
 import { useAuth } from '../contexts/AuthContext'
+import { useEffect } from 'react'
 
 function AppContent() {
   const { session, loading } = useAuth()
 
+  useEffect(() => {
+    console.log('AppContent mounted:', { session, loading })
+  }, [])
+
+  console.log('AppContent 渲染:', { session, loading })
+
   if (loading) {
-    return <div>加载中...</div>
+    return <div>AppContent 加载中...</div>
   }
 
   return (
@@ -12,7 +19,7 @@ function AppContent() {
       {session ? (
         <div>
           <h1>已登录</h1>
-          <p>用户邮箱: {session.user.email}</p>
+          <p>用户邮箱: {session.user?.email}</p>
         </div>
       ) : (
         <div>

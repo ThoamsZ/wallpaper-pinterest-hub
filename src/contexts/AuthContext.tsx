@@ -8,20 +8,32 @@ export function AuthProvider({ children }) {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
+    console.log('AuthProvider useEffect 开始执行')
+    
     // 获取初始会话
     supabase.auth.getSession().then(({ data: { session: initialSession } }) => {
+      console.log('获取到初始会话:', initialSession)
       setSession(initialSession)
+      setLoading(false)
+    }).catch(error => {
+      console.error('获取会话失败:', error)
       setLoading(false)
     })
 
     // 监听认证状态变化
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      console.log('认证状态变化:', _event, session)
       setSession(session)
       setLoading(false)
     })
 
-    return () => subscription.unsubscribe()
+    return () => {
+      console.log('清理 AuthProvider')
+      subscription.unsubscribe()
+    }
   }, [])
+
+  console.log('AuthProvider 渲染:', { loading, session })
 
   const value = {
     session,
@@ -31,7 +43,11 @@ export function AuthProvider({ children }) {
 
   return (
     <AuthContext.Provider value={value}>
-      {!loading && children}
+      {loading ? (
+        <div>正在加载认证状态...</div>
+      ) : (
+        children
+      )}
     </AuthContext.Provider>
   )
 }
