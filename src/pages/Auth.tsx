@@ -110,11 +110,15 @@ const Auth = () => {
   };
 
   const handleGuestAccess = () => {
+    console.log("Auth: Handling guest access");
     toast({
       title: "Guest Access",
       description: "Browsing as a guest. Some features may be limited.",
     });
-    navigate("/");
+    setTimeout(() => {
+      console.log("Auth: Navigating to / as guest");
+      navigate("/", { replace: true });
+    }, 100);
   };
 
   return (
