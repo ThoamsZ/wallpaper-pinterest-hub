@@ -27,6 +27,59 @@ const Auth = () => {
     checkSession();
   }, [navigate]);
 
+  const handleGuestAccess = async () => {
+    setIsLoading(true);
+    console.log("Auth: Handling guest access");
+
+    try {
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email: 'guest@wallpaperhub.com',
+        password: 'guest123',
+      });
+
+      if (error) {
+        // If guest account doesn't exist, create it
+        if (error.message.includes("Invalid login credentials")) {
+          const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
+            email: 'guest@wallpaperhub.com',
+            password: 'guest123',
+          });
+
+          if (signUpError) {
+            throw signUpError;
+          }
+
+          if (signUpData.session) {
+            toast({
+              title: "Welcome Guest User",
+              description: "You are now browsing as a guest. Some features may be limited.",
+            });
+            navigate("/", { replace: true });
+            return;
+          }
+        }
+        throw error;
+      }
+
+      if (data.session) {
+        toast({
+          title: "Welcome Back Guest User",
+          description: "You are now browsing as a guest. Some features may be limited.",
+        });
+        navigate("/", { replace: true });
+      }
+    } catch (error: any) {
+      console.error("Guest access error:", error);
+      toast({
+        title: "Error",
+        description: "Failed to access as guest. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   const handleAuth = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
@@ -58,14 +111,12 @@ const Auth = () => {
           return;
         }
 
-        // Check if email verification is required
         if (!signUpData.session) {
           toast({
             title: "Success",
             description: "Please check your email to verify your account",
           });
         } else {
-          // If email verification is disabled, redirect to home
           navigate("/");
         }
       } else {
@@ -78,7 +129,6 @@ const Auth = () => {
           console.error("Sign in error:", signInError);
           let errorMessage = "Invalid login credentials";
           
-          // Provide more specific error messages
           if (signInError.message === "Email not confirmed") {
             errorMessage = "Please verify your email address before signing in";
           } else if (signInError.message.includes("Invalid credentials")) {
@@ -115,6 +165,26 @@ const Auth = () => {
         <div className="text-center">
           <h1 className="text-2xl font-bold">{isSignUp ? "Create Account" : "Sign In"}</h1>
           <p className="text-gray-600 mt-2">to continue to WallpaperHub</p>
+        </div>
+
+        <Button
+          onClick={handleGuestAccess}
+          variant="outline"
+          className="w-full"
+          disabled={isLoading}
+        >
+          Continue as Guest
+        </Button>
+
+        <div className="relative">
+          <div className="absolute inset-0 flex items-center">
+            <span className="w-full border-t" />
+          </div>
+          <div className="relative flex justify-center text-xs uppercase">
+            <span className="bg-background px-2 text-muted-foreground">
+              Or continue with
+            </span>
+          </div>
         </div>
 
         <form onSubmit={handleAuth} className="space-y-6">
