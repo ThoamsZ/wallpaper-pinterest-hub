@@ -1,5 +1,5 @@
 
-import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
+import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom";
 import Index from "@/pages/Index";
 import Auth from "@/pages/Auth";
 import Collections from "@/pages/Collections";
@@ -25,6 +25,17 @@ export const useAuth = () => {
     throw new Error('useAuth must be used within an AuthProvider');
   }
   return context;
+};
+
+// Protected Route wrapper component
+const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
+  const { session } = useAuth();
+  
+  if (!session) {
+    return <Navigate to="/auth" replace />;
+  }
+  
+  return <>{children}</>;
 };
 
 function AuthProvider({ children }: { children: React.ReactNode }) {
@@ -59,13 +70,36 @@ function App() {
     <AuthProvider>
       <Router>
         <Routes>
+          {/* Public routes */}
           <Route path="/" element={<Index />} />
           <Route path="/auth" element={<Auth />} />
-          <Route path="/collections" element={<Collections />} />
-          <Route path="/likes" element={<Likes />} />
-          <Route path="/creator/:creatorCode" element={<CreatorProfile />} />
-          <Route path="/admin-panel" element={<AdminPanel />} />
-          <Route path="/upload" element={<Upload />} />
+          
+          {/* Protected routes */}
+          <Route path="/collections" element={
+            <ProtectedRoute>
+              <Collections />
+            </ProtectedRoute>
+          } />
+          <Route path="/likes" element={
+            <ProtectedRoute>
+              <Likes />
+            </ProtectedRoute>
+          } />
+          <Route path="/creator/:creatorCode" element={
+            <ProtectedRoute>
+              <CreatorProfile />
+            </ProtectedRoute>
+          } />
+          <Route path="/admin-panel" element={
+            <ProtectedRoute>
+              <AdminPanel />
+            </ProtectedRoute>
+          } />
+          <Route path="/upload" element={
+            <ProtectedRoute>
+              <Upload />
+            </ProtectedRoute>
+          } />
           <Route path="*" element={<NotFound />} />
         </Routes>
         <Toaster />
