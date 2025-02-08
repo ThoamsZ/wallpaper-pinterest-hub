@@ -1,4 +1,3 @@
-
 import { Search, Heart, Archive } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -166,21 +165,17 @@ const Header = ({ isDisabled = false }: HeaderProps) => {
 
     setIsProcessing(true);
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      
-      // First clear query cache to ensure clean state
+      // First clear cache and local state to ensure clean state
       queryClient.clear();
-      
-      // Only attempt to sign out if we have a valid session
-      if (session) {
-        const { error } = await supabase.auth.signOut();
-        if (error) throw error;
-      }
-      
-      // Reset local state regardless of session status
       setIsAuthenticated(false);
       setUserEmail("");
       setIsAdmin(false);
+      
+      // Then attempt to sign out from Supabase
+      const { error } = await supabase.auth.signOut();
+      if (error) {
+        console.error('Logout error:', error);
+      }
       
       // Navigate to auth page
       navigate("/auth");
@@ -191,11 +186,7 @@ const Header = ({ isDisabled = false }: HeaderProps) => {
       });
     } catch (error) {
       console.error('Logout error:', error);
-      // Even if there's an error, clear local state and redirect
-      setIsAuthenticated(false);
-      setUserEmail("");
-      setIsAdmin(false);
-      queryClient.clear();
+      // Already cleared local state above, just ensure navigation happens
       navigate("/auth");
       
       toast({
