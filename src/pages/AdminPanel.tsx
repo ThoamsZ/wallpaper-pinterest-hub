@@ -1,4 +1,3 @@
-
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -52,8 +51,7 @@ const AdminPanel = () => {
   const [selectedWallpapers, setSelectedWallpapers] = useState<string[]>([]);
   const [creatorCode, setCreatorCode] = useState<string>("");
   const [currentCreatorCode, setCurrentCreatorCode] = useState<string>("");
-  const [verificationCode, setVerificationCode] = useState<string>("");
-  const [isVerificationSent, setIsVerificationSent] = useState(false);
+  const [deletePassword, setDeletePassword] = useState<string>("");
 
   // Check admin status
   const { data: adminData, isError: isAdminError } = useQuery({
@@ -130,31 +128,6 @@ const AdminPanel = () => {
       toast({
         title: "Error",
         description: error.message || "Failed to update creator code",
-        variant: "destructive",
-      });
-    }
-  };
-
-  const handleSendVerificationEmail = async () => {
-    try {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) throw new Error("Not authenticated");
-
-      const { error } = await supabase.auth.resetPasswordForEmail(session.user.email!, {
-        redirectTo: window.location.origin + '/admin-panel',
-      });
-
-      if (error) throw error;
-
-      setIsVerificationSent(true);
-      toast({
-        title: "Verification Email Sent",
-        description: "Please check your email for the verification code",
-      });
-    } catch (error: any) {
-      toast({
-        title: "Error",
-        description: error.message || "Failed to send verification email",
         variant: "destructive",
       });
     }
@@ -287,27 +260,25 @@ const AdminPanel = () => {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) throw new Error("Not authenticated");
 
-      if (!verificationCode.trim()) {
+      if (!deletePassword.trim()) {
         toast({
           title: "Error",
-          description: "Please enter the verification code sent to your email",
+          description: "Please enter your password",
           variant: "destructive",
         });
         return;
       }
 
-      // Verify the code by attempting to update the password
-      const { error: verificationError } = await supabase.auth
-        .verifyOtp({
-          email: session.user.email!,
-          token: verificationCode.trim(),
-          type: 'recovery'
-        });
+      // Verify the password by attempting to sign in
+      const { error: signInError } = await supabase.auth.signInWithPassword({
+        email: session.user.email!,
+        password: deletePassword.trim()
+      });
 
-      if (verificationError) {
+      if (signInError) {
         toast({
           title: "Error",
-          description: "Invalid verification code",
+          description: "Invalid password",
           variant: "destructive",
         });
         return;
@@ -411,28 +382,19 @@ const AdminPanel = () => {
                     <AlertDialogTitle>Delete Account</AlertDialogTitle>
                     <AlertDialogDescription>
                       This action cannot be undone. This will permanently delete your account
-                      and all associated wallpapers. Please verify your email to proceed.
+                      and all associated wallpapers. Please enter your password to confirm.
                     </AlertDialogDescription>
                   </AlertDialogHeader>
-                  <div className="py-4 space-y-4">
-                    {!isVerificationSent ? (
-                      <Button onClick={handleSendVerificationEmail}>
-                        Send Verification Code
-                      </Button>
-                    ) : (
-                      <Input
-                        type="text"
-                        placeholder="Enter verification code"
-                        value={verificationCode}
-                        onChange={(e) => setVerificationCode(e.target.value)}
-                      />
-                    )}
+                  <div className="py-4">
+                    <Input
+                      type="password"
+                      placeholder="Enter your password to confirm"
+                      value={deletePassword}
+                      onChange={(e) => setDeletePassword(e.target.value)}
+                    />
                   </div>
                   <AlertDialogFooter>
-                    <AlertDialogCancel onClick={() => {
-                      setVerificationCode("");
-                      setIsVerificationSent(false);
-                    }}>
+                    <AlertDialogCancel onClick={() => setDeletePassword("")}>
                       Cancel
                     </AlertDialogCancel>
                     <AlertDialogAction
@@ -558,4 +520,3 @@ const AdminPanel = () => {
 };
 
 export default AdminPanel;
-
