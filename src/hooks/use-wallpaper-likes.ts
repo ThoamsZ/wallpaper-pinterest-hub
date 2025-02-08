@@ -12,7 +12,7 @@ export const useWallpaperLikes = () => {
   useEffect(() => {
     const fetchLikedWallpapers = async () => {
       const { data: { session } } = await supabase.auth.getSession();
-      if (session && session.user.email !== 'guest@xxwallpaper.com') {
+      if (session && session.user.email !== 'guest@wallpaperhub.com') {
         const { data: userData } = await supabase
           .from('users')
           .select('favor_image')
@@ -28,7 +28,7 @@ export const useWallpaperLikes = () => {
     fetchLikedWallpapers();
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      if (session && session.user.email !== 'guest@xxwallpaper.com') {
+      if (session && session.user.email !== 'guest@wallpaperhub.com') {
         fetchLikedWallpapers();
       } else {
         setLikedWallpapers([]);
@@ -55,7 +55,7 @@ export const useWallpaperLikes = () => {
       }
 
       // Check if user is guest
-      if (session.user.email === 'guest@xxwallpaper.com') {
+      if (session.user.email === 'guest@wallpaperhub.com') {
         toast({
           title: "Guest account",
           description: "Please sign up to like wallpapers",

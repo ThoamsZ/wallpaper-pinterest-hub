@@ -40,7 +40,7 @@ const WallpaperModal = ({ wallpaper, isOpen, onClose, onLike, isLiked }: Wallpap
       }
 
       // Check if user is guest
-      if (session.user.email === 'guest@xxwallpaper.com') {
+      if (session.user.email === 'guest@wallpaperhub.com') {
         toast({
           title: "Guest account",
           description: "Please sign up to download wallpapers",
