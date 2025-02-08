@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -25,6 +26,16 @@ const Collections = () => {
           navigate('/auth');
           return;
         }
+        // Check if user is guest
+        if (session.user.email === 'guest@wallpaperhub.com') {
+          toast({
+            title: "Guest account",
+            description: "Please sign up to view collections",
+            variant: "destructive",
+          });
+          navigate('/auth');
+          return;
+        }
       } catch (error) {
         console.error('Auth check error:', error);
         navigate('/auth');
@@ -38,7 +49,7 @@ const Collections = () => {
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((event, session) => {
-      if (event === 'SIGNED_OUT' || !session) {
+      if (event === 'SIGNED_OUT' || !session || session.user.email === 'guest@wallpaperhub.com') {
         navigate('/auth');
       }
     });
