@@ -45,7 +45,7 @@ const Index = () => {
     if (isGuestUser) {
       // Show welcome toast only once when page loads
       toast({
-        title: "Welcome to WallpaperHub",
+        title: "Welcome to xxWallpaper",
         description: "Browse freely! Sign up to like and collect wallpapers.",
       });
     }

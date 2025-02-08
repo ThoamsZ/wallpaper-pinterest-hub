@@ -61,7 +61,7 @@ function AuthProvider({ children }: { children: React.ReactNode }) {
             console.log("Successfully logged in as guest");
             setSession(data.session);
             toast({
-              title: "Welcome to WallpaperHub",
+              title: "Welcome to xxWallpaper",
               description: "You're browsing as a guest. Sign up to like and collect wallpapers!",
             });
           }
