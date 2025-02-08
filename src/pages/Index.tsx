@@ -12,41 +12,28 @@ const Index = () => {
   const queryClient = useQueryClient();
 
   useEffect(() => {
-    const getSession = async () => {
-      try {
-        const { data: { session }, error } = await supabase.auth.getSession();
-        
-        if (error) {
-          console.error("Session check error:", error);
-          navigate('/auth');
-          return;
-        }
-
-        if (!session) {
-          navigate('/auth');
-          return;
-        }
-
-        setIsLoading(false);
-      } catch (error) {
-        console.error("Session check error:", error);
+    // Initial session check
+    const checkSession = async () => {
+      const { data } = await supabase.auth.getSession();
+      if (!data.session) {
         navigate('/auth');
+      } else {
+        setIsLoading(false);
       }
     };
 
-    getSession();
+    checkSession();
 
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange(async (event, session) => {
-      if (event === 'SIGNED_OUT') {
+    // Listen for auth changes
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      if (event === 'SIGNED_OUT' || !session) {
         queryClient.clear();
         navigate('/auth');
       }
     });
 
     return () => {
-      subscription?.unsubscribe();
+      subscription.unsubscribe();
     };
   }, [navigate, queryClient]);
 
