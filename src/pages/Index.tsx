@@ -17,11 +17,16 @@ const Index = () => {
     }
   }, [session]);
 
-  // ✅ **只在用户未登录并访问受保护页面时，才跳转 /auth**
+  // ✅ **修正逻辑：只有在 session 确定是 null 并且访问受保护页面时，才跳转 /auth**
   useEffect(() => {
     const protectedPages = ["/likes", "/collections", "/upload"];
+    if (session === null) {
+      console.log("Session is still loading, not redirecting.");
+      return;
+    }
+
     if (!session && protectedPages.includes(window.location.pathname)) {
-      console.log("Redirecting to /auth because session is missing.");
+      console.log("🔒 Redirecting to /auth because session is missing.");
       queryClient.clear();
       navigate("/auth");
     }

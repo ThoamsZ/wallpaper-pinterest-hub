@@ -14,15 +14,13 @@ import { Toaster } from "@/components/ui/toaster";
 
 import "./App.css";
 
-// 定义 AuthContext 类型
+// **创建 AuthContext**
 interface AuthContextType {
   session: any | null;
 }
 
-// 创建 AuthContext
 const AuthContext = createContext<AuthContextType | null>(null);
 
-// 自定义 Hook 方便组件访问 AuthContext
 export const useAuth = () => {
   const context = useContext(AuthContext);
   if (!context) {
@@ -31,26 +29,35 @@ export const useAuth = () => {
   return context;
 };
 
-// AuthProvider 组件
+// **AuthProvider 组件**
 function AuthProvider({ children }: { children: React.ReactNode }) {
   const [session, setSession] = useState<any | null>(null);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // ✅ **确保 session 初始化为 null，而不是 undefined**
+    // **获取 session 状态**
     supabase.auth.getSession().then(({ data: { session: currentSession } }) => {
+      console.log("🚀 Supabase Session:", currentSession);
       setSession(currentSession ?? null);
+      setLoading(false);
     });
 
-    // 监听身份验证状态变化
+    // **监听身份验证状态变化**
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, newSession) => {
-      console.log("Auth state changed:", _event, newSession);
+      console.log("🚀 Auth state changed:", _event, newSession);
       setSession(newSession ?? null);
+      setLoading(false);
     });
 
     return () => {
       subscription.unsubscribe();
     };
   }, []);
+
+  // **✅ 如果 session 还在加载，不要渲染页面**
+  if (loading) {
+    return <div>Loading...</div>;
+  }
 
   return (
     <AuthContext.Provider value={{ session }}>
@@ -59,7 +66,7 @@ function AuthProvider({ children }: { children: React.ReactNode }) {
   );
 }
 
-// App 组件
+// **App 组件**
 function App() {
   return (
     <Router>
