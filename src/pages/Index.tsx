@@ -11,17 +11,14 @@ const Index = () => {
   const { session } = useAuth();
   const queryClient = useQueryClient();
 
-  useEffect(() => {
+  // 仅在访问需要认证的功能时才检查登录状态
+  const handleAuthenticatedAction = () => {
     if (!session) {
       console.log("Index: No session found, redirecting to /auth");
       queryClient.clear();
       navigate('/auth');
     }
-  }, [session, navigate, queryClient]);
-
-  if (!session) {
-    return null;
-  }
+  };
 
   return (
     <div className="min-h-screen bg-background">
