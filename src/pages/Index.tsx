@@ -1,5 +1,4 @@
 
-import { useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import Header from "@/components/Header";
 import WallpaperGrid from "@/components/WallpaperGrid";
@@ -11,15 +10,8 @@ const Index = () => {
   const { session } = useAuth();
   const queryClient = useQueryClient();
 
-  // 仅在访问需要认证的功能时才检查登录状态
-  const handleAuthenticatedAction = () => {
-    if (!session) {
-      console.log("Index: No session found, redirecting to /auth");
-      queryClient.clear();
-      navigate('/auth');
-    }
-  };
-
+  // 我们检查用户是否已登录，但不强制要求登录
+  // 这个session状态可以用来控制UI上的显示，比如显示登录按钮或用户信息
   return (
     <div className="min-h-screen bg-background">
       <Header isDisabled={false} />
