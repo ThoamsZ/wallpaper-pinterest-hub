@@ -1,3 +1,4 @@
+
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -51,7 +52,8 @@ const AdminPanel = () => {
   const [selectedWallpapers, setSelectedWallpapers] = useState<string[]>([]);
   const [creatorCode, setCreatorCode] = useState<string>("");
   const [currentCreatorCode, setCurrentCreatorCode] = useState<string>("");
-  const [deleteConfirmEmail, setDeleteConfirmEmail] = useState<string>("");
+  const [verificationCode, setVerificationCode] = useState<string>("");
+  const [isVerificationSent, setIsVerificationSent] = useState(false);
 
   // Check admin status
   const { data: adminData, isError: isAdminError } = useQuery({
@@ -128,6 +130,31 @@ const AdminPanel = () => {
       toast({
         title: "Error",
         description: error.message || "Failed to update creator code",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleSendVerificationEmail = async () => {
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) throw new Error("Not authenticated");
+
+      const { error } = await supabase.auth.resetPasswordForEmail(session.user.email!, {
+        redirectTo: window.location.origin + '/admin-panel',
+      });
+
+      if (error) throw error;
+
+      setIsVerificationSent(true);
+      toast({
+        title: "Verification Email Sent",
+        description: "Please check your email for the verification code",
+      });
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to send verification email",
         variant: "destructive",
       });
     }
@@ -260,13 +287,27 @@ const AdminPanel = () => {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) throw new Error("Not authenticated");
 
-      console.log('Entered email:', deleteConfirmEmail);
-      console.log('Admin email:', adminData?.email);
-      
-      if (!adminData?.email || deleteConfirmEmail.trim() !== adminData.email.trim()) {
+      if (!verificationCode.trim()) {
         toast({
           title: "Error",
-          description: "Email confirmation does not match",
+          description: "Please enter the verification code sent to your email",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      // Verify the code by attempting to update the password
+      const { error: verificationError } = await supabase.auth
+        .verifyOtp({
+          email: session.user.email!,
+          token: verificationCode.trim(),
+          type: 'recovery'
+        });
+
+      if (verificationError) {
+        toast({
+          title: "Error",
+          description: "Invalid verification code",
           variant: "destructive",
         });
         return;
@@ -370,19 +411,28 @@ const AdminPanel = () => {
                     <AlertDialogTitle>Delete Account</AlertDialogTitle>
                     <AlertDialogDescription>
                       This action cannot be undone. This will permanently delete your account
-                      and all associated wallpapers. Please type your email address to confirm.
+                      and all associated wallpapers. Please verify your email to proceed.
                     </AlertDialogDescription>
                   </AlertDialogHeader>
-                  <div className="py-4">
-                    <Input
-                      type="email"
-                      placeholder="Enter your email to confirm"
-                      value={deleteConfirmEmail}
-                      onChange={(e) => setDeleteConfirmEmail(e.target.value)}
-                    />
+                  <div className="py-4 space-y-4">
+                    {!isVerificationSent ? (
+                      <Button onClick={handleSendVerificationEmail}>
+                        Send Verification Code
+                      </Button>
+                    ) : (
+                      <Input
+                        type="text"
+                        placeholder="Enter verification code"
+                        value={verificationCode}
+                        onChange={(e) => setVerificationCode(e.target.value)}
+                      />
+                    )}
                   </div>
                   <AlertDialogFooter>
-                    <AlertDialogCancel onClick={() => setDeleteConfirmEmail("")}>
+                    <AlertDialogCancel onClick={() => {
+                      setVerificationCode("");
+                      setIsVerificationSent(false);
+                    }}>
                       Cancel
                     </AlertDialogCancel>
                     <AlertDialogAction
@@ -508,3 +558,4 @@ const AdminPanel = () => {
 };
 
 export default AdminPanel;
+
