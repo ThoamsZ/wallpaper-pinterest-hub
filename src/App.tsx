@@ -15,15 +15,15 @@ import { Toaster } from "@/components/ui/toaster";
 
 import "./App.css";
 
-// 定义 AuthContext 类型
+// Define AuthContext type
 interface AuthContextType {
   session: any | null;
 }
 
-// 创建 AuthContext
+// Create AuthContext
 const AuthContext = createContext<AuthContextType | null>(null);
 
-// 自定义 Hook 方便组件访问 AuthContext
+// Custom Hook for accessing AuthContext
 export const useAuth = () => {
   const context = useContext(AuthContext);
   if (!context) {
@@ -32,17 +32,17 @@ export const useAuth = () => {
   return context;
 };
 
-// AuthProvider 组件
+// AuthProvider component
 function AuthProvider({ children }: { children: React.ReactNode }) {
   const [session, setSession] = useState<any | null>(null);
 
   useEffect(() => {
-    // 初始 session 检查
+    // Initial session check
     supabase.auth.getSession().then(({ data: { session: currentSession } }) => {
       setSession(currentSession);
     });
 
-    // 监听身份验证状态变化
+    // Listen for auth state changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, newSession) => {
       console.log("Auth state changed:", _event, newSession);
       setSession(newSession);
@@ -60,11 +60,11 @@ function AuthProvider({ children }: { children: React.ReactNode }) {
   );
 }
 
-// App 组件
+// App component
 function App() {
   return (
-    <Router>
-      <AuthProvider>
+    <AuthProvider>
+      <Router>
         <Routes>
           <Route path="/" element={<Index />} />
           <Route path="/auth" element={<Auth />} />
@@ -76,8 +76,8 @@ function App() {
           <Route path="*" element={<NotFound />} />
         </Routes>
         <Toaster />
-      </AuthProvider>
-    </Router>
+      </Router>
+    </AuthProvider>
   );
 }
 
