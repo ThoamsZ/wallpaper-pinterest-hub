@@ -15,7 +15,7 @@ const Collections = () => {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [selectedCollection, setSelectedCollection] = useState<string | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+  const [isAuthChecking, setIsAuthChecking] = useState(true);
 
   useEffect(() => {
     const checkAuth = async () => {
@@ -25,10 +25,11 @@ const Collections = () => {
           navigate('/auth');
           return;
         }
-        setIsLoading(false);
       } catch (error) {
         console.error('Auth check error:', error);
         navigate('/auth');
+      } finally {
+        setIsAuthChecking(false);
       }
     };
 
@@ -47,7 +48,7 @@ const Collections = () => {
     };
   }, [navigate]);
 
-  const { data: currentUser } = useQuery({
+  const { data: currentUser, isLoading: isUserLoading } = useQuery({
     queryKey: ['current-user'],
     queryFn: async () => {
       const { data: { session } } = await supabase.auth.getSession();
@@ -65,7 +66,7 @@ const Collections = () => {
       if (error) throw error;
       return data;
     },
-    enabled: !isLoading,
+    enabled: !isAuthChecking,
   });
 
   const { data: collections = [], isLoading: isCollectionsLoading } = useQuery({
@@ -100,7 +101,7 @@ const Collections = () => {
       
       return data || [];
     },
-    enabled: !!currentUser?.favor_collections?.length && !isLoading,
+    enabled: !isAuthChecking && !!currentUser?.favor_collections?.length,
   });
 
   const handleCollectionLike = async (collectionId: string) => {
@@ -166,7 +167,7 @@ const Collections = () => {
     ? getCollectionWallpapers(selectedCollectionData)
     : [];
 
-  if (isCollectionsLoading || isLoading) {
+  if (isAuthChecking || isUserLoading) {
     return (
       <div className="min-h-screen bg-background">
         <Header />
@@ -197,7 +198,11 @@ const Collections = () => {
         </div>
 
         {!selectedCollection ? (
-          collections.length === 0 ? (
+          isCollectionsLoading ? (
+            <div className="flex items-center justify-center min-h-[60vh]">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+            </div>
+          ) : collections.length === 0 ? (
             <div className="text-center py-12">
               <p className="text-muted-foreground">No collections found</p>
             </div>
