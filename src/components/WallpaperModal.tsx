@@ -2,7 +2,7 @@
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Heart, Download, X } from "lucide-react";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 import { useNavigate } from "react-router-dom";
@@ -21,6 +21,46 @@ interface WallpaperModalProps {
 const WallpaperModal = ({ wallpaper, isOpen, onClose, onLike, isLiked }: WallpaperModalProps) => {
   const [isDownloading, setIsDownloading] = useState(false);
   const navigate = useNavigate();
+
+  // Disable F12 and other keyboard shortcuts
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Disable F12
+      if (e.key === "F12") {
+        e.preventDefault();
+        return false;
+      }
+      
+      // Disable Ctrl+Shift+I, Ctrl+Shift+J, Ctrl+Shift+C
+      if (e.ctrlKey && e.shiftKey && (e.key === "I" || e.key === "J" || e.key === "C")) {
+        e.preventDefault();
+        return false;
+      }
+      
+      // Disable Ctrl+U (view source)
+      if (e.ctrlKey && e.key === "u") {
+        e.preventDefault();
+        return false;
+      }
+    };
+
+    if (isOpen) {
+      window.addEventListener("keydown", handleKeyDown);
+      return () => window.removeEventListener("keydown", handleKeyDown);
+    }
+  }, [isOpen]);
+
+  // Handle context menu (right click)
+  const handleContextMenu = (e: React.MouseEvent) => {
+    e.preventDefault();
+    return false;
+  };
+
+  // Handle drag start
+  const handleDragStart = (e: React.DragEvent) => {
+    e.preventDefault();
+    return false;
+  };
 
   const handleDownload = async () => {
     if (!wallpaper) return;
@@ -146,6 +186,9 @@ const WallpaperModal = ({ wallpaper, isOpen, onClose, onLike, isLiked }: Wallpap
               src={wallpaper.url}
               alt={`Wallpaper ${wallpaper.id}`}
               className="w-full h-auto max-h-[95vh] object-contain"
+              onContextMenu={handleContextMenu}
+              onDragStart={handleDragStart}
+              style={{ userSelect: 'none', WebkitUserSelect: 'none' }}
             />
             <div className="absolute left-0 right-0 bottom-[15%] flex justify-center gap-8">
               <Button
