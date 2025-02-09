@@ -95,13 +95,13 @@ const Auth = () => {
 
         if (signInData.session) {
           // Check if user is admin
-          const { data: userData, error: userError } = await supabase
-            .from('users')
-            .select('is_admin')
-            .eq('id', signInData.session.user.id)
-            .single();
+          const { data: adminData, error: adminError } = await supabase
+            .from('admin_users')
+            .select('admin_type')
+            .eq('user_id', signInData.session.user.id)
+            .maybeSingle();
 
-          if (userData?.is_admin) {
+          if (adminData) {
             // If admin, sign out and show error
             await supabase.auth.signOut();
             toast({

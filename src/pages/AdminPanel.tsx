@@ -61,18 +61,32 @@ const AdminPanel = () => {
         throw new Error("Not authenticated");
       }
 
+      // First check if user is an admin
+      const { data: adminUserData, error: adminError } = await supabase
+        .from('admin_users')
+        .select('admin_type')
+        .eq('user_id', session.user.id)
+        .maybeSingle();
+
+      if (adminError) throw adminError;
+      if (!adminUserData) {
+        throw new Error("Not an admin");
+      }
+
+      // Then get user data
       const { data: userData, error: userError } = await supabase
         .from('users')
-        .select('is_admin, creator_code, email')
+        .select('creator_code, email')
         .eq('id', session.user.id)
         .single();
 
       if (userError) throw userError;
-      if (!userData?.is_admin) {
-        throw new Error("Not an admin");
-      }
-
-      return userData;
+      
+      return {
+        admin_type: adminUserData.admin_type,
+        creator_code: userData?.creator_code,
+        email: userData?.email
+      };
     },
     retry: false
   });

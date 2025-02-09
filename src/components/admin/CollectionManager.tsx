@@ -72,14 +72,14 @@ export const CollectionManager = () => {
         throw new Error("Not authenticated");
       }
 
-      const { data: userData, error: userError } = await supabase
-        .from('users')
-        .select('is_admin')
-        .eq('id', session.user.id)
-        .single();
+      const { data: adminData, error: adminError } = await supabase
+        .from('admin_users')
+        .select('admin_type')
+        .eq('user_id', session.user.id)
+        .maybeSingle();
 
-      if (userError) throw userError;
-      if (!userData?.is_admin) {
+      if (adminError) throw adminError;
+      if (!adminData) {
         throw new Error("Not an admin");
       }
 

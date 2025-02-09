@@ -43,13 +43,13 @@ const Upload = () => {
 
     setUserId(session.user.id);
 
-    const { data: userData } = await supabase
-      .from('users')
-      .select('is_admin')
-      .eq('id', session.user.id)
+    const { data: adminData } = await supabase
+      .from('admin_users')
+      .select('admin_type')
+      .eq('user_id', session.user.id)
       .maybeSingle();
 
-    if (!userData?.is_admin) {
+    if (!adminData) {
       navigate("/");
       toast({
         title: "Access Denied",
