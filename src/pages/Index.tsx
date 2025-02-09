@@ -6,6 +6,7 @@ import WallpaperGrid from "@/components/WallpaperGrid";
 import FilterBar from "@/components/FilterBar";
 import { useAuth } from "@/App";
 import { useQueryClient } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 
 const Index = () => {
@@ -29,12 +30,32 @@ const Index = () => {
 
     window.addEventListener('error', handleError);
     
-    // Only redirect if there's no session at all
-    if (!session) {
-      console.log("Index: No session found, redirecting to /auth");
-      queryClient.clear();
-      navigate('/auth');
-    }
+    const initializeSession = async () => {
+      if (!session) {
+        console.log("No session found, attempting guest login");
+        try {
+          const { data, error } = await supabase.auth.signInWithPassword({
+            email: 'guest@wallpaperhub.com',
+            password: 'guest123',
+          });
+          
+          if (error) {
+            console.error('Guest login error:', error);
+            queryClient.clear();
+            navigate('/auth');
+            return;
+          }
+          
+          console.log("Successfully logged in as guest");
+        } catch (error) {
+          console.error('Guest login error:', error);
+          queryClient.clear();
+          navigate('/auth');
+        }
+      }
+    };
+
+    initializeSession();
 
     return () => {
       window.removeEventListener('error', handleError);
