@@ -50,7 +50,7 @@ export const FilterBar = () => {
   }
 
   return (
-    <div className="flex gap-2 overflow-x-auto pb-2 px-4 sm:px-0">
+    <div className="filter-bar flex gap-2 overflow-x-auto pb-2 px-4 sm:px-0">
       <Button
         variant={!currentTag ? "default" : "outline"}
         size="sm"
