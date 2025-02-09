@@ -47,13 +47,13 @@ const AdminManager = () => {
         return;
       }
 
-      const { data: userData, error: userError } = await supabase
-        .from('users')
+      const { data: adminData, error: adminError } = await supabase
+        .from('admin_users')
         .select('admin_type')
-        .eq('id', session.user.id)
+        .eq('user_id', session.user.id)
         .single();
 
-      if (userError || userData?.admin_type !== 'admin_manager') {
+      if (adminError || adminData?.admin_type !== 'admin_manager') {
         setIsLoggedIn(false);
         return;
       }
@@ -68,21 +68,27 @@ const AdminManager = () => {
 
   const fetchCreators = async () => {
     try {
-      const { data: creators, error: creatorsError } = await supabase
-        .from('users')
-        .select('*')
-        .eq('is_admin', true);
+      const { data: adminUsers, error: adminsError } = await supabase
+        .from('admin_users')
+        .select(`
+          *,
+          users:user_id (
+            email,
+            creator_code
+          )
+        `)
+        .eq('admin_type', 'admin');
 
-      if (creatorsError) throw creatorsError;
+      if (adminsError) throw adminsError;
 
-      setCreators(creators || []);
+      setCreators(adminUsers || []);
 
       // Fetch wallpapers for each creator
-      const wallpapersPromises = creators.map((creator: any) =>
+      const wallpapersPromises = adminUsers.map((admin: any) =>
         supabase
           .from('wallpapers')
           .select('*')
-          .eq('uploaded_by', creator.id)
+          .eq('uploaded_by', admin.user_id)
       );
 
       const wallpapersResults = await Promise.all(wallpapersPromises);
@@ -109,15 +115,15 @@ const AdminManager = () => {
 
       if (signInError) throw signInError;
 
-      const { data: userData, error: userError } = await supabase
-        .from('users')
+      const { data: adminData, error: adminError } = await supabase
+        .from('admin_users')
         .select('admin_type')
-        .eq('id', signInData.session?.user.id)
+        .eq('user_id', signInData.session?.user.id)
         .single();
 
-      if (userError) throw userError;
+      if (adminError) throw adminError;
 
-      if (userData?.admin_type !== 'admin_manager') {
+      if (adminData?.admin_type !== 'admin_manager') {
         await supabase.auth.signOut();
         throw new Error("Access denied. This page is only for admin managers.");
       }
@@ -170,18 +176,18 @@ const AdminManager = () => {
     }
   };
 
-  const handleBlockCreator = async (creatorId: string) => {
+  const handleBlockCreator = async (adminId: string) => {
     try {
       const { error } = await supabase
-        .from('users')
+        .from('admin_users')
         .update({ is_blocked: true })
-        .eq('id', creatorId);
+        .eq('id', adminId);
 
       if (error) throw error;
 
       setCreators(prev =>
         prev.map(creator =>
-          creator.id === creatorId
+          creator.id === adminId
             ? { ...creator, is_blocked: true }
             : creator
         )
@@ -200,28 +206,32 @@ const AdminManager = () => {
     }
   };
 
-  const handleDeleteCreator = async (creatorId: string) => {
+  const handleDeleteCreator = async (adminId: string, userId: string) => {
     try {
       // Delete all wallpapers by this creator first
-      const creatorWallpapers = wallpapers.filter(w => w.uploaded_by === creatorId);
+      const creatorWallpapers = wallpapers.filter(w => w.uploaded_by === userId);
       
       for (const wallpaper of creatorWallpapers) {
         await handleDeleteWallpaper(wallpaper.id, wallpaper.file_path);
       }
 
-      // Update user to remove admin status
-      const { error } = await supabase
+      // Remove admin status
+      const { error: adminError } = await supabase
+        .from('admin_users')
+        .delete()
+        .eq('id', adminId);
+
+      if (adminError) throw adminError;
+
+      // Update user to remove creator code
+      const { error: userError } = await supabase
         .from('users')
-        .update({ 
-          is_admin: false,
-          admin_type: null,
-          creator_code: null
-        })
-        .eq('id', creatorId);
+        .update({ creator_code: null })
+        .eq('id', userId);
 
-      if (error) throw error;
+      if (userError) throw userError;
 
-      setCreators(prev => prev.filter(creator => creator.id !== creatorId));
+      setCreators(prev => prev.filter(creator => creator.id !== adminId));
       toast({
         title: "Success",
         description: "Creator removed successfully",
@@ -304,19 +314,19 @@ const AdminManager = () => {
           <Card key={creator.id}>
             <CardHeader>
               <CardTitle className="flex justify-between items-center">
-                <span>{creator.email}</span>
+                <span>{creator.users?.email}</span>
                 {creator.is_blocked && (
                   <span className="text-sm text-red-500">Blocked</span>
                 )}
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <p className="text-sm text-gray-600">Creator Code: {creator.creator_code || 'N/A'}</p>
+              <p className="text-sm text-gray-600">Creator Code: {creator.users?.creator_code || 'N/A'}</p>
               <div className="mt-4">
                 <h3 className="font-semibold mb-2">Wallpapers:</h3>
                 <div className="grid grid-cols-2 gap-2">
                   {wallpapers
-                    .filter(w => w.uploaded_by === creator.id)
+                    .filter(w => w.uploaded_by === creator.user_id)
                     .map((wallpaper) => (
                       <div key={wallpaper.id} className="relative group">
                         <img
@@ -389,7 +399,7 @@ const AdminManager = () => {
                   <AlertDialogFooter>
                     <AlertDialogCancel>Cancel</AlertDialogCancel>
                     <AlertDialogAction
-                      onClick={() => handleDeleteCreator(creator.id)}
+                      onClick={() => handleDeleteCreator(creator.id, creator.user_id)}
                       className="bg-red-500 hover:bg-red-600"
                     >
                       Remove

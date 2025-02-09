@@ -43,18 +43,18 @@ const Header = ({ isDisabled = false }: HeaderProps) => {
           setIsAuthenticated(true);
           setUserEmail(session.user.email || "");
 
-          const { data: userData, error } = await supabase
-            .from('users')
-            .select('is_admin')
-            .eq('id', session.user.id)
+          const { data: adminData, error } = await supabase
+            .from('admin_users')
+            .select('admin_type')
+            .eq('user_id', session.user.id)
             .maybeSingle();
           
           if (error) {
-            console.error('Error fetching user data:', error);
+            console.error('Error fetching admin data:', error);
             return;
           }
           
-          setIsAdmin(userData?.is_admin || false);
+          setIsAdmin(!!adminData);
         }
       } catch (error) {
         console.error('Error checking user:', error);
@@ -79,19 +79,19 @@ const Header = ({ isDisabled = false }: HeaderProps) => {
       setUserEmail(session.user.email || "");
 
       try {
-        const { data: userData, error } = await supabase
-          .from('users')
-          .select('is_admin')
-          .eq('id', session.user.id)
+        const { data: adminData, error } = await supabase
+          .from('admin_users')
+          .select('admin_type')
+          .eq('user_id', session.user.id)
           .maybeSingle();
         
         if (error) {
-          console.error('Error fetching user data:', error);
+          console.error('Error fetching admin data:', error);
           return;
         }
 
         if (mounted) {
-          setIsAdmin(userData?.is_admin || false);
+          setIsAdmin(!!adminData);
         }
       } catch (error) {
         console.error('Error updating user state:', error);

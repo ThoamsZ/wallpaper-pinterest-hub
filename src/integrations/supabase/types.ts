@@ -9,6 +9,30 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
+      admin_users: {
+        Row: {
+          admin_type: string
+          created_at: string
+          id: string
+          is_blocked: boolean | null
+          user_id: string
+        }
+        Insert: {
+          admin_type: string
+          created_at?: string
+          id?: string
+          is_blocked?: boolean | null
+          user_id: string
+        }
+        Update: {
+          admin_type?: string
+          created_at?: string
+          id?: string
+          is_blocked?: boolean | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       collection_wallpapers: {
         Row: {
           added_at: string
@@ -86,7 +110,6 @@ export type Database = {
       }
       users: {
         Row: {
-          admin_type: string | null
           created_at: string
           creator_code: string | null
           download_count: number | null
@@ -94,13 +117,10 @@ export type Database = {
           favor_collections: string[] | null
           favor_image: string[] | null
           id: string
-          is_admin: boolean | null
-          is_blocked: boolean | null
           last_download_reset: string | null
           subscription_status: string | null
         }
         Insert: {
-          admin_type?: string | null
           created_at?: string
           creator_code?: string | null
           download_count?: number | null
@@ -108,13 +128,10 @@ export type Database = {
           favor_collections?: string[] | null
           favor_image?: string[] | null
           id: string
-          is_admin?: boolean | null
-          is_blocked?: boolean | null
           last_download_reset?: string | null
           subscription_status?: string | null
         }
         Update: {
-          admin_type?: string | null
           created_at?: string
           creator_code?: string | null
           download_count?: number | null
@@ -122,8 +139,6 @@ export type Database = {
           favor_collections?: string[] | null
           favor_image?: string[] | null
           id?: string
-          is_admin?: boolean | null
-          is_blocked?: boolean | null
           last_download_reset?: string | null
           subscription_status?: string | null
         }
