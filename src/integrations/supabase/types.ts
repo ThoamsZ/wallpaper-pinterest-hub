@@ -18,7 +18,7 @@ export type Database = {
           user_id: string
         }
         Insert: {
-          admin_type: string
+          admin_type?: string
           created_at?: string
           id?: string
           is_blocked?: boolean | null

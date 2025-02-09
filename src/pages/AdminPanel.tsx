@@ -307,6 +307,7 @@ const AdminPanel = () => {
             <p className="text-gray-600">Logged in as: {adminData.email}</p>
           </div>
           <div className="space-x-4">
+            <Button onClick={() => navigate("/admin/register")}>Register New Admin</Button>
             <Button onClick={() => navigate("/upload")}>Upload Wallpapers</Button>
           </div>
         </div>
