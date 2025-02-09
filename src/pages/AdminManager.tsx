@@ -80,7 +80,7 @@ const AdminManager = () => {
         .from('admin_users')
         .select(`
           *,
-          users:user_id (
+          profile:users!admin_users_user_id_fkey (
             email,
             creator_code
           )
@@ -89,7 +89,12 @@ const AdminManager = () => {
 
       if (adminsError) throw adminsError;
 
-      setCreators(adminUsers || []);
+      const formattedAdminUsers = adminUsers?.map(admin => ({
+        ...admin,
+        users: admin.profile // Map profile to users to maintain compatibility
+      })) || [];
+
+      setCreators(formattedAdminUsers);
 
       // Fetch wallpapers for each creator
       const wallpapersPromises = adminUsers.map((admin: any) =>
