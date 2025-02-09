@@ -1,3 +1,4 @@
+
 import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
 import { createContext, useContext, useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
@@ -45,9 +46,11 @@ function AuthProvider({ children }: { children: React.ReactNode }) {
       try {
         // Check for existing session
         const { data: { session: currentSession } } = await supabase.auth.getSession();
-        setSession(currentSession);
         
-        if (!currentSession) {
+        if (currentSession) {
+          console.log("Existing session found:", currentSession.user.email);
+          setSession(currentSession);
+        } else {
           // If no session exists, try to sign in as guest
           console.log("No session found, attempting guest login");
           const { data, error } = await supabase.auth.signInWithPassword({
@@ -69,7 +72,7 @@ function AuthProvider({ children }: { children: React.ReactNode }) {
         }
 
         // Listen for auth state changes
-        const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, newSession) => {
+        const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, newSession) => {
           console.log("Auth state changed:", _event, newSession?.user?.email);
           setSession(newSession);
         });

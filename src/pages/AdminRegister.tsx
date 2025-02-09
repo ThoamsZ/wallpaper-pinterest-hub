@@ -39,9 +39,10 @@ const AdminRegister = () => {
       // Then create the admin user entry
       const { error: adminError } = await supabase
         .from('admin_users')
-        .insert([
-          { user_id: signUpData.user.id }
-        ]);
+        .insert([{ 
+          user_id: signUpData.user.id,
+          admin_type: 'admin' // Explicitly set the admin_type
+        }]);
 
       if (adminError) {
         console.error("Admin creation error:", adminError);
