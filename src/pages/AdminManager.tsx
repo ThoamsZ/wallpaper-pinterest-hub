@@ -51,10 +51,18 @@ const AdminManager = () => {
         .from('admin_users')
         .select('admin_type')
         .eq('user_id', session.user.id)
-        .single();
+        .maybeSingle();
 
-      if (adminError || adminData?.admin_type !== 'admin_manager') {
+      if (adminError) {
+        console.error('Admin check error:', adminError);
         setIsLoggedIn(false);
+        return;
+      }
+
+      if (!adminData || adminData.admin_type !== 'admin_manager') {
+        console.log('Not an admin manager:', adminData);
+        setIsLoggedIn(false);
+        navigate('/admin-panel');
         return;
       }
 
@@ -119,11 +127,11 @@ const AdminManager = () => {
         .from('admin_users')
         .select('admin_type')
         .eq('user_id', signInData.session?.user.id)
-        .single();
+        .maybeSingle();
 
       if (adminError) throw adminError;
 
-      if (adminData?.admin_type !== 'admin_manager') {
+      if (!adminData || adminData.admin_type !== 'admin_manager') {
         await supabase.auth.signOut();
         throw new Error("Access denied. This page is only for admin managers.");
       }
