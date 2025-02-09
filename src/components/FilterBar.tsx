@@ -19,9 +19,8 @@ export const FilterBar = () => {
     queryKey: ['tags'],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from('tags_stats')
+        .from('active_tags_stats')
         .select('*')
-        .gt('download_count', 0) // Only fetch tags with downloads
         .order('download_count', { ascending: false })
         .limit(10);
 
@@ -33,7 +32,7 @@ export const FilterBar = () => {
   const handleTagClick = (tag: string) => {
     if (currentTag === tag) {
       // If clicking the same tag, remove the filter
-      navigate('/');
+      navigate('/', { replace: true });
     } else {
       // Apply the tag filter
       navigate(`/?tag=${encodeURIComponent(tag)}`);

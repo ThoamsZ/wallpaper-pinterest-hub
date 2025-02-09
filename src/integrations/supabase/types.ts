@@ -164,7 +164,24 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      active_tags_stats: {
+        Row: {
+          download_count: number | null
+          last_updated: string | null
+          tag: string | null
+        }
+        Insert: {
+          download_count?: number | null
+          last_updated?: string | null
+          tag?: string | null
+        }
+        Update: {
+          download_count?: number | null
+          last_updated?: string | null
+          tag?: string | null
+        }
+        Relationships: []
+      }
     }
     Functions: {
       [_ in never]: never
