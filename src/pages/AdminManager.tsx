@@ -49,8 +49,9 @@ const AdminManager = () => {
 
       const { data: adminData, error: adminError } = await supabase
         .from('admin_users')
-        .select('admin_type')
+        .select()
         .eq('user_id', session.user.id)
+        .eq('admin_type', 'admin_manager')
         .maybeSingle();
 
       if (adminError) {
@@ -59,8 +60,8 @@ const AdminManager = () => {
         return;
       }
 
-      if (!adminData || adminData.admin_type !== 'admin_manager') {
-        console.log('Not an admin manager:', adminData);
+      if (!adminData) {
+        console.log('Not an admin manager');
         setIsLoggedIn(false);
         navigate('/admin-panel');
         return;
@@ -80,7 +81,7 @@ const AdminManager = () => {
         .from('admin_users')
         .select(`
           *,
-          profile:users!admin_users_user_id_fkey (
+          profile:users!inner(
             email,
             creator_code
           )
@@ -91,7 +92,7 @@ const AdminManager = () => {
 
       const formattedAdminUsers = adminUsers?.map(admin => ({
         ...admin,
-        users: admin.profile // Map profile to users to maintain compatibility
+        users: admin.profile
       })) || [];
 
       setCreators(formattedAdminUsers);
