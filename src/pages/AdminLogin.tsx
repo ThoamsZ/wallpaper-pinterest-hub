@@ -36,11 +36,15 @@ const AdminLogin = () => {
         // Check if user is admin and not blocked
         const { data: userData, error: userError } = await supabase
           .from('users')
-          .select('is_admin, is_blocked')
+          .select('admin_type, is_blocked')
           .eq('id', signInData.session.user.id)
           .single();
 
-        if (userError || !userData?.is_admin) {
+        if (userError) {
+          throw userError;
+        }
+
+        if (!userData?.admin_type) {
           await supabase.auth.signOut();
           toast({
             title: "Access denied",
@@ -60,8 +64,12 @@ const AdminLogin = () => {
           return;
         }
 
-        // If admin and not blocked, redirect to admin panel
-        navigate("/admin-panel");
+        // Redirect based on admin type
+        if (userData.admin_type === 'admin_manager') {
+          navigate("/admin-manager");
+        } else if (userData.admin_type === 'admin') {
+          navigate("/admin-panel");
+        }
       }
     } catch (error: any) {
       toast({
