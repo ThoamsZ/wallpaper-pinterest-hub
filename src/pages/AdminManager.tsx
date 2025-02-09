@@ -221,13 +221,20 @@ const AdminManager = () => {
 
   const handleDeleteCreator = async (adminId: string, userId: string) => {
     try {
+      console.log('Deleting creator:', { adminId, userId });
+
       // First fetch all wallpapers by this creator
       const { data: creatorWallpapers, error: wallpapersError } = await supabase
         .from('wallpapers')
         .select('*')
         .eq('uploaded_by', userId);
 
-      if (wallpapersError) throw wallpapersError;
+      if (wallpapersError) {
+        console.error('Error fetching wallpapers:', wallpapersError);
+        throw wallpapersError;
+      }
+
+      console.log('Found wallpapers:', creatorWallpapers);
 
       // Delete wallpapers from collections first
       if (creatorWallpapers && creatorWallpapers.length > 0) {
@@ -239,7 +246,12 @@ const AdminManager = () => {
           .delete()
           .in('wallpaper_id', wallpaperIds);
 
-        if (collectionWallpapersError) throw collectionWallpapersError;
+        if (collectionWallpapersError) {
+          console.error('Error deleting from collection_wallpapers:', collectionWallpapersError);
+          throw collectionWallpapersError;
+        }
+
+        console.log('Deleted wallpapers from collections');
 
         // Delete files from storage
         const filePaths = creatorWallpapers.map(w => w.file_path);
@@ -247,7 +259,12 @@ const AdminManager = () => {
           .from('wallpapers')
           .remove(filePaths);
 
-        if (storageError) throw storageError;
+        if (storageError) {
+          console.error('Error deleting from storage:', storageError);
+          throw storageError;
+        }
+
+        console.log('Deleted files from storage');
 
         // Delete wallpapers from database
         const { error: deleteWallpapersError } = await supabase
@@ -255,7 +272,12 @@ const AdminManager = () => {
           .delete()
           .eq('uploaded_by', userId);
 
-        if (deleteWallpapersError) throw deleteWallpapersError;
+        if (deleteWallpapersError) {
+          console.error('Error deleting wallpapers:', deleteWallpapersError);
+          throw deleteWallpapersError;
+        }
+
+        console.log('Deleted wallpapers from database');
       }
 
       // Delete collections created by this user
@@ -264,7 +286,12 @@ const AdminManager = () => {
         .delete()
         .eq('created_by', userId);
 
-      if (deleteCollectionsError) throw deleteCollectionsError;
+      if (deleteCollectionsError) {
+        console.error('Error deleting collections:', deleteCollectionsError);
+        throw deleteCollectionsError;
+      }
+
+      console.log('Deleted collections');
 
       // Remove admin status
       const { error: adminError } = await supabase
@@ -272,7 +299,12 @@ const AdminManager = () => {
         .delete()
         .eq('id', adminId);
 
-      if (adminError) throw adminError;
+      if (adminError) {
+        console.error('Error deleting admin status:', adminError);
+        throw adminError;
+      }
+
+      console.log('Deleted admin status');
 
       // Update user to remove creator code
       const { error: userError } = await supabase
@@ -280,7 +312,12 @@ const AdminManager = () => {
         .update({ creator_code: null })
         .eq('id', userId);
 
-      if (userError) throw userError;
+      if (userError) {
+        console.error('Error updating user:', userError);
+        throw userError;
+      }
+
+      console.log('Updated user, removed creator code');
 
       setCreators(prev => prev.filter(creator => creator.id !== adminId));
       setWallpapers(prev => prev.filter(w => w.uploaded_by !== userId));
@@ -290,6 +327,7 @@ const AdminManager = () => {
         description: "Creator and all their data removed successfully",
       });
     } catch (error: any) {
+      console.error('Full error:', error);
       toast({
         title: "Error",
         description: error.message || "Failed to delete creator",
