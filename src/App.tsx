@@ -6,6 +6,7 @@ import { toast } from "@/hooks/use-toast";
 
 import Index from "@/pages/Index";
 import Auth from "@/pages/Auth";
+import AdminLogin from "@/pages/AdminLogin";
 import Collections from "@/pages/Collections";
 import Likes from "@/pages/Likes";
 import CreatorProfile from "@/pages/CreatorProfile";
@@ -110,6 +111,7 @@ function App() {
         <Routes>
           <Route path="/" element={<Index />} />
           <Route path="/auth" element={<Auth />} />
+          <Route path="/admin" element={<AdminLogin />} />
           <Route path="/collections" element={<Collections />} />
           <Route path="/likes" element={<Likes />} />
           <Route path="/creator/:creatorCode" element={<CreatorProfile />} />

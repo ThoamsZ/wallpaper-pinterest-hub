@@ -94,6 +94,24 @@ const Auth = () => {
         }
 
         if (signInData.session) {
+          // Check if user is admin
+          const { data: userData, error: userError } = await supabase
+            .from('users')
+            .select('is_admin')
+            .eq('id', signInData.session.user.id)
+            .single();
+
+          if (userData?.is_admin) {
+            // If admin, sign out and show error
+            await supabase.auth.signOut();
+            toast({
+              title: "Access denied",
+              description: "Please use the admin login page",
+              variant: "destructive",
+            });
+            return;
+          }
+
           navigate("/", { replace: true });
         }
       }
