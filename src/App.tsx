@@ -11,6 +11,7 @@ import Collections from "@/pages/Collections";
 import Likes from "@/pages/Likes";
 import CreatorProfile from "@/pages/CreatorProfile";
 import AdminPanel from "@/pages/AdminPanel";
+import AdminManager from "@/pages/AdminManager";
 import NotFound from "@/pages/NotFound";
 import Upload from "@/pages/Upload";
 import { Toaster } from "@/components/ui/toaster";
@@ -112,6 +113,7 @@ function App() {
           <Route path="/" element={<Index />} />
           <Route path="/auth" element={<Auth />} />
           <Route path="/admin" element={<AdminLogin />} />
+          <Route path="/admin-manager" element={<AdminManager />} />
           <Route path="/collections" element={<Collections />} />
           <Route path="/likes" element={<Likes />} />
           <Route path="/creator/:creatorCode" element={<CreatorProfile />} />
