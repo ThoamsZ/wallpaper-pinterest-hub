@@ -36,12 +36,12 @@ const AdminRegister = () => {
         throw new Error("No user data returned");
       }
 
-      // Then create the admin user entry
+      // Then create the admin user entry without setting admin_type
       const { error: adminError } = await supabase
         .from('admin_users')
         .insert([{ 
-          user_id: signUpData.user.id,
-          admin_type: 'admin' // Explicitly set the admin_type
+          user_id: signUpData.user.id
+          // admin_type will be set manually later
         }]);
 
       if (adminError) {
@@ -53,7 +53,7 @@ const AdminRegister = () => {
 
       toast({
         title: "Registration successful",
-        description: "Please check your email to verify your account",
+        description: "Please wait for an admin to approve your account",
       });
 
       // Redirect to admin login page
@@ -74,8 +74,8 @@ const AdminRegister = () => {
     <div className="container mx-auto flex items-center justify-center min-h-screen">
       <div className="w-full max-w-md space-y-8 p-8 border rounded-lg shadow-lg">
         <div className="text-center">
-          <h1 className="text-2xl font-bold">Admin Registration</h1>
-          <p className="text-gray-600 mt-2">Create a new admin account</p>
+          <h1 className="text-2xl font-bold">Creator Registration</h1>
+          <p className="text-gray-600 mt-2">Create a new creator account</p>
         </div>
 
         <form onSubmit={handleRegister} className="space-y-6">
@@ -111,7 +111,7 @@ const AdminRegister = () => {
             className="w-full" 
             disabled={isLoading}
           >
-            {isLoading ? "Processing..." : "Register Admin"}
+            {isLoading ? "Processing..." : "Register Creator"}
           </Button>
 
           <div className="text-center">
