@@ -21,6 +21,7 @@ export const FilterBar = () => {
       const { data, error } = await supabase
         .from('tags_stats')
         .select('*')
+        .gt('download_count', 0) // Only fetch tags with downloads
         .order('download_count', { ascending: false })
         .limit(10);
 
@@ -54,7 +55,10 @@ export const FilterBar = () => {
       <Button
         variant={!currentTag ? "default" : "outline"}
         size="sm"
-        onClick={() => navigate('/')}
+        onClick={() => {
+          // Clear the tag filter and navigate to home
+          navigate('/', { replace: true });
+        }}
         className="whitespace-nowrap"
       >
         <Grid className="mr-1 h-4 w-4" />
