@@ -230,12 +230,20 @@ const AdminManager = () => {
 
       if (wallpapersError) throw wallpapersError;
 
-      // Delete all wallpapers from storage
+      // Delete wallpapers from collections first
       if (creatorWallpapers && creatorWallpapers.length > 0) {
-        // Create an array of file paths to delete from storage
-        const filePaths = creatorWallpapers.map(w => w.file_path);
+        const wallpaperIds = creatorWallpapers.map(w => w.id);
         
+        // Delete from collection_wallpapers
+        const { error: collectionWallpapersError } = await supabase
+          .from('collection_wallpapers')
+          .delete()
+          .in('wallpaper_id', wallpaperIds);
+
+        if (collectionWallpapersError) throw collectionWallpapersError;
+
         // Delete files from storage
+        const filePaths = creatorWallpapers.map(w => w.file_path);
         const { error: storageError } = await supabase.storage
           .from('wallpapers')
           .remove(filePaths);
@@ -250,6 +258,14 @@ const AdminManager = () => {
 
         if (deleteWallpapersError) throw deleteWallpapersError;
       }
+
+      // Delete collections created by this user
+      const { error: deleteCollectionsError } = await supabase
+        .from('collections')
+        .delete()
+        .eq('created_by', userId);
+
+      if (deleteCollectionsError) throw deleteCollectionsError;
 
       // Remove admin status
       const { error: adminError } = await supabase
@@ -272,7 +288,7 @@ const AdminManager = () => {
 
       toast({
         title: "Success",
-        description: "Creator and all their wallpapers removed successfully",
+        description: "Creator and all their data removed successfully",
       });
     } catch (error: any) {
       toast({
@@ -456,3 +472,4 @@ const AdminManager = () => {
 };
 
 export default AdminManager;
+
