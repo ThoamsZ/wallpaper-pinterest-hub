@@ -1,3 +1,4 @@
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -98,4 +99,37 @@
   body {
     @apply bg-background text-foreground;
   }
+}
+
+/* Custom scrollbar styles for filter bar */
+.filter-bar {
+  scrollbar-width: none; /* Firefox */
+  -ms-overflow-style: none; /* IE and Edge */
+}
+
+.filter-bar::-webkit-scrollbar {
+  display: none; /* Chrome, Safari and Opera */
+}
+
+.filter-bar:hover {
+  scrollbar-width: thin; /* Firefox */
+  -ms-overflow-style: -ms-autohiding-scrollbar; /* IE and Edge */
+}
+
+.filter-bar:hover::-webkit-scrollbar {
+  display: block;
+  height: 8px;
+}
+
+.filter-bar:hover::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.filter-bar:hover::-webkit-scrollbar-thumb {
+  background-color: rgba(156, 163, 175, 0.5);
+  border-radius: 4px;
+}
+
+.filter-bar:hover::-webkit-scrollbar-thumb:hover {
+  background-color: rgba(156, 163, 175, 0.8);
 }
