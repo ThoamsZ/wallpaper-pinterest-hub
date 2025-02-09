@@ -11,21 +11,21 @@ export type Database = {
     Tables: {
       admin_users: {
         Row: {
-          admin_type: string
+          admin_type: string | null
           created_at: string
           id: string
           is_blocked: boolean | null
           user_id: string
         }
         Insert: {
-          admin_type?: string
+          admin_type?: string | null
           created_at?: string
           id?: string
           is_blocked?: boolean | null
           user_id: string
         }
         Update: {
-          admin_type?: string
+          admin_type?: string | null
           created_at?: string
           id?: string
           is_blocked?: boolean | null
