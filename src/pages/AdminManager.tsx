@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -221,11 +222,33 @@ const AdminManager = () => {
 
   const handleDeleteCreator = async (adminId: string, userId: string) => {
     try {
-      // Delete all wallpapers by this creator first
-      const creatorWallpapers = wallpapers.filter(w => w.uploaded_by === userId);
-      
-      for (const wallpaper of creatorWallpapers) {
-        await handleDeleteWallpaper(wallpaper.id, wallpaper.file_path);
+      // First fetch all wallpapers by this creator
+      const { data: creatorWallpapers, error: wallpapersError } = await supabase
+        .from('wallpapers')
+        .select('*')
+        .eq('uploaded_by', userId);
+
+      if (wallpapersError) throw wallpapersError;
+
+      // Delete all wallpapers from storage
+      if (creatorWallpapers && creatorWallpapers.length > 0) {
+        // Create an array of file paths to delete from storage
+        const filePaths = creatorWallpapers.map(w => w.file_path);
+        
+        // Delete files from storage
+        const { error: storageError } = await supabase.storage
+          .from('wallpapers')
+          .remove(filePaths);
+
+        if (storageError) throw storageError;
+
+        // Delete wallpapers from database
+        const { error: deleteWallpapersError } = await supabase
+          .from('wallpapers')
+          .delete()
+          .eq('uploaded_by', userId);
+
+        if (deleteWallpapersError) throw deleteWallpapersError;
       }
 
       // Remove admin status
@@ -245,9 +268,11 @@ const AdminManager = () => {
       if (userError) throw userError;
 
       setCreators(prev => prev.filter(creator => creator.id !== adminId));
+      setWallpapers(prev => prev.filter(w => w.uploaded_by !== userId));
+
       toast({
         title: "Success",
-        description: "Creator removed successfully",
+        description: "Creator and all their wallpapers removed successfully",
       });
     } catch (error: any) {
       toast({
