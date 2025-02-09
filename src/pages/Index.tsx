@@ -1,8 +1,9 @@
 
 import { useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import Header from "@/components/Header";
 import WallpaperGrid from "@/components/WallpaperGrid";
+import FilterBar from "@/components/FilterBar";
 import { useAuth } from "@/App";
 import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "@/hooks/use-toast";
@@ -11,6 +12,8 @@ const Index = () => {
   const navigate = useNavigate();
   const { session } = useAuth();
   const queryClient = useQueryClient();
+  const [searchParams] = useSearchParams();
+  const tag = searchParams.get('tag');
 
   useEffect(() => {
     // Handle resource load errors
@@ -49,7 +52,7 @@ const Index = () => {
         description: "Browse freely! Sign up to like and collect wallpapers.",
       });
     }
-  }, []);
+  }, [isGuestUser]);
 
   if (!session) {
     return null;
@@ -59,7 +62,10 @@ const Index = () => {
     <div className="min-h-screen bg-background">
       <Header isDisabled={false} />
       <main className="container mx-auto px-4 sm:px-6 lg:px-8">
-        <WallpaperGrid />
+        <div className="mt-4 mb-6">
+          <FilterBar />
+        </div>
+        <WallpaperGrid tag={tag || undefined} />
       </main>
     </div>
   );

@@ -7,9 +7,10 @@ import WallpaperItem from "./WallpaperItem";
 
 interface WallpaperGridProps {
   wallpapers?: Wallpaper[];
+  tag?: string;
 }
 
-const WallpaperGrid = ({ wallpapers: propWallpapers }: WallpaperGridProps) => {
+const WallpaperGrid = ({ wallpapers: propWallpapers, tag }: WallpaperGridProps) => {
   const [selectedWallpaper, setSelectedWallpaper] = useState<Wallpaper | null>(null);
   const { 
     wallpapers, 
@@ -19,7 +20,7 @@ const WallpaperGrid = ({ wallpapers: propWallpapers }: WallpaperGridProps) => {
     fetchNextPage,
     hasNextPage,
     isFetchingNextPage 
-  } = useWallpapers(propWallpapers);
+  } = useWallpapers(propWallpapers, tag);
   const { likedWallpapers, handleLike } = useWallpaperLikes();
   const loadMoreRef = useRef<HTMLDivElement>(null);
 
