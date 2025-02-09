@@ -4,6 +4,7 @@ import { Button } from "./ui/button";
 import { Tag, Grid } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useNavigate, useSearchParams } from "react-router-dom";
+import { useRef } from "react";
 
 interface TagStat {
   tag: string;
@@ -14,6 +15,7 @@ export const FilterBar = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const currentTag = searchParams.get('tag');
+  const filterBarRef = useRef<HTMLDivElement>(null);
 
   const { data: tags, isLoading } = useQuery({
     queryKey: ['tags'],
@@ -37,6 +39,31 @@ export const FilterBar = () => {
       // Apply the tag filter
       navigate(`/?tag=${encodeURIComponent(tag)}`);
     }
+
+    // Automatically scroll to show more filters when clicking on the right side
+    if (filterBarRef.current) {
+      const container = filterBarRef.current;
+      const scrollWidth = container.scrollWidth;
+      const clientWidth = container.clientWidth;
+      const currentScroll = container.scrollLeft;
+      const buttonWidth = 100; // Approximate width of a button
+
+      // If clicking in the right third of the visible area
+      const clickedButton = document.activeElement as HTMLButtonElement;
+      if (clickedButton) {
+        const buttonRect = clickedButton.getBoundingClientRect();
+        const containerRect = container.getBoundingClientRect();
+        const buttonPosition = buttonRect.left - containerRect.left;
+
+        if (buttonPosition > (clientWidth * 0.7)) {
+          // Smooth scroll to the right by about two button widths
+          container.scrollTo({
+            left: Math.min(currentScroll + buttonWidth * 2, scrollWidth - clientWidth),
+            behavior: 'smooth'
+          });
+        }
+      }
+    }
   };
 
   if (isLoading) {
@@ -50,7 +77,7 @@ export const FilterBar = () => {
   }
 
   return (
-    <div className="filter-bar flex gap-2 overflow-x-auto pb-2 px-4 sm:px-0">
+    <div ref={filterBarRef} className="filter-bar flex gap-2 overflow-x-auto pb-2 px-4 sm:px-0">
       <Button
         variant={!currentTag ? "default" : "outline"}
         size="sm"
