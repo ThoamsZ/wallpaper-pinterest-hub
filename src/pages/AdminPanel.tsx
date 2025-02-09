@@ -69,7 +69,7 @@ const AdminPanel = () => {
         .maybeSingle();
 
       if (adminError) throw adminError;
-      if (!adminUserData) {
+      if (!adminUserData || adminUserData.admin_type === null) {
         throw new Error("Not an admin");
       }
 
