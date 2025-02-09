@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -328,14 +327,16 @@ const AdminManager = () => {
           <Card key={creator.id}>
             <CardHeader>
               <CardTitle className="flex justify-between items-center">
-                <span>{creator.users?.email}</span>
+                <div className="flex flex-col">
+                  <span>{creator.users?.email}</span>
+                  <span className="text-sm text-muted-foreground">Creator Code: {creator.users?.creator_code || 'N/A'}</span>
+                </div>
                 {creator.is_blocked && (
                   <span className="text-sm text-red-500">Blocked</span>
                 )}
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <p className="text-sm text-gray-600">Creator Code: {creator.users?.creator_code || 'N/A'}</p>
               <div className="mt-4">
                 <h3 className="font-semibold mb-2">Wallpapers:</h3>
                 <div className="grid grid-cols-2 gap-2">
