@@ -1,7 +1,7 @@
 
 import { useQuery } from "@tanstack/react-query";
 import { Button } from "./ui/button";
-import { Tag } from "lucide-react";
+import { Tag, Grid } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useNavigate, useSearchParams } from "react-router-dom";
 
@@ -51,6 +51,15 @@ export const FilterBar = () => {
 
   return (
     <div className="flex gap-2 overflow-x-auto pb-2 px-4 sm:px-0">
+      <Button
+        variant={!currentTag ? "default" : "outline"}
+        size="sm"
+        onClick={() => navigate('/')}
+        className="whitespace-nowrap"
+      >
+        <Grid className="mr-1 h-4 w-4" />
+        All
+      </Button>
       {tags?.map((tagStat) => (
         <Button
           key={tagStat.tag}
