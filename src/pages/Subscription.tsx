@@ -1,3 +1,4 @@
+
 import { DollarSign, CheckCircle2 } from "lucide-react";
 import Header from "@/components/Header";
 import { Button } from "@/components/ui/button";
@@ -26,34 +27,55 @@ const Subscription = () => {
   const [paypalLoaded, setPaypalLoaded] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
+  const [planIds, setPlanIds] = useState<{[key: string]: string}>({});
 
   useEffect(() => {
     const loadPaypalScript = async () => {
       try {
-        console.log('Fetching PayPal client ID...');
-        const { data, error } = await supabase
+        console.log('Fetching PayPal client ID and plan IDs...');
+        
+        // Fetch PayPal client ID
+        const { data: secretData, error: secretError } = await supabase
           .from('secrets')
           .select('value')
           .eq('name', 'PAYPAL_CLIENT_ID')
           .maybeSingle();
 
-        if (error) {
-          console.error('Error loading PayPal client ID:', error);
+        if (secretError) {
+          console.error('Error loading PayPal client ID:', secretError);
           setLoadError('Failed to load payment system. Please try again later.');
           return;
         }
 
-        if (!data?.value) {
+        if (!secretData?.value) {
           console.error('PayPal client ID not found in secrets table');
           setLoadError('Payment system configuration is incomplete. Please try again later.');
           return;
         }
 
-        console.log('PayPal client ID retrieved successfully');
+        // Fetch plan IDs
+        const { data: plansData, error: plansError } = await supabase
+          .from('plans')
+          .select('type, paypal_plan_id');
+
+        if (plansError) {
+          console.error('Error loading plan IDs:', plansError);
+          setLoadError('Failed to load subscription plans. Please try again later.');
+          return;
+        }
+
+        // Create a map of plan types to their PayPal plan IDs
+        const planIdMap = plansData.reduce((acc: {[key: string]: string}, plan) => {
+          acc[plan.type] = plan.paypal_plan_id;
+          return acc;
+        }, {});
+
+        setPlanIds(planIdMap);
+        console.log('Plan IDs loaded:', planIdMap);
 
         // Load PayPal SDK
         const script = document.createElement('script');
-        script.src = `https://www.paypal.com/sdk/js?client-id=${data.value}&vault=true&intent=subscription`;
+        script.src = `https://www.paypal.com/sdk/js?client-id=${secretData.value}&vault=true&intent=subscription`;
         script.async = true;
         script.onload = () => {
           console.log('PayPal SDK loaded successfully');
@@ -147,8 +169,13 @@ const Subscription = () => {
           },
           createSubscription: async (data: any, actions: any) => {
             if (plan !== 'lifetime') {
+              const planId = planIds[plan];
+              if (!planId) {
+                throw new Error(`No plan ID found for ${plan} subscription`);
+              }
+              console.log(`Creating subscription with plan ID: ${planId}`);
               return actions.subscription.create({
-                'plan_id': plan === 'monthly' ? 'P-MONTHLY_PLAN_ID' : 'P-YEARLY_PLAN_ID',
+                'plan_id': planId
               });
             }
           },

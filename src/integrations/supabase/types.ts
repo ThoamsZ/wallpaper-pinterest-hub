@@ -181,6 +181,27 @@ export type Database = {
         }
         Relationships: []
       }
+      plans: {
+        Row: {
+          created_at: string
+          id: string
+          paypal_plan_id: string
+          type: string
+        }
+        Insert: {
+          created_at?: string
+          id: string
+          paypal_plan_id: string
+          type: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          paypal_plan_id?: string
+          type?: string
+        }
+        Relationships: []
+      }
       secrets: {
         Row: {
           created_at: string
