@@ -15,6 +15,7 @@ import AdminPanel from "@/pages/AdminPanel";
 import AdminManager from "@/pages/AdminManager";
 import NotFound from "@/pages/NotFound";
 import Upload from "@/pages/Upload";
+import Subscription from "@/pages/Subscription";
 import { Toaster } from "@/components/ui/toaster";
 
 import "./App.css";
@@ -123,6 +124,7 @@ function App() {
           <Route path="/admin-panel" element={<AdminPanel />} />
           <Route path="/admin-manager" element={<AdminManager />} />
           <Route path="/upload" element={<Upload />} />
+          <Route path="/subscription" element={<Subscription />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
         <Toaster />
