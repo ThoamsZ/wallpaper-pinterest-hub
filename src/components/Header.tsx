@@ -1,3 +1,4 @@
+
 import { Search, Heart, Archive } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -165,34 +166,51 @@ const Header = ({ isDisabled = false }: HeaderProps) => {
 
     setIsProcessing(true);
     try {
-      // First clear cache and local state to ensure clean state
+      // First check if we have a session
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        // If no session exists, just clear local state and redirect
+        queryClient.clear();
+        setIsAuthenticated(false);
+        setUserEmail("");
+        setIsAdmin(false);
+        navigate("/auth");
+        return;
+      }
+
+      // Clear cache and local state first
       queryClient.clear();
       setIsAuthenticated(false);
       setUserEmail("");
       setIsAdmin(false);
-      
-      // Then attempt to sign out from Supabase
+
+      // Then attempt to sign out
       const { error } = await supabase.auth.signOut();
       if (error) {
         console.error('Logout error:', error);
+        toast({
+          title: "Error",
+          description: "An error occurred during logout",
+          variant: "destructive",
+        });
+      } else {
+        toast({
+          title: "Success",
+          description: "Successfully logged out",
+        });
       }
-      
-      // Navigate to auth page
+
+      // Always navigate to auth page
       navigate("/auth");
-      
-      toast({
-        title: "Success",
-        description: "Successfully logged out",
-      });
     } catch (error) {
       console.error('Logout error:', error);
-      // Already cleared local state above, just ensure navigation happens
-      navigate("/auth");
-      
       toast({
-        title: "Notice",
-        description: "You have been logged out",
+        title: "Error",
+        description: "An error occurred during logout",
+        variant: "destructive",
       });
+      // Ensure navigation happens even on error
+      navigate("/auth");
     } finally {
       setIsProcessing(false);
     }
@@ -202,11 +220,8 @@ const Header = ({ isDisabled = false }: HeaderProps) => {
     if (isDisabled || isProcessing) return;
     
     if ((path === '/collections' || path === '/likes') && !isAuthenticated) {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) {
-        navigate('/auth');
-        return;
-      }
+      navigate('/auth');
+      return;
     }
     
     // Reset search query and wallpapers when navigating to home
@@ -335,3 +350,4 @@ const Header = ({ isDisabled = false }: HeaderProps) => {
 };
 
 export default Header;
+
