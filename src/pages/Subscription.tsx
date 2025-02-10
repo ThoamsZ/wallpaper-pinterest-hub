@@ -61,6 +61,7 @@ const Subscription = () => {
           return;
         }
 
+        // Create a map of plan types to their PayPal plan IDs
         const planIdMap = plansData.reduce((acc: {[key: string]: string}, plan) => {
           acc[plan.type] = plan.paypal_plan_id;
           return acc;
@@ -158,7 +159,6 @@ const Subscription = () => {
       }
 
       console.log('Initializing PayPal buttons for plan:', plan);
-      console.log('Available plan IDs:', planIds);
       
       // Common button configuration
       const commonConfig = {
@@ -224,6 +224,8 @@ const Subscription = () => {
       } else {
         // Subscription configuration
         const planId = planIds[plan];
+        console.log(`Using plan ID for ${plan}:`, planId);
+        
         if (!planId) {
           console.error(`No plan ID found for ${plan} subscription`);
           toast({
@@ -234,12 +236,12 @@ const Subscription = () => {
           return;
         }
         
-        console.log(`Creating subscription with plan ID: ${planId}`);
         buttonConfig = {
           ...commonConfig,
           createSubscription: async (data: any, actions: any) => {
+            console.log(`Creating subscription with plan ID: ${planId}`);
             return actions.subscription.create({
-              'plan_id': planId
+              plan_id: planId
             });
           }
         };
