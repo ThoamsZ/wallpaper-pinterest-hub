@@ -14,7 +14,7 @@ const fetchWallpaperPage = async ({ pageParam = 0, tag }: { pageParam?: number, 
 
     let query = supabase
       .from('wallpapers')
-      .select('*')
+      .select('*', { count: 'exact' })
       .order('created_at', { ascending: false })
       .range(from, to);
 
@@ -22,13 +22,23 @@ const fetchWallpaperPage = async ({ pageParam = 0, tag }: { pageParam?: number, 
       query = query.contains('tags', [tag]);
     }
 
-    const { data, error } = await query;
+    const { data, error, count } = await query;
 
-    if (error) throw error;
-    return data ?? [];
+    if (error) {
+      console.error('Error fetching wallpapers:', error);
+      throw error;
+    }
+
+    return {
+      data: data ?? [],
+      count: count ?? 0
+    };
   } catch (error) {
     console.error('Error fetching wallpapers:', error);
-    return [];
+    return {
+      data: [],
+      count: 0
+    };
   }
 };
 
@@ -45,13 +55,13 @@ export const useWallpapers = (propWallpapers?: Wallpaper[], tag?: string) => {
     queryKey: ['wallpapers', tag],
     queryFn: ({ pageParam }) => fetchWallpaperPage({ pageParam, tag }),
     getNextPageParam: (lastPage, allPages) => {
-      if (!lastPage || !Array.isArray(lastPage)) {
+      if (!lastPage || !Array.isArray(lastPage.data)) {
         return undefined;
       }
-      return lastPage.length >= PAGE_SIZE ? allPages.length : undefined;
+      return lastPage.data.length >= PAGE_SIZE ? allPages.length : undefined;
     },
     initialData: propWallpapers ? {
-      pages: [propWallpapers],
+      pages: [{ data: propWallpapers, count: propWallpapers.length }],
       pageParams: [0]
     } : undefined,
     initialPageParam: 0,
@@ -64,7 +74,7 @@ export const useWallpapers = (propWallpapers?: Wallpaper[], tag?: string) => {
 
   const wallpapers = propWallpapers ?? 
     data?.pages?.reduce<Wallpaper[]>((acc, page) => {
-      return [...acc, ...page];
+      return [...acc, ...(page.data || [])];
     }, []) ?? [];
 
   return {
