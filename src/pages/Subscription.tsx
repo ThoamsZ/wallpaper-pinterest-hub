@@ -1,3 +1,4 @@
+
 import { DollarSign, CheckCircle2 } from "lucide-react";
 import Header from "@/components/Header";
 import { Button } from "@/components/ui/button";
@@ -61,13 +62,15 @@ const Subscription = () => {
           return;
         }
 
+        console.log('Fetched plans from database:', plansData);
+
         // Create a map of plan types to their PayPal plan IDs
         const planIdMap = plansData.reduce((acc: {[key: string]: string}, plan) => {
           acc[plan.type] = plan.paypal_plan_id;
           return acc;
         }, {});
 
-        console.log('Plan IDs loaded:', planIdMap);
+        console.log('Created plan ID map:', planIdMap);
         setPlanIds(planIdMap);
 
         // Remove existing PayPal script if it exists
@@ -122,6 +125,8 @@ const Subscription = () => {
     }
 
     console.log('Starting subscription process for plan:', plan);
+    console.log('Available plan IDs:', planIds);
+    
     setIsProcessing(true);
     try {
       const planDetails = PLAN_PRICES[plan as keyof typeof PLAN_PRICES];
@@ -240,9 +245,16 @@ const Subscription = () => {
           ...commonConfig,
           createSubscription: async (data: any, actions: any) => {
             console.log(`Creating subscription with plan ID: ${planId}`);
-            return actions.subscription.create({
-              plan_id: planId
-            });
+            try {
+              const result = await actions.subscription.create({
+                plan_id: planId
+              });
+              console.log('Subscription creation result:', result);
+              return result;
+            } catch (error) {
+              console.error('Error creating subscription:', error);
+              throw error;
+            }
           }
         };
       }
