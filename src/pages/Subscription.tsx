@@ -11,7 +11,7 @@ import {
 } from "@/components/ui/card";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/App";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 
@@ -28,6 +28,8 @@ const Subscription = () => {
   const [isProcessing, setIsProcessing] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [planIds, setPlanIds] = useState<{[key: string]: string}>({});
+  const paypalScriptRef = useRef<HTMLScriptElement | null>(null);
+  const buttonContainersRef = useRef<{[key: string]: HTMLDivElement | null}>({});
 
   useEffect(() => {
     const loadPaypalScript = async () => {
@@ -73,6 +75,11 @@ const Subscription = () => {
         setPlanIds(planIdMap);
         console.log('Plan IDs loaded:', planIdMap);
 
+        // Remove existing PayPal script if it exists
+        if (paypalScriptRef.current) {
+          document.body.removeChild(paypalScriptRef.current);
+        }
+
         // Load PayPal SDK
         const script = document.createElement('script');
         script.src = `https://www.paypal.com/sdk/js?client-id=${secretData.value}&vault=true&intent=subscription`;
@@ -86,13 +93,10 @@ const Subscription = () => {
           console.error('Failed to load PayPal SDK:', e);
           setLoadError('Failed to load payment system. Please try again later.');
         };
+        
+        paypalScriptRef.current = script;
         document.body.appendChild(script);
 
-        return () => {
-          if (document.body.contains(script)) {
-            document.body.removeChild(script);
-          }
-        };
       } catch (error) {
         console.error('Error initializing PayPal:', error);
         setLoadError('Failed to initialize payment system. Please try again later.');
@@ -100,6 +104,12 @@ const Subscription = () => {
     };
 
     loadPaypalScript();
+
+    return () => {
+      if (paypalScriptRef.current) {
+        document.body.removeChild(paypalScriptRef.current);
+      }
+    };
   }, []);
 
   const handleSubscribe = async (plan: string) => {
@@ -135,6 +145,12 @@ const Subscription = () => {
       }
 
       console.log('Created subscription record:', subscription);
+
+      // Clear existing PayPal buttons
+      const container = buttonContainersRef.current[plan];
+      if (container) {
+        container.innerHTML = '';
+      }
 
       // Initialize PayPal buttons
       if (window.paypal) {
@@ -218,9 +234,7 @@ const Subscription = () => {
           }
         });
 
-        const container = document.getElementById(`paypal-button-${plan}`);
         if (container) {
-          container.innerHTML = '';
           Buttons.render(container);
         }
       } else {
@@ -278,7 +292,10 @@ const Subscription = () => {
                   <DollarSign className="w-4 h-4 mr-2" />
                   Subscribe Monthly
                 </Button>
-                <div id="paypal-button-monthly"></div>
+                <div 
+                  id="paypal-button-monthly" 
+                  ref={(el) => buttonContainersRef.current['monthly'] = el}
+                ></div>
               </CardContent>
             </Card>
 
@@ -299,7 +316,10 @@ const Subscription = () => {
                   <DollarSign className="w-4 h-4 mr-2" />
                   Subscribe Yearly
                 </Button>
-                <div id="paypal-button-yearly"></div>
+                <div 
+                  id="paypal-button-yearly" 
+                  ref={(el) => buttonContainersRef.current['yearly'] = el}
+                ></div>
               </CardContent>
             </Card>
 
@@ -319,7 +339,10 @@ const Subscription = () => {
                   <DollarSign className="w-4 h-4 mr-2" />
                   Buy Lifetime
                 </Button>
-                <div id="paypal-button-lifetime"></div>
+                <div 
+                  id="paypal-button-lifetime" 
+                  ref={(el) => buttonContainersRef.current['lifetime'] = el}
+                ></div>
               </CardContent>
             </Card>
           </div>
