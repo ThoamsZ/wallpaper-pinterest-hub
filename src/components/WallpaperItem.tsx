@@ -76,7 +76,7 @@ const WallpaperItem = memo(({ wallpaper, onSelect }: WallpaperItemProps) => {
                 userSelect: 'none', 
                 WebkitUserSelect: 'none',
                 willChange: 'transform',
-                containIntrinsic: 'size'
+                containIntrinsicSize: 'width height'
               }}
             />
           )}

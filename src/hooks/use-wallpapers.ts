@@ -14,7 +14,7 @@ const fetchWallpaperPage = async ({ pageParam = 0, tag }: { pageParam?: number, 
 
     let query = supabase
       .from('wallpapers')
-      .select('id, compressed_url, url, tags, like_count, download_count, created_at')
+      .select('*')
       .order('created_at', { ascending: false })
       .range(from, to);
 
@@ -64,10 +64,7 @@ export const useWallpapers = (propWallpapers?: Wallpaper[], tag?: string) => {
 
   const wallpapers = propWallpapers ?? 
     data?.pages?.reduce<Wallpaper[]>((acc, page) => {
-      if (Array.isArray(page)) {
-        return [...acc, ...page];
-      }
-      return acc;
+      return [...acc, ...page];
     }, []) ?? [];
 
   return {
