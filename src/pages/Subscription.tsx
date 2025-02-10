@@ -113,7 +113,12 @@ const Subscription = () => {
   }, []);
 
   const handleSubscribe = async (plan: string) => {
-    if (!session) {
+    // Check if user is guest
+    if (!session || session.user.email === 'guest@wallpaperhub.com') {
+      toast({
+        title: "Authentication Required",
+        description: "Please register or login to subscribe.",
+      });
       navigate("/auth");
       return;
     }
