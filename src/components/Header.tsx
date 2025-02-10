@@ -133,8 +133,13 @@ const Header = ({ isDisabled = false }: HeaderProps) => {
       setUserEmail("");
       queryClient.clear();
 
-      // Sign out locally
-      await supabase.auth.signOut({ scope: 'local' });
+      // Get current session
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      if (session) {
+        // Sign out locally
+        await supabase.auth.signOut({ scope: 'local' });
+      }
 
       // Attempt guest login
       const { error: guestError } = await supabase.auth.signInWithPassword({
@@ -146,7 +151,7 @@ const Header = ({ isDisabled = false }: HeaderProps) => {
         console.error('Guest login error:', guestError);
       }
 
-      // Always navigate to auth and show success message
+      // Navigate to auth and show success message
       navigate("/auth");
       toast({
         title: "Success",
@@ -154,6 +159,7 @@ const Header = ({ isDisabled = false }: HeaderProps) => {
       });
     } catch (error) {
       console.error('Logout error:', error);
+      // Still navigate to auth and show message even if there's an error
       navigate("/auth");
       toast({
         title: "Notice",
@@ -281,3 +287,4 @@ const Header = ({ isDisabled = false }: HeaderProps) => {
 };
 
 export default Header;
+
