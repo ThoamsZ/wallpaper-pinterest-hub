@@ -1,5 +1,5 @@
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import Header from "@/components/Header";
 import WallpaperGrid from "@/components/WallpaperGrid";
@@ -14,6 +14,7 @@ const Index = () => {
   const { session } = useAuth();
   const queryClient = useQueryClient();
   const [searchParams] = useSearchParams();
+  const [isInitializing, setIsInitializing] = useState(true);
   const tag = searchParams.get('tag');
 
   useEffect(() => {
@@ -55,6 +56,8 @@ const Index = () => {
         console.error('Session initialization error:', error);
         queryClient.clear();
         navigate('/auth');
+      } finally {
+        setIsInitializing(false);
       }
     };
 
@@ -78,8 +81,8 @@ const Index = () => {
     }
   }, [isGuestUser]);
 
-  // Wait for session to be initialized before rendering
-  if (session === null) {
+  // Show loading state while initializing
+  if (isInitializing || session === null) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
