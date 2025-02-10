@@ -64,7 +64,7 @@ const Subscription = () => {
 
       return new Promise<void>((resolve, reject) => {
         const script = document.createElement('script');
-        script.src = `https://www.paypal.com/sdk/js?client-id=${secretData.value}&vault=true&intent=subscription&components=buttons&enable-funding=venmo`;
+        script.src = `https://www.paypal.com/sdk/js?client-id=${secretData.value}&vault=true&intent=subscription`;
         script.async = true;
         
         script.onload = () => {
@@ -149,8 +149,8 @@ const Subscription = () => {
         container.innerHTML = '';
       }
 
-      // Common button configuration
-      const commonConfig = {
+      // PayPal button configuration
+      const buttonConfig = {
         style: {
           shape: 'rect',
           color: 'blue',
@@ -189,12 +189,11 @@ const Subscription = () => {
         }
       };
 
-      // Create buttons based on plan type
-      let buttonConfig;
+      // Create the appropriate PayPal button based on plan type
       if (plan === 'lifetime') {
-        buttonConfig = {
-          ...commonConfig,
-          createOrder: async () => {
+        const Buttons = window.paypal.Buttons({
+          ...buttonConfig,
+          createOrder: () => {
             return window.paypal.Buttons.createOrder({
               purchase_units: [{
                 amount: {
@@ -204,29 +203,29 @@ const Subscription = () => {
               }]
             });
           }
-        };
+        });
+
+        if (container && await Buttons.isEligible()) {
+          await Buttons.render(container);
+        }
       } else {
         const planId = planIds[plan];
         if (!planId) {
           throw new Error('This subscription plan is not available at the moment.');
         }
-        
-        buttonConfig = {
-          ...commonConfig,
-          createSubscription: async () => {
+
+        const Buttons = window.paypal.Buttons({
+          ...buttonConfig,
+          createSubscription: () => {
             return window.paypal.Buttons.createSubscription({
               plan_id: planId
             });
           }
-        };
-      }
+        });
 
-      const Buttons = window.paypal.Buttons(buttonConfig);
-
-      if (container && await Buttons.isEligible()) {
-        await Buttons.render(container);
-      } else {
-        throw new Error('Payment system not available for this plan.');
+        if (container && await Buttons.isEligible()) {
+          await Buttons.render(container);
+        }
       }
     } catch (error) {
       toast({
