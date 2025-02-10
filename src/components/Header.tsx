@@ -29,7 +29,7 @@ const Header = ({ isDisabled = false }: HeaderProps) => {
     const checkUser = async () => {
       try {
         const { data: { session } } = await supabase.auth.getSession();
-        if (!session || session.user.email === 'guest@wallpaperhub.com') {
+        if (!session) {
           if (mounted) {
             setIsAuthenticated(false);
             setUserEmail("");
@@ -53,7 +53,7 @@ const Header = ({ isDisabled = false }: HeaderProps) => {
       
       if (!mounted) return;
 
-      if (!session || session.user.email === 'guest@wallpaperhub.com') {
+      if (!session) {
         setIsAuthenticated(false);
         setUserEmail("");
         return;
@@ -139,16 +139,6 @@ const Header = ({ isDisabled = false }: HeaderProps) => {
       if (session) {
         // Sign out locally
         await supabase.auth.signOut({ scope: 'local' });
-      }
-
-      // Attempt guest login
-      const { error: guestError } = await supabase.auth.signInWithPassword({
-        email: 'guest@wallpaperhub.com',
-        password: 'guest123',
-      });
-
-      if (guestError) {
-        console.error('Guest login error:', guestError);
       }
 
       // Navigate to auth and show success message
