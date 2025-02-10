@@ -1,4 +1,3 @@
-
 import { Search, Heart, Archive } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -112,7 +111,6 @@ const Header = ({ isDisabled = false }: HeaderProps) => {
     setIsProcessing(true);
     try {
       if (!searchQuery.trim()) {
-        // Reset to show all wallpapers when search is empty
         queryClient.invalidateQueries({ queryKey: ['wallpapers'] });
         setIsProcessing(false);
         return;
@@ -146,7 +144,6 @@ const Header = ({ isDisabled = false }: HeaderProps) => {
           description: "No wallpapers or creators found with your search term",
           variant: "destructive",
         });
-        // Reset to show all wallpapers when no results found
         queryClient.invalidateQueries({ queryKey: ['wallpapers'] });
       }
     } catch (error) {
@@ -166,42 +163,27 @@ const Header = ({ isDisabled = false }: HeaderProps) => {
 
     setIsProcessing(true);
     try {
-      // First clear cache and local state
       queryClient.clear();
       setIsAuthenticated(false);
       setUserEmail("");
       setIsAdmin(false);
 
-      // Get current session
-      const { data: { session } } = await supabase.auth.getSession();
-      
-      if (session) {
-        try {
-          // Try local signout first
-          await supabase.auth.signOut({ scope: 'local' });
-        } catch (signOutError) {
-          console.error('Local sign out error:', signOutError);
-          // Continue with the flow even if local sign out fails
-        }
+      try {
+        await supabase.auth.signOut({ scope: 'local' });
+      } catch (signOutError) {
+        console.error('Local sign out error:', signOutError);
       }
 
-      // Try to sign in as guest after logout
       try {
-        const { error: guestError } = await supabase.auth.signInWithPassword({
+        await supabase.auth.signInWithPassword({
           email: 'guest@wallpaperhub.com',
           password: 'guest123',
         });
-
-        if (guestError) {
-          console.error('Guest login error after logout:', guestError);
-        } else {
-          console.log('Successfully logged in as guest after logout');
-        }
+        console.log('Successfully logged in as guest after logout');
       } catch (guestLoginError) {
         console.error('Error during guest login:', guestLoginError);
       }
 
-      // Always navigate to auth page
       navigate("/auth");
       
       toast({
@@ -210,7 +192,6 @@ const Header = ({ isDisabled = false }: HeaderProps) => {
       });
     } catch (error) {
       console.error('Main logout error:', error);
-      // Always navigate to auth page, even on error
       navigate("/auth");
       
       toast({
@@ -233,7 +214,6 @@ const Header = ({ isDisabled = false }: HeaderProps) => {
       }
     }
     
-    // Reset search query and wallpapers when navigating to home
     if (path === '/') {
       setSearchQuery('');
       queryClient.invalidateQueries({ queryKey: ['wallpapers'] });
@@ -340,7 +320,6 @@ const Header = ({ isDisabled = false }: HeaderProps) => {
                   value={searchQuery}
                   onChange={(e) => {
                     setSearchQuery(e.target.value);
-                    // If search is cleared, trigger the form submission
                     if (!e.target.value.trim()) {
                       const form = e.target.form;
                       if (form) form.requestSubmit();
