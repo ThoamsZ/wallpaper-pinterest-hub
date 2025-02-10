@@ -20,11 +20,8 @@ const Auth = () => {
     const checkSession = async () => {
       const { data: { session } } = await supabase.auth.getSession();
       if (session) {
-        const isGuest = session.user.email === 'guest@wallpaperhub.com';
-        if (!isGuest) {
-          console.log("Auth: Non-guest session found, redirecting to /");
-          navigate("/", { replace: true });
-        }
+        console.log("Auth: Session found, redirecting to /");
+        navigate("/", { replace: true });
       }
     };
     checkSession();
@@ -94,24 +91,6 @@ const Auth = () => {
         }
 
         if (signInData.session) {
-          // Check if user is admin
-          const { data: adminData, error: adminError } = await supabase
-            .from('admin_users')
-            .select('admin_type')
-            .eq('user_id', signInData.session.user.id)
-            .maybeSingle();
-
-          if (adminData) {
-            // If admin, sign out and show error
-            await supabase.auth.signOut();
-            toast({
-              title: "Access denied",
-              description: "Please use the admin login page",
-              variant: "destructive",
-            });
-            return;
-          }
-
           navigate("/", { replace: true });
         }
       }
@@ -130,9 +109,13 @@ const Auth = () => {
   const handleGuestLogin = async () => {
     setIsLoading(true);
     try {
+      // First try to sign out any existing session
+      await supabase.auth.signOut({ scope: 'local' });
+      
+      // Then attempt guest login
       const { data, error } = await supabase.auth.signInWithPassword({
         email: 'guest@wallpaperhub.com',
-        password: 'guest123',
+        password: 'guest123guest',
       });
 
       if (error) {
