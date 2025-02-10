@@ -50,7 +50,13 @@ function AuthProvider({ children }: { children: React.ReactNode }) {
         await supabase.auth.signOut();
         
         // Check for existing session
-        const { data: { session: currentSession } } = await supabase.auth.getSession();
+        const { data: { session: currentSession }, error: sessionError } = await supabase.auth.getSession();
+        
+        if (sessionError) {
+          console.error("Session error:", sessionError);
+          if (mounted) setSession(null);
+          return;
+        }
         
         if (currentSession && mounted) {
           console.log("Existing session found:", currentSession.user.email);
@@ -77,7 +83,14 @@ function AuthProvider({ children }: { children: React.ReactNode }) {
         }
       } catch (error) {
         console.error("Auth initialization error:", error);
-        if (mounted) setSession(null);
+        if (mounted) {
+          setSession(null);
+          toast({
+            title: "Authentication Error",
+            description: "There was a problem with authentication. Please try again.",
+            variant: "destructive",
+          });
+        }
       } finally {
         if (mounted) setIsInitializing(false);
       }
@@ -86,10 +99,25 @@ function AuthProvider({ children }: { children: React.ReactNode }) {
     initializeAuth();
 
     // Set up auth state change listener
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, newSession) => {
-      console.log("Auth state changed:", _event, newSession?.user?.email);
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, newSession) => {
+      console.log("Auth state changed:", event, newSession?.user?.email);
       if (mounted) {
-        setSession(newSession);
+        if (event === 'TOKEN_REFRESHED' && !newSession) {
+          // Handle failed token refresh by attempting guest login
+          console.log("Token refresh failed, attempting guest login");
+          const { data: guestData, error: guestError } = await supabase.auth.signInWithPassword({
+            email: 'guest@wallpaperhub.com',
+            password: 'guest123',
+          });
+
+          if (!guestError && guestData.session) {
+            setSession(guestData.session);
+          } else {
+            setSession(null);
+          }
+        } else {
+          setSession(newSession);
+        }
       }
     });
 
