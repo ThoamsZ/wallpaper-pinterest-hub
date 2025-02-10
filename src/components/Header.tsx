@@ -1,3 +1,4 @@
+
 import { Search, Heart, Archive } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -163,37 +164,47 @@ const Header = ({ isDisabled = false }: HeaderProps) => {
 
     setIsProcessing(true);
     try {
-      queryClient.clear();
+      // Clear local state first
       setIsAuthenticated(false);
       setUserEmail("");
       setIsAdmin(false);
+      queryClient.clear();
 
       try {
-        await supabase.auth.signOut({ scope: 'local' });
+        // Get current session
+        const { data: { session } } = await supabase.auth.getSession();
+        
+        if (session) {
+          // Only attempt to sign out if there's an active session
+          await supabase.auth.signOut();
+        }
       } catch (signOutError) {
-        console.error('Local sign out error:', signOutError);
+        console.error('Sign out error:', signOutError);
       }
 
+      // Always attempt guest login after clearing state
       try {
-        await supabase.auth.signInWithPassword({
+        const { error: guestError } = await supabase.auth.signInWithPassword({
           email: 'guest@wallpaperhub.com',
           password: 'guest123',
         });
-        console.log('Successfully logged in as guest after logout');
+
+        if (!guestError) {
+          console.log('Successfully logged in as guest');
+        }
       } catch (guestLoginError) {
-        console.error('Error during guest login:', guestLoginError);
+        console.error('Guest login error:', guestLoginError);
       }
 
+      // Always navigate to auth and show success message
       navigate("/auth");
-      
       toast({
         title: "Success",
         description: "Successfully logged out",
       });
     } catch (error) {
-      console.error('Main logout error:', error);
+      console.error('Logout error:', error);
       navigate("/auth");
-      
       toast({
         title: "Notice",
         description: "You have been logged out",
