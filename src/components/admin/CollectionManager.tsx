@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -32,7 +31,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useQuery } from "@tanstack/react-query";
-import { Image, Trash, Download, Heart } from "lucide-react";
+import { Image, Trash, Download, Heart, Edit, X, Check } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 
 interface Collection {
@@ -55,6 +54,12 @@ interface CollectionWallpaper extends Wallpaper {
   collection_id: string;
 }
 
+interface EditingCollection {
+  id: string;
+  name: string;
+  description: string | null;
+}
+
 export const CollectionManager = () => {
   const navigate = useNavigate();
   const [newCollectionName, setNewCollectionName] = useState("");
@@ -62,6 +67,7 @@ export const CollectionManager = () => {
   const [selectedCollection, setSelectedCollection] = useState<string | null>(null);
   const [isViewingCollection, setIsViewingCollection] = useState(false);
   const [selectedWallpapers, setSelectedWallpapers] = useState<string[]>([]);
+  const [editingCollection, setEditingCollection] = useState<EditingCollection | null>(null);
 
   // Check admin status
   const { data: adminStatus, isError: isAdminError } = useQuery({
@@ -272,23 +278,55 @@ export const CollectionManager = () => {
 
   const deleteMultipleWallpapers = async () => {
     try {
-      // Ensure we have valid arrays before operating on them
-      const wallpapersToDelete = (collectionWallpapers || []).filter(w => selectedWallpapers.includes(w.id));
-      
+      console.log("Deleting wallpapers:", selectedWallpapers);
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) throw new Error("Not authenticated");
+
+      // Get all wallpapers to delete
+      const { data: wallpapersToDelete, error: fetchError } = await supabase
+        .from('wallpapers')
+        .select('*')
+        .in('id', selectedWallpapers);
+
+      if (fetchError) throw fetchError;
+      console.log("Wallpapers to delete:", wallpapersToDelete);
+
+      if (!wallpapersToDelete) return;
+
+      // First delete from storage
       for (const wallpaper of wallpapersToDelete) {
+        console.log("Deleting from storage:", wallpaper.file_path);
         const { error: storageError } = await supabase.storage
           .from('wallpapers')
           .remove([wallpaper.file_path]);
 
-        if (storageError) throw storageError;
+        if (storageError) {
+          console.error("Storage deletion error:", storageError);
+          throw storageError;
+        }
       }
 
+      // Delete from collection_wallpapers
+      const { error: collectionError } = await supabase
+        .from('collection_wallpapers')
+        .delete()
+        .in('wallpaper_id', selectedWallpapers);
+
+      if (collectionError) {
+        console.error("Collection wallpapers deletion error:", collectionError);
+        throw collectionError;
+      }
+
+      // Then delete from wallpapers table
       const { error: dbError } = await supabase
         .from('wallpapers')
         .delete()
         .in('id', selectedWallpapers);
 
-      if (dbError) throw dbError;
+      if (dbError) {
+        console.error("Database deletion error:", dbError);
+        throw dbError;
+      }
 
       toast({
         title: "Success",
@@ -298,9 +336,10 @@ export const CollectionManager = () => {
       setSelectedWallpapers([]);
       refetchCollectionWallpapers();
     } catch (error: any) {
+      console.error("Delete multiple error:", error);
       toast({
         title: "Error",
-        description: error.message,
+        description: error.message || "Failed to delete wallpapers",
         variant: "destructive",
       });
     }
@@ -407,6 +446,36 @@ export const CollectionManager = () => {
       });
       
       refetchCollectionWallpapers();
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleUpdateCollection = async (collectionId: string) => {
+    try {
+      if (!editingCollection) return;
+      
+      const { error } = await supabase
+        .from('collections')
+        .update({
+          name: editingCollection.name,
+          description: editingCollection.description
+        })
+        .eq('id', collectionId);
+
+      if (error) throw error;
+
+      toast({
+        title: "Success",
+        description: "Collection updated successfully",
+      });
+      
+      setEditingCollection(null);
+      refetchCollections();
     } catch (error: any) {
       toast({
         title: "Error",
@@ -551,40 +620,98 @@ export const CollectionManager = () => {
           <Card key={collection.id} className="cursor-pointer hover:shadow-lg transition-shadow">
             <CardHeader>
               <CardTitle className="flex justify-between items-center">
-                <span>{collection.name}</span>
-                <AlertDialog>
-                  <AlertDialogTrigger asChild>
-                    <Button variant="ghost" size="icon" className="h-8 w-8">
-                      <Trash className="h-4 w-4" />
-                    </Button>
-                  </AlertDialogTrigger>
-                  <AlertDialogContent>
-                    <AlertDialogHeader>
-                      <AlertDialogTitle>Delete Collection</AlertDialogTitle>
-                      <AlertDialogDescription>
-                        Are you sure you want to delete this collection? This action cannot be undone.
-                      </AlertDialogDescription>
-                    </AlertDialogHeader>
-                    <AlertDialogFooter>
-                      <AlertDialogCancel>Cancel</AlertDialogCancel>
-                      <AlertDialogAction
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleDelete(collection.id);
-                        }}
-                        className="bg-red-500 hover:bg-red-600"
+                {editingCollection?.id === collection.id ? (
+                  <Input
+                    value={editingCollection.name}
+                    onChange={(e) => setEditingCollection({
+                      ...editingCollection,
+                      name: e.target.value
+                    })}
+                    className="mr-2"
+                  />
+                ) : (
+                  <span>{collection.name}</span>
+                )}
+                <div className="flex gap-2">
+                  {editingCollection?.id === collection.id ? (
+                    <>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => handleUpdateCollection(collection.id)}
+                        className="h-8 w-8"
                       >
-                        Delete
-                      </AlertDialogAction>
-                    </AlertDialogFooter>
-                  </AlertDialogContent>
-                </AlertDialog>
+                        <Check className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => setEditingCollection(null)}
+                        className="h-8 w-8"
+                      >
+                        <X className="h-4 w-4" />
+                      </Button>
+                    </>
+                  ) : (
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => setEditingCollection({
+                        id: collection.id,
+                        name: collection.name,
+                        description: collection.description
+                      })}
+                      className="h-8 w-8"
+                    >
+                      <Edit className="h-4 w-4" />
+                    </Button>
+                  )}
+                  <AlertDialog>
+                    <AlertDialogTrigger asChild>
+                      <Button variant="ghost" size="icon" className="h-8 w-8">
+                        <Trash className="h-4 w-4" />
+                      </Button>
+                    </AlertDialogTrigger>
+                    <AlertDialogContent>
+                      <AlertDialogHeader>
+                        <AlertDialogTitle>Delete Collection</AlertDialogTitle>
+                        <AlertDialogDescription>
+                          Are you sure you want to delete this collection? This action cannot be undone.
+                        </AlertDialogDescription>
+                      </AlertDialogHeader>
+                      <AlertDialogFooter>
+                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                        <AlertDialogAction
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleDelete(collection.id);
+                          }}
+                          className="bg-red-500 hover:bg-red-600"
+                        >
+                          Delete
+                        </AlertDialogAction>
+                      </AlertDialogFooter>
+                    </AlertDialogContent>
+                  </AlertDialog>
+                </div>
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <p className="text-sm text-muted-foreground mb-4">
-                {collection.description || "No description"}
-              </p>
+              {editingCollection?.id === collection.id ? (
+                <Textarea
+                  value={editingCollection.description || ""}
+                  onChange={(e) => setEditingCollection({
+                    ...editingCollection,
+                    description: e.target.value
+                  })}
+                  className="mb-4"
+                  placeholder="No description"
+                />
+              ) : (
+                <p className="text-sm text-muted-foreground mb-4">
+                  {collection.description || "No description"}
+                </p>
+              )}
               <div className="grid grid-cols-2 gap-2 mb-4">
                 {getCollectionPreviewImages(collection).map((url, index) => (
                   <img

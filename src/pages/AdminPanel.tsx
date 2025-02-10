@@ -306,10 +306,7 @@ const AdminPanel = () => {
             <h1 className="text-2xl font-bold">Admin Panel</h1>
             <p className="text-gray-600">Logged in as: {adminData.email}</p>
           </div>
-          <div className="space-x-4">
-            <Button onClick={() => navigate("/admin/register")}>Register New Admin</Button>
-            <Button onClick={() => navigate("/upload")}>Upload Wallpapers</Button>
-          </div>
+          <Button onClick={() => navigate("/upload")}>Upload Wallpapers</Button>
         </div>
 
         <Card className="mb-8">
