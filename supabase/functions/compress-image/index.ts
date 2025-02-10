@@ -1,3 +1,4 @@
+
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.7.1'
 
@@ -28,12 +29,15 @@ serve(async (req) => {
 
     console.log('Starting ImageMagick compression...')
     
-    // Create a new process to run ImageMagick
+    // Create a new process to run ImageMagick with optimized settings
     const cmd = new Deno.Command("convert", {
       args: [
         "-", // Read from stdin
+        "-strip", // Remove all metadata
+        "-interlace", "Plane", // Progressive loading
+        "-gaussian-blur", "0.05", // Slight blur to help compression
+        "-quality", "60", // Lower quality for preview
         "-resize", "800x800>", // Resize to max 800x800 while maintaining aspect ratio
-        "-quality", "80", // Set JPEG quality to 80%
         "jpeg:-" // Output as JPEG to stdout
       ],
       stdin: "piped",
