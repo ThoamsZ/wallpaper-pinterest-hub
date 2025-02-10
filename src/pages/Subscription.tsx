@@ -71,9 +71,9 @@ const Subscription = () => {
           document.body.removeChild(paypalScriptRef.current);
         }
 
-        // Load PayPal SDK
+        // Load PayPal SDK with sandbox environment
         const script = document.createElement('script');
-        script.src = `https://www.paypal.com/sdk/js?client-id=${secretData.value}&vault=true&intent=subscription&components=buttons`;
+        script.src = `https://www.paypal.com/sdk/js?client-id=${secretData.value}&vault=true&intent=subscription&components=buttons&enable-funding=venmo&env=sandbox`;
         script.async = true;
         script.onload = () => {
           console.log('PayPal SDK loaded successfully');
@@ -122,6 +122,10 @@ const Subscription = () => {
     
     setIsProcessing(true);
     try {
+      if (!paypalLoaded) {
+        throw new Error('PayPal SDK not loaded yet. Please wait and try again.');
+      }
+
       const planDetails = PLAN_PRICES[plan as keyof typeof PLAN_PRICES];
       console.log('Plan details:', planDetails);
       
@@ -265,7 +269,7 @@ const Subscription = () => {
       console.error('Subscription error:', error);
       toast({
         title: "Error",
-        description: "There was a problem setting up your subscription. Please try again.",
+        description: error instanceof Error ? error.message : "There was a problem setting up your subscription. Please try again.",
         variant: "destructive",
       });
     } finally {
