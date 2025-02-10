@@ -142,6 +142,45 @@ export type Database = {
           },
         ]
       }
+      paypal_subscriptions: {
+        Row: {
+          amount: number
+          created_at: string
+          currency: string
+          id: string
+          paypal_order_id: string | null
+          paypal_subscription_id: string | null
+          status: string
+          subscription_type: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          amount: number
+          created_at?: string
+          currency: string
+          id?: string
+          paypal_order_id?: string | null
+          paypal_subscription_id?: string | null
+          status?: string
+          subscription_type: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          currency?: string
+          id?: string
+          paypal_order_id?: string | null
+          paypal_subscription_id?: string | null
+          status?: string
+          subscription_type?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       tags_stats: {
         Row: {
           download_count: number | null
