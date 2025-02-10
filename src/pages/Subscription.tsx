@@ -1,19 +1,12 @@
 
-import { DollarSign, CheckCircle2 } from "lucide-react";
 import Header from "@/components/Header";
-import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/App";
 import { useEffect, useState, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
+import SubscriptionPlanCard from "@/components/subscription/SubscriptionPlanCard";
+import VIPBenefits from "@/components/subscription/VIPBenefits";
 
 const PLAN_PRICES = {
   monthly: { amount: 4.99, currency: "USD" },
@@ -299,94 +292,43 @@ const Subscription = () => {
           </div>
 
           <div className="grid md:grid-cols-3 gap-6 mb-12">
-            <Card>
-              <CardHeader>
-                <CardTitle>Monthly VIP</CardTitle>
-                <CardDescription>Perfect for short-term needs</CardDescription>
-                <div className="text-3xl font-bold text-primary mt-2">$4.99</div>
-                <div className="text-sm text-gray-500">per month</div>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <Button 
-                  className="w-full" 
-                  onClick={() => handleSubscribe('monthly')}
-                  disabled={isProcessing || !!loadError}
-                >
-                  <DollarSign className="w-4 h-4 mr-2" />
-                  Subscribe Monthly
-                </Button>
-                <div 
-                  id="paypal-button-monthly" 
-                  ref={(el) => buttonContainersRef.current['monthly'] = el}
-                ></div>
-              </CardContent>
-            </Card>
-
-            <Card className="border-primary">
-              <CardHeader>
-                <CardTitle>Yearly VIP</CardTitle>
-                <CardDescription>Save 33% with annual billing</CardDescription>
-                <div className="text-3xl font-bold text-primary mt-2">$39.99</div>
-                <div className="text-sm text-gray-500">per year</div>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <Button 
-                  className="w-full" 
-                  variant="default"
-                  onClick={() => handleSubscribe('yearly')}
-                  disabled={isProcessing || !!loadError}
-                >
-                  <DollarSign className="w-4 h-4 mr-2" />
-                  Subscribe Yearly
-                </Button>
-                <div 
-                  id="paypal-button-yearly" 
-                  ref={(el) => buttonContainersRef.current['yearly'] = el}
-                ></div>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader>
-                <CardTitle>Lifetime VIP</CardTitle>
-                <CardDescription>One-time purchase, forever access</CardDescription>
-                <div className="text-3xl font-bold text-primary mt-2">$99.99</div>
-                <div className="text-sm text-gray-500">one-time payment</div>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <Button 
-                  className="w-full" 
-                  onClick={() => handleSubscribe('lifetime')}
-                  disabled={isProcessing || !!loadError}
-                >
-                  <DollarSign className="w-4 h-4 mr-2" />
-                  Buy Lifetime
-                </Button>
-                <div 
-                  id="paypal-button-lifetime" 
-                  ref={(el) => buttonContainersRef.current['lifetime'] = el}
-                ></div>
-              </CardContent>
-            </Card>
+            <SubscriptionPlanCard
+              title="Monthly VIP"
+              description="Perfect for short-term needs"
+              price={PLAN_PRICES.monthly.amount}
+              interval="per month"
+              planType="monthly"
+              onSubscribe={handleSubscribe}
+              isProcessing={isProcessing}
+              loadError={loadError}
+              buttonContainerRef={(el) => buttonContainersRef.current['monthly'] = el}
+            />
+            <SubscriptionPlanCard
+              title="Yearly VIP"
+              description="Save 33% with annual billing"
+              price={PLAN_PRICES.yearly.amount}
+              interval="per year"
+              planType="yearly"
+              isHighlighted={true}
+              onSubscribe={handleSubscribe}
+              isProcessing={isProcessing}
+              loadError={loadError}
+              buttonContainerRef={(el) => buttonContainersRef.current['yearly'] = el}
+            />
+            <SubscriptionPlanCard
+              title="Lifetime VIP"
+              description="One-time purchase, forever access"
+              price={PLAN_PRICES.lifetime.amount}
+              interval="one-time payment"
+              planType="lifetime"
+              onSubscribe={handleSubscribe}
+              isProcessing={isProcessing}
+              loadError={loadError}
+              buttonContainerRef={(el) => buttonContainersRef.current['lifetime'] = el}
+            />
           </div>
 
-          <div className="bg-gray-50 rounded-lg p-6">
-            <h2 className="text-xl font-bold mb-4">🔓 VIP Member Benefits</h2>
-            <div className="grid md:grid-cols-2 gap-4">
-              {[
-                "25 daily downloads (resets at 00:00)",
-                "Exclusive VIP wallpapers (AI-generated, 8K HD, Dynamic)",
-                "Ad-free experience",
-                "Priority access to new uploads",
-                "Cloud collection storage"
-              ].map((benefit, index) => (
-                <div key={index} className="flex items-center gap-2">
-                  <CheckCircle2 className="text-green-500 w-5 h-5" />
-                  <span>{benefit}</span>
-                </div>
-              ))}
-            </div>
-          </div>
+          <VIPBenefits />
         </div>
       </main>
     </div>
