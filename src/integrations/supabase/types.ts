@@ -98,6 +98,50 @@ export type Database = {
         }
         Relationships: []
       }
+      paypal_subscription_logs: {
+        Row: {
+          amount: number
+          created_at: string
+          currency: string
+          id: string
+          paypal_order_id: string
+          paypal_subscription_id: string
+          status: string
+          subscription_type: string
+          user_id: string
+        }
+        Insert: {
+          amount: number
+          created_at?: string
+          currency: string
+          id?: string
+          paypal_order_id: string
+          paypal_subscription_id: string
+          status: string
+          subscription_type: string
+          user_id: string
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          currency?: string
+          id?: string
+          paypal_order_id?: string
+          paypal_subscription_id?: string
+          status?: string
+          subscription_type?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "paypal_subscription_logs_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       tags_stats: {
         Row: {
           download_count: number | null
