@@ -1,3 +1,4 @@
+
 import { DollarSign, CheckCircle2 } from "lucide-react";
 import Header from "@/components/Header";
 import { Button } from "@/components/ui/button";
@@ -213,14 +214,21 @@ const Subscription = () => {
           };
         } else {
           // Subscription configuration
+          const planId = planIds[plan];
+          if (!planId) {
+            console.error(`No plan ID found for ${plan} subscription`);
+            toast({
+              title: "Error",
+              description: "This subscription plan is not available at the moment. Please try again later.",
+              variant: "destructive",
+            });
+            return;
+          }
+          
+          console.log(`Creating subscription with plan ID: ${planId}`);
           buttonConfig = {
             ...commonConfig,
             createSubscription: async (data: any, actions: any) => {
-              const planId = planIds[plan];
-              if (!planId) {
-                throw new Error(`No plan ID found for ${plan} subscription`);
-              }
-              console.log(`Creating subscription with plan ID: ${planId}`);
               return actions.subscription.create({
                 'plan_id': planId
               });
