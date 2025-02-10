@@ -31,9 +31,12 @@ const Index = () => {
     window.addEventListener('error', handleError);
     
     const initializeSession = async () => {
-      if (!session) {
-        console.log("No session found, attempting guest login");
-        try {
+      try {
+        // First check if we already have a valid session
+        const { data: { session: currentSession } } = await supabase.auth.getSession();
+        
+        if (!currentSession) {
+          console.log("No session found, attempting guest login");
           const { data, error } = await supabase.auth.signInWithPassword({
             email: 'guest@wallpaperhub.com',
             password: 'guest123',
@@ -47,11 +50,11 @@ const Index = () => {
           }
           
           console.log("Successfully logged in as guest");
-        } catch (error) {
-          console.error('Guest login error:', error);
-          queryClient.clear();
-          navigate('/auth');
         }
+      } catch (error) {
+        console.error('Session initialization error:', error);
+        queryClient.clear();
+        navigate('/auth');
       }
     };
 
@@ -60,9 +63,9 @@ const Index = () => {
     return () => {
       window.removeEventListener('error', handleError);
     };
-  }, [session, navigate, queryClient]);
+  }, [navigate, queryClient]);
 
-  // Check if user is guest
+  // Check if user is guest with proper null checking
   const isGuestUser = session?.user?.email === 'guest@wallpaperhub.com';
 
   useEffect(() => {
@@ -75,8 +78,13 @@ const Index = () => {
     }
   }, [isGuestUser]);
 
-  if (!session) {
-    return null;
+  // Wait for session to be initialized before rendering
+  if (session === null) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+      </div>
+    );
   }
 
   return (
