@@ -176,7 +176,8 @@ const Header = ({ isDisabled = false }: HeaderProps) => {
         // Check if we have a valid session before attempting to sign out
         const { data: { session } } = await supabase.auth.getSession();
         if (session) {
-          const { error } = await supabase.auth.signOut();
+          // We have a valid session, attempt to sign out
+          const { error } = await supabase.auth.signOut({ scope: 'local' }); // Only clear local session
           if (error) {
             console.error('Logout error:', error);
             // Even if there's an error, we'll continue with the logout flow
