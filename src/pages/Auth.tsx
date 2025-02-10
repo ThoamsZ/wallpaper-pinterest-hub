@@ -20,8 +20,11 @@ const Auth = () => {
     const checkSession = async () => {
       const { data: { session } } = await supabase.auth.getSession();
       if (session) {
-        console.log("Auth: Session found, redirecting to /");
-        navigate("/", { replace: true });
+        const isGuest = session.user.email === 'guest@wallpaperhub.com';
+        if (!isGuest) {
+          console.log("Auth: Non-guest session found, redirecting to /");
+          navigate("/", { replace: true });
+        }
       }
     };
     checkSession();
@@ -91,6 +94,24 @@ const Auth = () => {
         }
 
         if (signInData.session) {
+          // Check if user is admin
+          const { data: adminData, error: adminError } = await supabase
+            .from('admin_users')
+            .select('admin_type')
+            .eq('user_id', signInData.session.user.id)
+            .maybeSingle();
+
+          if (adminData) {
+            // If admin, sign out and show error
+            await supabase.auth.signOut();
+            toast({
+              title: "Access denied",
+              description: "Please use the admin login page",
+              variant: "destructive",
+            });
+            return;
+          }
+
           navigate("/", { replace: true });
         }
       }
@@ -99,6 +120,39 @@ const Auth = () => {
       toast({
         title: "Error",
         description: error.message || "An unexpected error occurred",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleGuestLogin = async () => {
+    setIsLoading(true);
+    try {
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email: 'guest@wallpaperhub.com',
+        password: 'guest123',
+      });
+
+      if (error) {
+        console.error("Guest login error:", error);
+        toast({
+          title: "Guest login failed",
+          description: "Unable to log in as guest. Please try again later.",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      if (data.session) {
+        navigate("/", { replace: true });
+      }
+    } catch (error: any) {
+      console.error("Guest login error:", error);
+      toast({
+        title: "Error",
+        description: "Unable to log in as guest. Please try again later.",
         variant: "destructive",
       });
     } finally {
@@ -151,7 +205,7 @@ const Auth = () => {
           </Button>
         </form>
 
-        <div className="text-center">
+        <div className="text-center space-y-4">
           <button
             type="button"
             onClick={() => setIsSignUp(!isSignUp)}
@@ -160,6 +214,17 @@ const Auth = () => {
           >
             {isSignUp ? "Already have an account? Sign in" : "Need an account? Sign up"}
           </button>
+          <div>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={handleGuestLogin}
+              disabled={isLoading}
+              className="w-full"
+            >
+              Continue as Guest
+            </Button>
+          </div>
         </div>
       </div>
     </div>

@@ -1,4 +1,3 @@
-
 import { Search, Heart, Archive } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -19,9 +18,11 @@ const Header = ({ isDisabled = false }: HeaderProps) => {
   const isMobile = useIsMobile();
   const queryClient = useQueryClient();
   const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [isAdmin, setIsAdmin] = useState(false);
   const [userEmail, setUserEmail] = useState<string>("");
   const [searchQuery, setSearchQuery] = useState("");
   const [isProcessing, setIsProcessing] = useState(false);
+  const isAdminPanel = location.pathname === "/admin-panel";
 
   useEffect(() => {
     let mounted = true;
@@ -33,6 +34,7 @@ const Header = ({ isDisabled = false }: HeaderProps) => {
           if (mounted) {
             setIsAuthenticated(false);
             setUserEmail("");
+            setIsAdmin(false);
           }
           return;
         }
@@ -40,6 +42,19 @@ const Header = ({ isDisabled = false }: HeaderProps) => {
         if (mounted) {
           setIsAuthenticated(true);
           setUserEmail(session.user.email || "");
+
+          const { data: adminData, error } = await supabase
+            .from('admin_users')
+            .select('admin_type')
+            .eq('user_id', session.user.id)
+            .maybeSingle();
+          
+          if (error) {
+            console.error('Error fetching admin data:', error);
+            return;
+          }
+          
+          setIsAdmin(!!adminData);
         }
       } catch (error) {
         console.error('Error checking user:', error);
@@ -56,11 +71,31 @@ const Header = ({ isDisabled = false }: HeaderProps) => {
       if (!session) {
         setIsAuthenticated(false);
         setUserEmail("");
+        setIsAdmin(false);
         return;
       }
 
       setIsAuthenticated(true);
       setUserEmail(session.user.email || "");
+
+      try {
+        const { data: adminData, error } = await supabase
+          .from('admin_users')
+          .select('admin_type')
+          .eq('user_id', session.user.id)
+          .maybeSingle();
+        
+        if (error) {
+          console.error('Error fetching admin data:', error);
+          return;
+        }
+
+        if (mounted) {
+          setIsAdmin(!!adminData);
+        }
+      } catch (error) {
+        console.error('Error updating user state:', error);
+      }
     });
 
     return () => {
@@ -76,6 +111,7 @@ const Header = ({ isDisabled = false }: HeaderProps) => {
     setIsProcessing(true);
     try {
       if (!searchQuery.trim()) {
+        // Reset to show all wallpapers when search is empty
         queryClient.invalidateQueries({ queryKey: ['wallpapers'] });
         setIsProcessing(false);
         return;
@@ -109,6 +145,7 @@ const Header = ({ isDisabled = false }: HeaderProps) => {
           description: "No wallpapers or creators found with your search term",
           variant: "destructive",
         });
+        // Reset to show all wallpapers when no results found
         queryClient.invalidateQueries({ queryKey: ['wallpapers'] });
       }
     } catch (error) {
@@ -128,29 +165,30 @@ const Header = ({ isDisabled = false }: HeaderProps) => {
 
     setIsProcessing(true);
     try {
-      // Clear local state first
+      // First clear cache and local state to ensure clean state
+      queryClient.clear();
       setIsAuthenticated(false);
       setUserEmail("");
-      queryClient.clear();
-
-      // Get current session
-      const { data: { session } } = await supabase.auth.getSession();
+      setIsAdmin(false);
       
-      if (session) {
-        // Sign out locally
-        await supabase.auth.signOut({ scope: 'local' });
+      // Then attempt to sign out from Supabase
+      const { error } = await supabase.auth.signOut();
+      if (error) {
+        console.error('Logout error:', error);
       }
-
-      // Navigate to auth and show success message
+      
+      // Navigate to auth page
       navigate("/auth");
+      
       toast({
         title: "Success",
         description: "Successfully logged out",
       });
     } catch (error) {
       console.error('Logout error:', error);
-      // Still navigate to auth and show message even if there's an error
+      // Already cleared local state above, just ensure navigation happens
       navigate("/auth");
+      
       toast({
         title: "Notice",
         description: "You have been logged out",
@@ -164,10 +202,14 @@ const Header = ({ isDisabled = false }: HeaderProps) => {
     if (isDisabled || isProcessing) return;
     
     if ((path === '/collections' || path === '/likes') && !isAuthenticated) {
-      navigate('/auth');
-      return;
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        navigate('/auth');
+        return;
+      }
     }
     
+    // Reset search query and wallpapers when navigating to home
     if (path === '/') {
       setSearchQuery('');
       queryClient.invalidateQueries({ queryKey: ['wallpapers'] });
@@ -192,14 +234,16 @@ const Header = ({ isDisabled = false }: HeaderProps) => {
           </div>
 
           <div className="flex items-center gap-4 text-sm">
-            <button 
-              onClick={() => handleNavigation("/")}
-              className={`${isButtonDisabled ? 'text-gray-400' : 'text-gray-600 hover:text-primary'} transition-colors`}
-              disabled={isButtonDisabled}
-            >
-              Explore
-            </button>
-            {isAuthenticated && (
+            {!isAdminPanel && (
+              <button 
+                onClick={() => handleNavigation("/")}
+                className={`${isButtonDisabled ? 'text-gray-400' : 'text-gray-600 hover:text-primary'} transition-colors`}
+                disabled={isButtonDisabled}
+              >
+                Explore
+              </button>
+            )}
+            {isAuthenticated && !isAdminPanel && (
               <>
                 <button 
                   onClick={() => handleNavigation("/collections")}
@@ -228,6 +272,17 @@ const Header = ({ isDisabled = false }: HeaderProps) => {
                       {userEmail}
                     </span>
                   )}
+                  {isAdmin && !isAdminPanel && (
+                    <Button 
+                      variant="outline" 
+                      onClick={() => handleNavigation("/admin-panel")}
+                      className="text-sm py-1.5"
+                      size="sm"
+                      disabled={isButtonDisabled}
+                    >
+                      Admin
+                    </Button>
+                  )}
                   <Button 
                     variant="ghost" 
                     onClick={handleLogout}
@@ -251,25 +306,28 @@ const Header = ({ isDisabled = false }: HeaderProps) => {
             </div>
           </div>
 
-          <form onSubmit={handleSearch} className="w-full">
-            <div className="relative">
-              <Input
-                type="search"
-                placeholder="Search for wallpapers or creator codes..."
-                className={`w-full pl-10 pr-4 py-1.5 rounded-full border-gray-200 text-sm ${isButtonDisabled ? 'bg-gray-100 cursor-not-allowed' : ''}`}
-                value={searchQuery}
-                onChange={(e) => {
-                  setSearchQuery(e.target.value);
-                  if (!e.target.value.trim()) {
-                    const form = e.target.form;
-                    if (form) form.requestSubmit();
-                  }
-                }}
-                disabled={isButtonDisabled}
-              />
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4" />
-            </div>
-          </form>
+          {!isAdminPanel && (
+            <form onSubmit={handleSearch} className="w-full">
+              <div className="relative">
+                <Input
+                  type="search"
+                  placeholder="Search for wallpapers or creator codes..."
+                  className={`w-full pl-10 pr-4 py-1.5 rounded-full border-gray-200 text-sm ${isButtonDisabled ? 'bg-gray-100 cursor-not-allowed' : ''}`}
+                  value={searchQuery}
+                  onChange={(e) => {
+                    setSearchQuery(e.target.value);
+                    // If search is cleared, trigger the form submission
+                    if (!e.target.value.trim()) {
+                      const form = e.target.form;
+                      if (form) form.requestSubmit();
+                    }
+                  }}
+                  disabled={isButtonDisabled}
+                />
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4" />
+              </div>
+            </form>
+          )}
         </div>
       </div>
     </header>
@@ -277,4 +335,3 @@ const Header = ({ isDisabled = false }: HeaderProps) => {
 };
 
 export default Header;
-

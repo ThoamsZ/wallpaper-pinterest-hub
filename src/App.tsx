@@ -42,89 +42,53 @@ function AuthProvider({ children }: { children: React.ReactNode }) {
   const [isInitializing, setIsInitializing] = useState(true);
 
   useEffect(() => {
-    let mounted = true;
-
     const initializeAuth = async () => {
       try {
-        // Clear any existing session first to prevent refresh token errors
-        await supabase.auth.signOut();
-        
         // Check for existing session
-        const { data: { session: currentSession }, error: sessionError } = await supabase.auth.getSession();
+        const { data: { session: currentSession } } = await supabase.auth.getSession();
         
-        if (sessionError) {
-          console.error("Session error:", sessionError);
-          if (mounted) setSession(null);
-          return;
-        }
-        
-        if (currentSession && mounted) {
+        if (currentSession) {
           console.log("Existing session found:", currentSession.user.email);
           setSession(currentSession);
         } else {
           // If no session exists, try to sign in as guest
           console.log("No session found, attempting guest login");
-          const { data: guestData, error: guestError } = await supabase.auth.signInWithPassword({
+          const { data, error } = await supabase.auth.signInWithPassword({
             email: 'guest@wallpaperhub.com',
             password: 'guest123',
           });
 
-          if (guestError) {
-            console.error("Guest login error:", guestError);
-            if (mounted) setSession(null);
-          } else if (guestData.session && mounted) {
+          if (error) {
+            console.error("Guest login error:", error);
+            setSession(null);
+          } else if (data.session) {
             console.log("Successfully logged in as guest");
-            setSession(guestData.session);
+            setSession(data.session);
             toast({
               title: "Welcome to xxWallpaper",
               description: "You're browsing as a guest. Sign up to like and collect wallpapers!",
             });
           }
         }
+
+        // Listen for auth state changes
+        const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, newSession) => {
+          console.log("Auth state changed:", _event, newSession?.user?.email);
+          setSession(newSession);
+        });
+
+        return () => {
+          subscription.unsubscribe();
+        };
       } catch (error) {
         console.error("Auth initialization error:", error);
-        if (mounted) {
-          setSession(null);
-          toast({
-            title: "Authentication Error",
-            description: "There was a problem with authentication. Please try again.",
-            variant: "destructive",
-          });
-        }
+        setSession(null);
       } finally {
-        if (mounted) setIsInitializing(false);
+        setIsInitializing(false);
       }
     };
 
     initializeAuth();
-
-    // Set up auth state change listener
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, newSession) => {
-      console.log("Auth state changed:", event, newSession?.user?.email);
-      if (mounted) {
-        if (event === 'TOKEN_REFRESHED' && !newSession) {
-          // Handle failed token refresh by attempting guest login
-          console.log("Token refresh failed, attempting guest login");
-          const { data: guestData, error: guestError } = await supabase.auth.signInWithPassword({
-            email: 'guest@wallpaperhub.com',
-            password: 'guest123',
-          });
-
-          if (!guestError && guestData.session) {
-            setSession(guestData.session);
-          } else {
-            setSession(null);
-          }
-        } else {
-          setSession(newSession);
-        }
-      }
-    });
-
-    return () => {
-      mounted = false;
-      subscription.unsubscribe();
-    };
   }, []);
 
   // Show loading state while initializing
