@@ -120,37 +120,75 @@ export type Database = {
         Row: {
           created_at: string
           creator_code: string | null
+          daily_downloads_remaining: number | null
           download_count: number | null
           email: string | null
           favor_collections: string[] | null
           favor_image: string[] | null
           id: string
           last_download_reset: string | null
+          paypal_subscription_id: string | null
           subscription_status: string | null
+          vip_expires_at: string | null
+          vip_type: string | null
         }
         Insert: {
           created_at?: string
           creator_code?: string | null
+          daily_downloads_remaining?: number | null
           download_count?: number | null
           email?: string | null
           favor_collections?: string[] | null
           favor_image?: string[] | null
           id: string
           last_download_reset?: string | null
+          paypal_subscription_id?: string | null
           subscription_status?: string | null
+          vip_expires_at?: string | null
+          vip_type?: string | null
         }
         Update: {
           created_at?: string
           creator_code?: string | null
+          daily_downloads_remaining?: number | null
           download_count?: number | null
           email?: string | null
           favor_collections?: string[] | null
           favor_image?: string[] | null
           id?: string
           last_download_reset?: string | null
+          paypal_subscription_id?: string | null
           subscription_status?: string | null
+          vip_expires_at?: string | null
+          vip_type?: string | null
         }
         Relationships: []
+      }
+      vip_wallpapers: {
+        Row: {
+          created_at: string
+          id: string
+          wallpaper_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          wallpaper_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          wallpaper_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "vip_wallpapers_wallpaper_id_fkey"
+            columns: ["wallpaper_id"]
+            isOneToOne: true
+            referencedRelation: "wallpapers"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       wallpapers: {
         Row: {
@@ -213,7 +251,16 @@ export type Database = {
       }
     }
     Functions: {
-      [_ in never]: never
+      is_vip: {
+        Args: {
+          user_id: string
+        }
+        Returns: boolean
+      }
+      reset_daily_downloads: {
+        Args: Record<PropertyKey, never>
+        Returns: undefined
+      }
     }
     Enums: {
       [_ in never]: never
