@@ -14,7 +14,7 @@ const fetchWallpaperPage = async ({ pageParam = 0, tag }: { pageParam?: number, 
 
     let query = supabase
       .from('wallpapers')
-      .select('*')
+      .select('id, compressed_url, url, tags, like_count, download_count, created_at')
       .order('created_at', { ascending: false })
       .range(from, to);
 
@@ -55,8 +55,8 @@ export const useWallpapers = (propWallpapers?: Wallpaper[], tag?: string) => {
       pageParams: [0]
     } : undefined,
     initialPageParam: 0,
-    staleTime: 1000 * 60 * 10,
-    gcTime: 1000 * 60 * 60,
+    staleTime: 1000 * 60 * 10, // 10 minutes
+    gcTime: 1000 * 60 * 60, // 1 hour
     refetchOnWindowFocus: false,
     refetchOnMount: true,
     retry: 2,

@@ -1,64 +1,30 @@
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, memo } from "react";
 import { useIsMobile } from "@/hooks/use-mobile";
 import type { Wallpaper } from "@/hooks/use-wallpapers";
+import { useInView } from "react-intersection-observer";
 
 interface WallpaperItemProps {
   wallpaper: Wallpaper;
   onSelect: (wallpaper: Wallpaper) => void;
 }
 
-const WallpaperItem = ({ wallpaper, onSelect }: WallpaperItemProps) => {
+const WallpaperItem = memo(({ wallpaper, onSelect }: WallpaperItemProps) => {
   const isMobile = useIsMobile();
   const [isHovered, setIsHovered] = useState(false);
   const [imageLoaded, setImageLoaded] = useState(false);
-  const [isIntersecting, setIsIntersecting] = useState(false);
-  const elementRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    const observer = new IntersectionObserver(
-      (entries) => {
-        entries.forEach((entry) => {
-          if (entry.isIntersecting) {
-            setIsIntersecting(true);
-            observer.unobserve(entry.target);
-          }
-        });
-      },
-      {
-        threshold: 0,
-        rootMargin: "0px",
-      }
-    );
-
-    if (elementRef.current) {
-      observer.observe(elementRef.current);
-    }
-
-    return () => {
-      if (elementRef.current) {
-        observer.unobserve(elementRef.current);
-      }
-    };
-  }, []);
+  const { ref: elementRef, inView } = useInView({
+    triggerOnce: true,
+    threshold: 0,
+    rootMargin: "50px",
+  });
 
   // Disable F12 and other keyboard shortcuts
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      // Disable F12
-      if (e.key === "F12") {
-        e.preventDefault();
-        return false;
-      }
-      
-      // Disable Ctrl+Shift+I, Ctrl+Shift+J, Ctrl+Shift+C
-      if (e.ctrlKey && e.shiftKey && (e.key === "I" || e.key === "J" || e.key === "C")) {
-        e.preventDefault();
-        return false;
-      }
-      
-      // Disable Ctrl+U (view source)
-      if (e.ctrlKey && e.key === "u") {
+      if (e.key === "F12" || 
+          (e.ctrlKey && e.shiftKey && (e.key === "I" || e.key === "J" || e.key === "C")) ||
+          (e.ctrlKey && e.key === "u")) {
         e.preventDefault();
         return false;
       }
@@ -95,24 +61,31 @@ const WallpaperItem = ({ wallpaper, onSelect }: WallpaperItemProps) => {
           {!imageLoaded && (
             <div className="absolute inset-0 animate-pulse bg-gray-200 dark:bg-gray-700 rounded-lg" />
           )}
-          {isIntersecting && (
+          {inView && (
             <img
               src={wallpaper.compressed_url}
               alt={`Wallpaper ${wallpaper.id}`}
-              loading="eager"
+              loading="lazy"
               onLoad={() => setImageLoaded(true)}
               onContextMenu={handleContextMenu}
               onDragStart={handleDragStart}
               className={`absolute inset-0 w-full h-full object-cover transition-all duration-300 ${
                 imageLoaded ? 'opacity-100 scale-100' : 'opacity-0 scale-95'
               } ${!isMobile && isHovered ? "scale-105" : ""}`}
-              style={{ userSelect: 'none', WebkitUserSelect: 'none' }}
+              style={{ 
+                userSelect: 'none', 
+                WebkitUserSelect: 'none',
+                willChange: 'transform',
+                containIntrinsic: 'size'
+              }}
             />
           )}
         </div>
       </div>
     </div>
   );
-};
+});
+
+WallpaperItem.displayName = 'WallpaperItem';
 
 export default WallpaperItem;

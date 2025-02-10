@@ -1,9 +1,10 @@
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { useWallpapers, type Wallpaper } from "@/hooks/use-wallpapers";
 import { useWallpaperLikes } from "@/hooks/use-wallpaper-likes";
 import WallpaperModal from "./WallpaperModal";
 import WallpaperItem from "./WallpaperItem";
+import { useInView } from "react-intersection-observer";
 
 interface WallpaperGridProps {
   wallpapers?: Wallpaper[];
@@ -22,24 +23,23 @@ const WallpaperGrid = ({ wallpapers: propWallpapers, tag }: WallpaperGridProps) 
     isFetchingNextPage 
   } = useWallpapers(propWallpapers, tag);
   const { likedWallpapers, handleLike } = useWallpaperLikes();
-  const loadMoreRef = useRef<HTMLDivElement>(null);
+  
+  // Use intersection observer for infinite scroll
+  const { ref: loadMoreRef, inView } = useInView({
+    threshold: 0,
+    rootMargin: "400px", // Load more content before reaching the bottom
+  });
+
+  // Memoize the scroll handler
+  const handleLoadMore = useCallback(() => {
+    if (inView && hasNextPage && !isFetchingNextPage) {
+      fetchNextPage();
+    }
+  }, [inView, hasNextPage, isFetchingNextPage, fetchNextPage]);
 
   useEffect(() => {
-    const observer = new IntersectionObserver(
-      (entries) => {
-        if (entries[0].isIntersecting && hasNextPage && !isFetchingNextPage) {
-          fetchNextPage();
-        }
-      },
-      { threshold: 0.1 }
-    );
-
-    if (loadMoreRef.current) {
-      observer.observe(loadMoreRef.current);
-    }
-
-    return () => observer.disconnect();
-  }, [fetchNextPage, hasNextPage, isFetchingNextPage]);
+    handleLoadMore();
+  }, [handleLoadMore]);
 
   if (isLoading && !propWallpapers) {
     return (
@@ -79,22 +79,21 @@ const WallpaperGrid = ({ wallpapers: propWallpapers, tag }: WallpaperGridProps) 
       </div>
 
       {/* Infinite scroll trigger */}
-      <div 
-        ref={loadMoreRef} 
-        className="h-10 flex items-center justify-center mt-4"
-      >
+      <div ref={loadMoreRef} className="h-10 flex items-center justify-center mt-4">
         {isFetchingNextPage && (
           <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary" />
         )}
       </div>
 
-      <WallpaperModal
-        wallpaper={selectedWallpaper}
-        isOpen={!!selectedWallpaper}
-        onClose={() => setSelectedWallpaper(null)}
-        onLike={handleLike}
-        isLiked={selectedWallpaper ? likedWallpapers.includes(selectedWallpaper.id) : false}
-      />
+      {selectedWallpaper && (
+        <WallpaperModal
+          wallpaper={selectedWallpaper}
+          isOpen={!!selectedWallpaper}
+          onClose={() => setSelectedWallpaper(null)}
+          onLike={handleLike}
+          isLiked={selectedWallpaper ? likedWallpapers.includes(selectedWallpaper.id) : false}
+        />
+      )}
     </>
   );
 };
