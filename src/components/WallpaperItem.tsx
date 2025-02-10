@@ -89,3 +89,4 @@ const WallpaperItem = memo(({ wallpaper, onSelect }: WallpaperItemProps) => {
 WallpaperItem.displayName = 'WallpaperItem';
 
 export default WallpaperItem;
+
