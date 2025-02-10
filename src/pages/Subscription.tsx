@@ -26,6 +26,7 @@ const Subscription = () => {
   const { session } = useAuth();
   const [paypalLoaded, setPaypalLoaded] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
+  const [loadError, setLoadError] = useState<string | null>(null);
 
   useEffect(() => {
     const loadPaypalScript = async () => {
@@ -39,11 +40,13 @@ const Subscription = () => {
 
         if (error) {
           console.error('Error loading PayPal client ID:', error);
+          setLoadError('Failed to load payment system. Please try again later.');
           return;
         }
 
         if (!data?.value) {
           console.error('PayPal client ID not found');
+          setLoadError('Payment system configuration is incomplete. Please try again later.');
           return;
         }
 
@@ -51,14 +54,23 @@ const Subscription = () => {
         const script = document.createElement('script');
         script.src = `https://www.paypal.com/sdk/js?client-id=${data.value}&vault=true&intent=subscription`;
         script.async = true;
-        script.onload = () => setPaypalLoaded(true);
+        script.onload = () => {
+          setPaypalLoaded(true);
+          setLoadError(null);
+        };
+        script.onerror = () => {
+          setLoadError('Failed to load payment system. Please try again later.');
+        };
         document.body.appendChild(script);
 
         return () => {
-          document.body.removeChild(script);
+          if (document.body.contains(script)) {
+            document.body.removeChild(script);
+          }
         };
       } catch (error) {
         console.error('Error initializing PayPal:', error);
+        setLoadError('Failed to initialize payment system. Please try again later.');
       }
     };
 
@@ -198,6 +210,11 @@ const Subscription = () => {
               Enjoy 25 daily downloads, exclusive content, batch downloads, and more premium features.
               Subscribe through PayPal for automated subscription management and hassle-free downloading experience.
             </p>
+            {loadError && (
+              <div className="mt-4 text-red-500 bg-red-50 p-4 rounded-lg">
+                {loadError}
+              </div>
+            )}
           </div>
 
           <div className="grid md:grid-cols-3 gap-6 mb-12">
@@ -212,7 +229,7 @@ const Subscription = () => {
                 <Button 
                   className="w-full" 
                   onClick={() => handleSubscribe('monthly')}
-                  disabled={isProcessing}
+                  disabled={isProcessing || !!loadError}
                 >
                   <DollarSign className="w-4 h-4 mr-2" />
                   Subscribe Monthly
@@ -233,7 +250,7 @@ const Subscription = () => {
                   className="w-full" 
                   variant="default"
                   onClick={() => handleSubscribe('yearly')}
-                  disabled={isProcessing}
+                  disabled={isProcessing || !!loadError}
                 >
                   <DollarSign className="w-4 h-4 mr-2" />
                   Subscribe Yearly
@@ -253,7 +270,7 @@ const Subscription = () => {
                 <Button 
                   className="w-full" 
                   onClick={() => handleSubscribe('lifetime')}
-                  disabled={isProcessing}
+                  disabled={isProcessing || !!loadError}
                 >
                   <DollarSign className="w-4 h-4 mr-2" />
                   Buy Lifetime
