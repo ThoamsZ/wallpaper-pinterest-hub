@@ -164,29 +164,30 @@ const Header = ({ isDisabled = false }: HeaderProps) => {
 
     setIsProcessing(true);
     try {
+      // Get current session first
+      const { data: { session } } = await supabase.auth.getSession();
+      
       // Clear local state first
       setIsAuthenticated(false);
       setUserEmail("");
       setIsAdmin(false);
       queryClient.clear();
 
-      // Attempt to sign out locally first
-      await supabase.auth.signOut({ scope: 'local' });
+      // If there's a session, sign out locally
+      if (session) {
+        await supabase.auth.signOut({ scope: 'local' });
+      }
 
       // Always attempt guest login after clearing state
-      try {
-        const { error: guestError } = await supabase.auth.signInWithPassword({
-          email: 'guest@wallpaperhub.com',
-          password: 'guest123',
-        });
+      const { error: guestError } = await supabase.auth.signInWithPassword({
+        email: 'guest@wallpaperhub.com',
+        password: 'guest123',
+      });
 
-        if (!guestError) {
-          console.log('Successfully logged in as guest');
-        } else {
-          console.error('Guest login error:', guestError);
-        }
-      } catch (guestLoginError) {
-        console.error('Guest login error:', guestLoginError);
+      if (guestError) {
+        console.error('Guest login error:', guestError);
+      } else {
+        console.log('Successfully logged in as guest');
       }
 
       // Always navigate to auth and show success message
@@ -197,6 +198,7 @@ const Header = ({ isDisabled = false }: HeaderProps) => {
       });
     } catch (error) {
       console.error('Logout error:', error);
+      // Even if there's an error, navigate to auth
       navigate("/auth");
       toast({
         title: "Notice",
@@ -342,3 +344,4 @@ const Header = ({ isDisabled = false }: HeaderProps) => {
 };
 
 export default Header;
+
