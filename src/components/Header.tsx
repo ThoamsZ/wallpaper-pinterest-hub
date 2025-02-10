@@ -172,26 +172,27 @@ const Header = ({ isDisabled = false }: HeaderProps) => {
       setUserEmail("");
       setIsAdmin(false);
 
-      // Sign out with local scope only - this prevents the 403 error
-      await supabase.auth.signOut({ scope: 'local' });
-
-      // Try to sign in as guest after logout
-      try {
-        const { data: guestData, error: guestError } = await supabase.auth.signInWithPassword({
-          email: 'guest@wallpaperhub.com',
-          password: 'guest123',
-        });
-
-        if (guestError) {
-          console.error('Guest login error after logout:', guestError);
-        } else if (guestData.session) {
-          console.log('Successfully logged in as guest after logout');
-        }
-      } catch (guestError) {
-        console.error('Error during guest login after logout:', guestError);
+      // Get current session
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      // If we have a session, sign out locally
+      if (session) {
+        await supabase.auth.signOut({ scope: 'local' });
       }
 
-      // Navigate to auth page
+      // Try to sign in as guest after logout
+      const { data: guestData, error: guestError } = await supabase.auth.signInWithPassword({
+        email: 'guest@wallpaperhub.com',
+        password: 'guest123',
+      });
+
+      if (guestError) {
+        console.error('Guest login error after logout:', guestError);
+      } else if (guestData.session) {
+        console.log('Successfully logged in as guest after logout');
+      }
+
+      // Always navigate to auth page
       navigate("/auth");
       
       toast({
@@ -200,7 +201,7 @@ const Header = ({ isDisabled = false }: HeaderProps) => {
       });
     } catch (error) {
       console.error('Logout error:', error);
-      // Already cleared local state above, just ensure navigation happens
+      // Always navigate to auth page, even on error
       navigate("/auth");
       
       toast({
@@ -349,4 +350,3 @@ const Header = ({ isDisabled = false }: HeaderProps) => {
 };
 
 export default Header;
-
