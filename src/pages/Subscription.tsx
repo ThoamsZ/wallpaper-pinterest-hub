@@ -1,3 +1,4 @@
+
 import { DollarSign, CheckCircle2 } from "lucide-react";
 import Header from "@/components/Header";
 import { Button } from "@/components/ui/button";
@@ -215,8 +216,7 @@ const Subscription = () => {
               console.error("Failed to finalize subscription:", error);
               toast({
                 title: "Payment Error",
-                description:
-                  "Your payment was approved but we encountered an issue. Please contact support.",
+                description: "Your payment was approved but we encountered an issue. Please contact support.",
               });
             }
           },
