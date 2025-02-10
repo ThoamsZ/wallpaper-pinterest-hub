@@ -14,6 +14,9 @@ const PLAN_PRICES = {
   lifetime: { amount: 99.99, currency: "USD" },
 };
 
+const MAX_RETRIES = 3;
+const RETRY_DELAY = 2000; // 2 seconds
+
 const Subscription = () => {
   const navigate = useNavigate();
   const { session } = useAuth();
@@ -23,82 +26,114 @@ const Subscription = () => {
   const [planIds, setPlanIds] = useState<{[key: string]: string}>({});
   const paypalScriptRef = useRef<HTMLScriptElement | null>(null);
   const buttonContainersRef = useRef<{[key: string]: HTMLDivElement | null}>({});
+  const retryCountRef = useRef(0);
 
-  useEffect(() => {
-    const loadPaypalScript = async () => {
-      try {
-        console.log('Starting PayPal script loading process...');
-        
-        // Fetch PayPal client ID
-        const { data: secretData, error: secretError } = await supabase
-          .from('secrets')
-          .select('value')
-          .eq('name', 'PAYPAL_CLIENT_ID')
-          .maybeSingle();
+  const loadPaypalScript = async () => {
+    try {
+      console.log('Starting PayPal script loading process...');
+      
+      // Fetch PayPal client ID
+      const { data: secretData, error: secretError } = await supabase
+        .from('secrets')
+        .select('value')
+        .eq('name', 'PAYPAL_CLIENT_ID')
+        .maybeSingle();
 
-        if (secretError || !secretData?.value) {
-          console.error('Error loading PayPal client ID:', secretError);
-          setLoadError('Failed to load payment system. Please try again later.');
-          return;
-        }
+      if (secretError || !secretData?.value) {
+        console.error('Error loading PayPal client ID:', secretError);
+        throw new Error('Failed to load payment configuration');
+      }
 
-        console.log('PayPal client ID loaded successfully');
+      console.log('PayPal client ID loaded successfully');
 
-        // Fetch plan IDs
-        const { data: plansData, error: plansError } = await supabase
-          .from('plans')
-          .select('type, paypal_plan_id');
+      // Fetch plan IDs
+      const { data: plansData, error: plansError } = await supabase
+        .from('plans')
+        .select('type, paypal_plan_id');
 
-        if (plansError) {
-          console.error('Error loading plan IDs:', plansError);
-          setLoadError('Failed to load subscription plans. Please try again later.');
-          return;
-        }
+      if (plansError) {
+        console.error('Error loading plan IDs:', plansError);
+        throw new Error('Failed to load subscription plans');
+      }
 
-        console.log('Fetched plans from database:', plansData);
+      console.log('Fetched plans from database:', plansData);
 
-        // Create a map of plan types to their PayPal plan IDs
-        const planIdMap = plansData.reduce((acc: {[key: string]: string}, plan) => {
-          acc[plan.type] = plan.paypal_plan_id;
-          return acc;
-        }, {});
+      // Create a map of plan types to their PayPal plan IDs
+      const planIdMap = plansData.reduce((acc: {[key: string]: string}, plan) => {
+        acc[plan.type] = plan.paypal_plan_id;
+        return acc;
+      }, {});
 
-        console.log('Created plan ID map:', planIdMap);
-        setPlanIds(planIdMap);
+      console.log('Created plan ID map:', planIdMap);
+      setPlanIds(planIdMap);
 
-        // Remove existing PayPal script if it exists
-        if (paypalScriptRef.current) {
-          document.body.removeChild(paypalScriptRef.current);
-        }
+      // Remove existing PayPal script if it exists
+      if (paypalScriptRef.current) {
+        paypalScriptRef.current.remove();
+        paypalScriptRef.current = null;
+      }
 
+      return new Promise<void>((resolve, reject) => {
         // Load PayPal SDK with sandbox environment
         const script = document.createElement('script');
         script.src = `https://www.paypal.com/sdk/js?client-id=${secretData.value}&vault=true&intent=subscription&components=buttons&enable-funding=venmo&env=sandbox`;
         script.async = true;
+        
+        const timeoutId = setTimeout(() => {
+          reject(new Error('PayPal SDK load timeout'));
+        }, 10000); // 10 second timeout
+
         script.onload = () => {
           console.log('PayPal SDK loaded successfully');
+          clearTimeout(timeoutId);
           setPaypalLoaded(true);
           setLoadError(null);
+          resolve();
         };
+        
         script.onerror = (e) => {
           console.error('Failed to load PayPal SDK:', e);
-          setLoadError('Failed to load payment system. Please try again later.');
+          clearTimeout(timeoutId);
+          reject(new Error('Failed to load payment system'));
         };
         
         paypalScriptRef.current = script;
         document.body.appendChild(script);
+      });
 
-      } catch (error) {
-        console.error('Error in loadPaypalScript:', error);
-        setLoadError('Failed to initialize payment system. Please try again later.');
+    } catch (error) {
+      console.error('Error in loadPaypalScript:', error);
+      throw error;
+    }
+  };
+
+  const retryLoadPaypal = async () => {
+    try {
+      await loadPaypalScript();
+      retryCountRef.current = 0; // Reset counter on success
+    } catch (error) {
+      console.error(`PayPal load attempt ${retryCountRef.current + 1} failed:`, error);
+      
+      if (retryCountRef.current < MAX_RETRIES) {
+        retryCountRef.current++;
+        console.log(`Retrying PayPal load in ${RETRY_DELAY}ms... (Attempt ${retryCountRef.current}/${MAX_RETRIES})`);
+        
+        setTimeout(() => {
+          retryLoadPaypal();
+        }, RETRY_DELAY);
+      } else {
+        console.error('Max retries reached for PayPal loading');
+        setLoadError('Unable to load payment system. Please refresh the page or try again later.');
       }
-    };
+    }
+  };
 
-    loadPaypalScript();
+  useEffect(() => {
+    retryLoadPaypal();
 
     return () => {
       if (paypalScriptRef.current) {
-        document.body.removeChild(paypalScriptRef.current);
+        paypalScriptRef.current.remove();
       }
     };
   }, []);
@@ -291,6 +326,13 @@ const Subscription = () => {
             {loadError && (
               <div className="mt-4 text-red-500 bg-red-50 p-4 rounded-lg">
                 {loadError}
+                <button 
+                  onClick={() => retryLoadPaypal()}
+                  className="ml-2 underline hover:text-red-600"
+                  disabled={isProcessing}
+                >
+                  Try again
+                </button>
               </div>
             )}
           </div>
