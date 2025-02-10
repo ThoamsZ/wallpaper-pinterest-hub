@@ -153,12 +153,13 @@ export const CollectionManager = () => {
       
       if (!data) return [];
       
+      // Filter out any null values and ensure all required properties exist
       return data
-        .filter(item => item.wallpapers) // Filter out any items without wallpaper data
+        .filter(item => item.wallpapers && item.wallpapers.id && item.wallpapers.url) // Ensure required properties exist
         .map(item => ({
           id: item.wallpapers.id,
           url: item.wallpapers.url,
-          type: item.wallpapers.type || 'unknown',
+          type: item.wallpapers.type || 'unknown', // Provide default value for type
           file_path: item.wallpapers.file_path,
           download_count: item.wallpapers.download_count || 0,
           like_count: item.wallpapers.like_count || 0,
@@ -236,11 +237,11 @@ export const CollectionManager = () => {
   const getCollectionWallpapers = (collection: Collection): Wallpaper[] => {
     if (!collectionWallpapers || !Array.isArray(collectionWallpapers)) return [];
     return collectionWallpapers
-      .filter(cw => cw?.collection_id === collection.id)
+      .filter(cw => cw?.collection_id === collection.id && cw?.type) // Add type check
       .map(cw => ({
         id: cw.id,
         url: cw.url,
-        type: cw.type || 'unknown', // Add default value
+        type: cw.type || 'unknown',
         file_path: cw.file_path,
         download_count: cw.download_count || 0,
         like_count: cw.like_count || 0
