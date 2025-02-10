@@ -42,53 +42,61 @@ function AuthProvider({ children }: { children: React.ReactNode }) {
   const [isInitializing, setIsInitializing] = useState(true);
 
   useEffect(() => {
+    let mounted = true;
+
     const initializeAuth = async () => {
       try {
+        // Clear any existing session first to prevent refresh token errors
+        await supabase.auth.signOut();
+        
         // Check for existing session
         const { data: { session: currentSession } } = await supabase.auth.getSession();
         
-        if (currentSession) {
+        if (currentSession && mounted) {
           console.log("Existing session found:", currentSession.user.email);
           setSession(currentSession);
         } else {
           // If no session exists, try to sign in as guest
           console.log("No session found, attempting guest login");
-          const { data, error } = await supabase.auth.signInWithPassword({
+          const { data: guestData, error: guestError } = await supabase.auth.signInWithPassword({
             email: 'guest@wallpaperhub.com',
             password: 'guest123',
           });
 
-          if (error) {
-            console.error("Guest login error:", error);
-            setSession(null);
-          } else if (data.session) {
+          if (guestError) {
+            console.error("Guest login error:", guestError);
+            if (mounted) setSession(null);
+          } else if (guestData.session && mounted) {
             console.log("Successfully logged in as guest");
-            setSession(data.session);
+            setSession(guestData.session);
             toast({
               title: "Welcome to xxWallpaper",
               description: "You're browsing as a guest. Sign up to like and collect wallpapers!",
             });
           }
         }
-
-        // Listen for auth state changes
-        const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, newSession) => {
-          console.log("Auth state changed:", _event, newSession?.user?.email);
-          setSession(newSession);
-        });
-
-        return () => {
-          subscription.unsubscribe();
-        };
       } catch (error) {
         console.error("Auth initialization error:", error);
-        setSession(null);
+        if (mounted) setSession(null);
       } finally {
-        setIsInitializing(false);
+        if (mounted) setIsInitializing(false);
       }
     };
 
     initializeAuth();
+
+    // Set up auth state change listener
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, newSession) => {
+      console.log("Auth state changed:", _event, newSession?.user?.email);
+      if (mounted) {
+        setSession(newSession);
+      }
+    });
+
+    return () => {
+      mounted = false;
+      subscription.unsubscribe();
+    };
   }, []);
 
   // Show loading state while initializing
