@@ -1,3 +1,4 @@
+
 import { Search, Heart, Archive } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -169,12 +170,8 @@ const Header = ({ isDisabled = false }: HeaderProps) => {
       setIsAdmin(false);
       queryClient.clear();
 
-      try {
-        // Attempt to sign out with local scope to prevent 403 errors
-        await supabase.auth.signOut({ scope: 'local' });
-      } catch (signOutError) {
-        console.error('Sign out error:', signOutError);
-      }
+      // Attempt to sign out locally first
+      await supabase.auth.signOut({ scope: 'local' });
 
       // Always attempt guest login after clearing state
       try {
@@ -185,6 +182,8 @@ const Header = ({ isDisabled = false }: HeaderProps) => {
 
         if (!guestError) {
           console.log('Successfully logged in as guest');
+        } else {
+          console.error('Guest login error:', guestError);
         }
       } catch (guestLoginError) {
         console.error('Guest login error:', guestLoginError);
