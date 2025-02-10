@@ -69,6 +69,14 @@ const Subscription = () => {
           return;
         }
 
+        console.log("Fetched plans data:", plansData);
+
+        if (!plansData || plansData.length === 0) {
+          console.error("No plan IDs found in database");
+          setLoadError("Subscription plans are not configured. Please try again later.");
+          return;
+        }
+
         const planIdMap = plansData.reduce(
           (acc: { [key: string]: string }, plan) => {
             acc[plan.type] = plan.paypal_plan_id;
@@ -77,10 +85,22 @@ const Subscription = () => {
           {}
         );
 
-        setPlanIds(planIdMap);
-        console.log("Plan IDs loaded:", planIdMap);
+        // Validate that we have all required plan IDs
+        const requiredPlans = ['monthly', 'yearly'];
+        const missingPlans = requiredPlans.filter(
+          planType => !planIdMap[planType] || planIdMap[planType] === 'P-PLACEHOLDER'
+        );
 
-        // Load PayPal SDK if not already loaded
+        if (missingPlans.length > 0) {
+          console.error("Missing or invalid plan IDs for:", missingPlans);
+          setLoadError("Some subscription plans are not properly configured. Please try again later.");
+          return;
+        }
+
+        setPlanIds(planIdMap);
+        console.log("Plan IDs loaded successfully:", planIdMap);
+
+        // Load PayPal SDK
         if (!window.paypal) {
           const script = document.createElement("script");
           script.src = `https://www.paypal.com/sdk/js?client-id=${secretData.value}&vault=true&intent=subscription&components=buttons`;
@@ -196,6 +216,132 @@ const Subscription = () => {
               toast({
                 title: "Payment Error",
                 description:
-                  "Your payment was approved but the system encountered an issue. Contact
-::contentReference[oaicite:0]{index=0}
- 
+                  "Your payment was approved but we encountered an issue. Please contact support.",
+              });
+            }
+          },
+          onError: (err: any) => {
+            console.error("PayPal error:", err);
+            toast({
+              title: "Payment Error",
+              description: "Failed to process payment. Please try again later.",
+            });
+            setIsProcessing(false);
+          },
+        };
+
+        // Create buttons based on plan type
+        let buttonConfig;
+        if (plan === "lifetime") {
+          buttonConfig = {
+            ...commonConfig,
+            createOrder: async (data: any, actions: any) => {
+              return actions.order.create({
+                purchase_units: [
+                  {
+                    amount: {
+                      currency_code: planDetails.currency,
+                      value: planDetails.amount.toString(),
+                    },
+                  },
+                ],
+              });
+            },
+          };
+        } else {
+          const planId = planIds[plan];
+          
+          // Additional validation before creating subscription
+          if (!planId || planId === 'P-PLACEHOLDER') {
+            console.error(`Invalid plan ID for ${plan} subscription:`, planId);
+            toast({
+              title: "Configuration Error",
+              description: "This subscription plan is not properly configured. Please try again later.",
+            });
+            setIsProcessing(false);
+            return;
+          }
+
+          console.log(`Creating subscription for plan ${plan} with ID:`, planId);
+          
+          buttonConfig = {
+            ...commonConfig,
+            createSubscription: async (data: any, actions: any) => {
+              return actions.subscription.create({
+                plan_id: planId,
+              });
+            },
+          };
+        }
+
+        const Buttons = window.paypal.Buttons(buttonConfig);
+
+        if (container && (await Buttons.isEligible())) {
+          Buttons.render(container);
+        } else {
+          console.error("PayPal Buttons not eligible for rendering");
+          setLoadError("Payment option not available. Please try again later.");
+        }
+      }
+    } catch (error) {
+      console.error("Error in handleSubscribe:", error);
+      toast({
+        title: "Error",
+        description: "Failed to initialize payment. Please try again later.",
+      });
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  return (
+    <div>
+      <Header />
+      <div className="flex justify-center items-center h-screen">
+        <div className="max-w-md">
+          <Card>
+            <CardHeader>
+              <CardTitle>Subscribe</CardTitle>
+              <CardDescription>
+                Choose a subscription plan to get started.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="flex flex-col space-y-4">
+                <div className="flex items-center justify-between">
+                  <CardTitle>Monthly</CardTitle>
+                  <Button
+                    onClick={() => handleSubscribe("monthly")}
+                    disabled={isProcessing}
+                  >
+                    {isProcessing ? "Processing..." : "Subscribe"}
+                  </Button>
+                </div>
+                <div className="flex items-center justify-between">
+                  <CardTitle>Yearly</CardTitle>
+                  <Button
+                    onClick={() => handleSubscribe("yearly")}
+                    disabled={isProcessing}
+                  >
+                    {isProcessing ? "Processing..." : "Subscribe"}
+                  </Button>
+                </div>
+                <div className="flex items-center justify-between">
+                  <CardTitle>Lifetime</CardTitle>
+                  <Button
+                    onClick={() => handleSubscribe("lifetime")}
+                    disabled={isProcessing}
+                  >
+                    {isProcessing ? "Processing..." : "Subscribe"}
+                  </Button>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+export default Subscription;
