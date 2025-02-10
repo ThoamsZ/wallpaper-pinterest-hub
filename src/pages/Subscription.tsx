@@ -1,4 +1,3 @@
-
 import { DollarSign, CheckCircle2 } from "lucide-react";
 import Header from "@/components/Header";
 import { Button } from "@/components/ui/button";
@@ -80,9 +79,9 @@ const Subscription = () => {
           document.body.removeChild(paypalScriptRef.current);
         }
 
-        // Load PayPal SDK
+        // Load PayPal SDK with sandbox mode
         const script = document.createElement('script');
-        script.src = `https://www.paypal.com/sdk/js?client-id=${secretData.value}&vault=true&intent=subscription`;
+        script.src = `https://www.paypal.com/sdk/js?client-id=${secretData.value}&vault=true&intent=subscription&components=buttons`;
         script.async = true;
         script.onload = () => {
           console.log('PayPal SDK loaded successfully');
@@ -160,51 +159,17 @@ const Subscription = () => {
       // Initialize PayPal buttons
       if (window.paypal) {
         console.log('Initializing PayPal buttons for plan:', plan);
-        const Buttons = window.paypal.Buttons({
+        
+        // PayPal button configuration
+        const buttonConfig = {
           style: {
             shape: 'rect',
             color: 'blue',
             layout: 'vertical',
             label: 'subscribe'
           },
-          createOrder: async () => {
-            if (plan === 'lifetime') {
-              const response = await fetch('https://api-m.sandbox.paypal.com/v2/checkout/orders', {
-                method: 'POST',
-                headers: {
-                  'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                  intent: 'CAPTURE',
-                  purchase_units: [{
-                    amount: {
-                      currency_code: planDetails.currency,
-                      value: planDetails.amount.toString()
-                    }
-                  }]
-                })
-              });
-              const data = await response.json();
-              return data.id;
-            }
-          },
-          createSubscription: async (data: any, actions: any) => {
-            if (plan !== 'lifetime') {
-              const planId = planIds[plan];
-              if (!planId) {
-                throw new Error(`No plan ID found for ${plan} subscription`);
-              }
-              console.log(`Creating subscription with plan ID: ${planId}`);
-              return actions.subscription.create({
-                'plan_id': planId
-              });
-            }
-          },
           onApprove: async (data: any, actions: any) => {
             console.log('Payment approved:', data);
-            if (plan === 'lifetime') {
-              await actions.order.capture();
-            }
             
             // Update subscription status
             const { error: updateError } = await supabase
@@ -237,10 +202,44 @@ const Subscription = () => {
               variant: "destructive",
             });
           }
+        };
+
+        // Create buttons based on plan type
+        const Buttons = window.paypal.Buttons({
+          ...buttonConfig,
+          createSubscription: async (data: any, actions: any) => {
+            if (plan !== 'lifetime') {
+              const planId = planIds[plan];
+              if (!planId) {
+                throw new Error(`No plan ID found for ${plan} subscription`);
+              }
+              console.log(`Creating subscription with plan ID: ${planId}`);
+              return actions.subscription.create({
+                'plan_id': planId
+              });
+            }
+            return null;
+          },
+          createOrder: async (data: any, actions: any) => {
+            if (plan === 'lifetime') {
+              return actions.order.create({
+                purchase_units: [{
+                  amount: {
+                    currency_code: planDetails.currency,
+                    value: planDetails.amount.toString()
+                  }
+                }]
+              });
+            }
+            return null;
+          }
         });
 
-        if (container) {
+        if (container && await Buttons.isEligible()) {
           Buttons.render(container);
+        } else {
+          console.error('PayPal Buttons not eligible for rendering');
+          setLoadError('Payment system not available for this plan. Please try again later.');
         }
       } else {
         console.error('PayPal SDK not loaded');
