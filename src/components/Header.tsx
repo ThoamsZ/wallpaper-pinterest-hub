@@ -1,4 +1,3 @@
-
 import { Search, Heart, Archive } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -171,13 +170,8 @@ const Header = ({ isDisabled = false }: HeaderProps) => {
       queryClient.clear();
 
       try {
-        // Get current session
-        const { data: { session } } = await supabase.auth.getSession();
-        
-        if (session) {
-          // Only attempt to sign out if there's an active session
-          await supabase.auth.signOut();
-        }
+        // Attempt to sign out with local scope to prevent 403 errors
+        await supabase.auth.signOut({ scope: 'local' });
       } catch (signOutError) {
         console.error('Sign out error:', signOutError);
       }
