@@ -35,25 +35,21 @@ const Subscription = () => {
       try {
         console.log('Fetching PayPal credentials and plan IDs...');
         
-        // Fetch PayPal credentials
-        const { data: secrets, error: secretError } = await supabase
+        // Fetch PayPal client ID
+        const { data: secretData, error: secretError } = await supabase
           .from('secrets')
-          .select('name, value')
-          .in('name', ['PAYPAL_CLIENT_ID', 'PAYPAL_SECRET_KEY']);
+          .select('value')
+          .eq('name', 'PAYPAL_CLIENT_ID')
+          .maybeSingle();
 
         if (secretError) {
-          console.error('Error loading PayPal credentials:', secretError);
+          console.error('Error loading PayPal client ID:', secretError);
           setLoadError('Failed to load payment system. Please try again later.');
           return;
         }
 
-        const credentialsMap = secrets.reduce((acc: {[key: string]: string}, secret) => {
-          acc[secret.name] = secret.value;
-          return acc;
-        }, {});
-
-        if (!credentialsMap.PAYPAL_CLIENT_ID || !credentialsMap.PAYPAL_SECRET_KEY) {
-          console.error('PayPal credentials not found in secrets table');
+        if (!secretData?.value) {
+          console.error('PayPal client ID not found in secrets table');
           setLoadError('Payment system configuration is incomplete. Please try again later.');
           return;
         }
@@ -83,22 +79,14 @@ const Subscription = () => {
           document.body.removeChild(paypalScriptRef.current);
         }
 
-        // Load PayPal SDK with credentials
+        // Load PayPal SDK
         const script = document.createElement('script');
-        script.src = `https://www.paypal.com/sdk/js?client-id=${credentialsMap.PAYPAL_CLIENT_ID}&vault=true&intent=subscription&components=buttons`;
+        script.src = `https://www.paypal.com/sdk/js?client-id=${secretData.value}&vault=true&intent=subscription&components=buttons`;
         script.async = true;
         script.onload = () => {
           console.log('PayPal SDK loaded successfully');
           setPaypalLoaded(true);
           setLoadError(null);
-
-          // Initialize PayPal with secret key
-          if (window.paypal) {
-            window.paypal.client.setup({
-              clientId: credentialsMap.PAYPAL_CLIENT_ID,
-              clientSecret: credentialsMap.PAYPAL_SECRET_KEY
-            });
-          }
         };
         script.onerror = (e) => {
           console.error('Failed to load PayPal SDK:', e);
