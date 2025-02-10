@@ -1,4 +1,3 @@
-
 import { Search, Heart, Archive } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -166,37 +165,34 @@ const Header = ({ isDisabled = false }: HeaderProps) => {
 
     setIsProcessing(true);
     try {
-      // First check if we have a session
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) {
-        // If no session exists, just clear local state and redirect
-        queryClient.clear();
-        setIsAuthenticated(false);
-        setUserEmail("");
-        setIsAdmin(false);
-        navigate("/auth");
-        return;
-      }
-
-      // Clear cache and local state first
+      // Clear local state first - this ensures UI updates immediately
       queryClient.clear();
       setIsAuthenticated(false);
       setUserEmail("");
       setIsAdmin(false);
 
-      // Then attempt to sign out
-      const { error } = await supabase.auth.signOut();
-      if (error) {
-        console.error('Logout error:', error);
-        toast({
-          title: "Error",
-          description: "An error occurred during logout",
-          variant: "destructive",
-        });
+      // Check for existing session and attempt sign out
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session) {
+        const { error } = await supabase.auth.signOut();
+        if (error) {
+          console.error('Logout error:', error);
+          // Even if there's an error, we've already cleared local state
+          toast({
+            title: "Notice",
+            description: "You have been logged out locally",
+          });
+        } else {
+          toast({
+            title: "Success",
+            description: "Successfully logged out",
+          });
+        }
       } else {
+        // No session exists, just show a notification
         toast({
-          title: "Success",
-          description: "Successfully logged out",
+          title: "Notice",
+          description: "No active session found",
         });
       }
 
@@ -204,12 +200,11 @@ const Header = ({ isDisabled = false }: HeaderProps) => {
       navigate("/auth");
     } catch (error) {
       console.error('Logout error:', error);
+      // Already cleared state above, just notify user
       toast({
-        title: "Error",
-        description: "An error occurred during logout",
-        variant: "destructive",
+        title: "Notice",
+        description: "You have been logged out",
       });
-      // Ensure navigation happens even on error
       navigate("/auth");
     } finally {
       setIsProcessing(false);
@@ -350,4 +345,3 @@ const Header = ({ isDisabled = false }: HeaderProps) => {
 };
 
 export default Header;
-
