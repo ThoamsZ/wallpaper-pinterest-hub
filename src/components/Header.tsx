@@ -1,4 +1,5 @@
-import { Search, Heart, Archive } from "lucide-react";
+
+import { Search, Heart, Archive, Crown } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { useNavigate, useLocation } from "react-router-dom";
@@ -22,6 +23,7 @@ const Header = ({ isDisabled = false }: HeaderProps) => {
   const [userEmail, setUserEmail] = useState<string>("");
   const [searchQuery, setSearchQuery] = useState("");
   const [isProcessing, setIsProcessing] = useState(false);
+  const [isVip, setIsVip] = useState(false);
   const isAdminPanel = location.pathname === "/admin-panel";
 
   useEffect(() => {
@@ -35,6 +37,7 @@ const Header = ({ isDisabled = false }: HeaderProps) => {
             setIsAuthenticated(false);
             setUserEmail("");
             setIsAdmin(false);
+            setIsVip(false);
           }
           return;
         }
@@ -43,18 +46,33 @@ const Header = ({ isDisabled = false }: HeaderProps) => {
           setIsAuthenticated(true);
           setUserEmail(session.user.email || "");
 
-          const { data: adminData, error } = await supabase
+          // Check admin status
+          const { data: adminData, error: adminError } = await supabase
             .from('admin_users')
             .select('admin_type')
             .eq('user_id', session.user.id)
             .maybeSingle();
           
-          if (error) {
-            console.error('Error fetching admin data:', error);
-            return;
+          if (adminError) {
+            console.error('Error fetching admin data:', adminError);
+          } else {
+            setIsAdmin(!!adminData);
           }
+
+          // Check VIP status
+          const { data: userData, error: userError } = await supabase
+            .from('users')
+            .select('vip_type, vip_expires_at')
+            .eq('id', session.user.id)
+            .single();
           
-          setIsAdmin(!!adminData);
+          if (userError) {
+            console.error('Error fetching user data:', userError);
+          } else {
+            const isActiveVip = userData.vip_type === 'lifetime' || 
+              (userData.vip_type && userData.vip_expires_at && new Date(userData.vip_expires_at) > new Date());
+            setIsVip(isActiveVip);
+          }
         }
       } catch (error) {
         console.error('Error checking user:', error);
@@ -72,6 +90,7 @@ const Header = ({ isDisabled = false }: HeaderProps) => {
         setIsAuthenticated(false);
         setUserEmail("");
         setIsAdmin(false);
+        setIsVip(false);
         return;
       }
 
@@ -79,19 +98,32 @@ const Header = ({ isDisabled = false }: HeaderProps) => {
       setUserEmail(session.user.email || "");
 
       try {
-        const { data: adminData, error } = await supabase
+        // Check admin status
+        const { data: adminData, error: adminError } = await supabase
           .from('admin_users')
           .select('admin_type')
           .eq('user_id', session.user.id)
           .maybeSingle();
         
-        if (error) {
-          console.error('Error fetching admin data:', error);
-          return;
+        if (adminError) {
+          console.error('Error fetching admin data:', adminError);
+        } else if (mounted) {
+          setIsAdmin(!!adminData);
         }
 
-        if (mounted) {
-          setIsAdmin(!!adminData);
+        // Check VIP status
+        const { data: userData, error: userError } = await supabase
+          .from('users')
+          .select('vip_type, vip_expires_at')
+          .eq('id', session.user.id)
+          .single();
+        
+        if (userError) {
+          console.error('Error fetching user data:', userError);
+        } else if (mounted) {
+          const isActiveVip = userData.vip_type === 'lifetime' || 
+            (userData.vip_type && userData.vip_expires_at && new Date(userData.vip_expires_at) > new Date());
+          setIsVip(isActiveVip);
         }
       } catch (error) {
         console.error('Error updating user state:', error);
@@ -271,6 +303,14 @@ const Header = ({ isDisabled = false }: HeaderProps) => {
                   <Heart className="w-4 h-4" />
                   Likes
                 </button>
+                <button 
+                  onClick={() => handleNavigation("/subscription")}
+                  className={`${isButtonDisabled ? 'text-gray-400' : isVip ? 'text-primary' : 'text-gray-600 hover:text-primary'} transition-colors flex items-center gap-1`}
+                  disabled={isButtonDisabled}
+                >
+                  <Crown className={`w-4 h-4 ${isVip ? 'fill-primary' : ''}`} />
+                  {isVip ? "VIP Active" : "Upgrade to VIP"}
+                </button>
               </>
             )}
             
@@ -326,7 +366,6 @@ const Header = ({ isDisabled = false }: HeaderProps) => {
                   value={searchQuery}
                   onChange={(e) => {
                     setSearchQuery(e.target.value);
-                    // If search is cleared, trigger the form submission
                     if (!e.target.value.trim()) {
                       const form = e.target.form;
                       if (form) form.requestSubmit();
