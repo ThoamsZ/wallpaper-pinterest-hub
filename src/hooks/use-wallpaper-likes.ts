@@ -12,7 +12,7 @@ export const useWallpaperLikes = () => {
   useEffect(() => {
     const fetchLikedWallpapers = async () => {
       const { data: { session } } = await supabase.auth.getSession();
-      if (session && session.user.email !== 'guest@wallpaperhub.com') {
+      if (session) {
         const { data: userData } = await supabase
           .from('users')
           .select('favor_image')
@@ -28,7 +28,7 @@ export const useWallpaperLikes = () => {
     fetchLikedWallpapers();
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      if (session && session.user.email !== 'guest@wallpaperhub.com') {
+      if (session) {
         fetchLikedWallpapers();
       } else {
         setLikedWallpapers([]);
@@ -47,18 +47,7 @@ export const useWallpaperLikes = () => {
       if (!session) {
         toast({
           title: "Authentication required",
-          description: "Please login to like wallpapers",
-          variant: "destructive",
-        });
-        navigate('/auth');
-        return;
-      }
-
-      // Check if user is guest
-      if (session.user.email === 'guest@wallpaperhub.com') {
-        toast({
-          title: "Guest account",
-          description: "Please sign up to like wallpapers",
+          description: "Please sign in to like wallpapers",
           variant: "destructive",
         });
         navigate('/auth');

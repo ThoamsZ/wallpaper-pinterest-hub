@@ -106,43 +106,6 @@ const Auth = () => {
     }
   };
 
-  const handleGuestLogin = async () => {
-    setIsLoading(true);
-    try {
-      // First try to sign out any existing session
-      await supabase.auth.signOut({ scope: 'local' });
-      
-      // Then attempt guest login
-      const { data, error } = await supabase.auth.signInWithPassword({
-        email: 'guest@wallpaperhub.com',
-        password: 'guest123guest',
-      });
-
-      if (error) {
-        console.error("Guest login error:", error);
-        toast({
-          title: "Guest login failed",
-          description: "Unable to log in as guest. Please try again later.",
-          variant: "destructive",
-        });
-        return;
-      }
-
-      if (data.session) {
-        navigate("/", { replace: true });
-      }
-    } catch (error: any) {
-      console.error("Guest login error:", error);
-      toast({
-        title: "Error",
-        description: "Unable to log in as guest. Please try again later.",
-        variant: "destructive",
-      });
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
   return (
     <div className="container mx-auto flex items-center justify-center min-h-screen">
       <div className="w-full max-w-md space-y-8 p-8 border rounded-lg shadow-lg">
@@ -188,7 +151,7 @@ const Auth = () => {
           </Button>
         </form>
 
-        <div className="text-center space-y-4">
+        <div className="text-center">
           <button
             type="button"
             onClick={() => setIsSignUp(!isSignUp)}
@@ -197,17 +160,6 @@ const Auth = () => {
           >
             {isSignUp ? "Already have an account? Sign in" : "Need an account? Sign up"}
           </button>
-          <div>
-            <Button
-              type="button"
-              variant="outline"
-              onClick={handleGuestLogin}
-              disabled={isLoading}
-              className="w-full"
-            >
-              Continue as Guest
-            </Button>
-          </div>
         </div>
       </div>
     </div>
