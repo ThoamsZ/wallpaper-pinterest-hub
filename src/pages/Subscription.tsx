@@ -42,15 +42,9 @@ const Subscription = () => {
           .eq('name', 'PAYPAL_CLIENT_ID')
           .maybeSingle();
 
-        if (secretError) {
+        if (secretError || !secretData?.value) {
           console.error('Error loading PayPal client ID:', secretError);
           setLoadError('Failed to load payment system. Please try again later.');
-          return;
-        }
-
-        if (!secretData?.value) {
-          console.error('PayPal client ID not found in secrets table');
-          setLoadError('Payment system configuration is incomplete. Please try again later.');
           return;
         }
 
@@ -65,7 +59,6 @@ const Subscription = () => {
           return;
         }
 
-        // Create a map of plan types to their PayPal plan IDs
         const planIdMap = plansData.reduce((acc: {[key: string]: string}, plan) => {
           acc[plan.type] = plan.paypal_plan_id;
           return acc;
@@ -112,7 +105,6 @@ const Subscription = () => {
   }, []);
 
   const handleSubscribe = async (plan: string) => {
-    // Check if user is guest
     if (!session || session.user.email === 'guest@wallpaperhub.com') {
       toast({
         title: "Authentication Required",
@@ -156,12 +148,11 @@ const Subscription = () => {
         container.innerHTML = '';
       }
 
-      // Initialize PayPal buttons
       if (window.paypal) {
         console.log('Initializing PayPal buttons for plan:', plan);
         
-        // PayPal button configuration
-        const buttonConfig = {
+        // Common button configuration
+        const commonConfig = {
           style: {
             shape: 'rect',
             color: 'blue',
@@ -191,7 +182,6 @@ const Subscription = () => {
               description: "Your subscription has been activated.",
             });
 
-            // Refresh the page to update UI
             window.location.reload();
           },
           onError: (err: any) => {
@@ -205,23 +195,12 @@ const Subscription = () => {
         };
 
         // Create buttons based on plan type
-        const Buttons = window.paypal.Buttons({
-          ...buttonConfig,
-          createSubscription: async (data: any, actions: any) => {
-            if (plan !== 'lifetime') {
-              const planId = planIds[plan];
-              if (!planId) {
-                throw new Error(`No plan ID found for ${plan} subscription`);
-              }
-              console.log(`Creating subscription with plan ID: ${planId}`);
-              return actions.subscription.create({
-                'plan_id': planId
-              });
-            }
-            return null;
-          },
-          createOrder: async (data: any, actions: any) => {
-            if (plan === 'lifetime') {
+        let buttonConfig;
+        if (plan === 'lifetime') {
+          // One-time payment configuration
+          buttonConfig = {
+            ...commonConfig,
+            createOrder: async (data: any, actions: any) => {
               return actions.order.create({
                 purchase_units: [{
                   amount: {
@@ -231,9 +210,25 @@ const Subscription = () => {
                 }]
               });
             }
-            return null;
-          }
-        });
+          };
+        } else {
+          // Subscription configuration
+          buttonConfig = {
+            ...commonConfig,
+            createSubscription: async (data: any, actions: any) => {
+              const planId = planIds[plan];
+              if (!planId) {
+                throw new Error(`No plan ID found for ${plan} subscription`);
+              }
+              console.log(`Creating subscription with plan ID: ${planId}`);
+              return actions.subscription.create({
+                'plan_id': planId
+              });
+            }
+          };
+        }
+
+        const Buttons = window.paypal.Buttons(buttonConfig);
 
         if (container && await Buttons.isEligible()) {
           Buttons.render(container);
