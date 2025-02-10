@@ -30,8 +30,11 @@ const Subscription = () => {
 
   const loadPaypalScript = async () => {
     try {
-      console.log('Starting PayPal script loading process...');
-      
+      if (paypalScriptRef.current) {
+        document.body.removeChild(paypalScriptRef.current);
+        paypalScriptRef.current = null;
+      }
+
       // Fetch PayPal client ID
       const { data: secretData, error: secretError } = await supabase
         .from('secrets')
@@ -40,11 +43,8 @@ const Subscription = () => {
         .maybeSingle();
 
       if (secretError || !secretData?.value) {
-        console.error('Error loading PayPal client ID:', secretError);
         throw new Error('Failed to load payment configuration');
       }
-
-      console.log('PayPal client ID loaded successfully');
 
       // Fetch plan IDs
       const { data: plansData, error: plansError } = await supabase
@@ -52,57 +52,35 @@ const Subscription = () => {
         .select('type, paypal_plan_id');
 
       if (plansError) {
-        console.error('Error loading plan IDs:', plansError);
         throw new Error('Failed to load subscription plans');
       }
 
-      console.log('Fetched plans from database:', plansData);
-
-      // Create a map of plan types to their PayPal plan IDs
       const planIdMap = plansData.reduce((acc: {[key: string]: string}, plan) => {
         acc[plan.type] = plan.paypal_plan_id;
         return acc;
       }, {});
 
-      console.log('Created plan ID map:', planIdMap);
       setPlanIds(planIdMap);
 
-      // Remove existing PayPal script if it exists
-      if (paypalScriptRef.current) {
-        paypalScriptRef.current.remove();
-        paypalScriptRef.current = null;
-      }
-
       return new Promise<void>((resolve, reject) => {
-        // Load PayPal SDK with sandbox environment
         const script = document.createElement('script');
-        script.src = `https://www.paypal.com/sdk/js?client-id=${secretData.value}&vault=true&intent=subscription&components=buttons&enable-funding=venmo&env=sandbox`;
+        script.src = `https://www.paypal.com/sdk/js?client-id=${secretData.value}&vault=true&intent=subscription&components=buttons&enable-funding=venmo`;
         script.async = true;
         
-        const timeoutId = setTimeout(() => {
-          reject(new Error('PayPal SDK load timeout'));
-        }, 10000); // 10 second timeout
-
         script.onload = () => {
-          console.log('PayPal SDK loaded successfully');
-          clearTimeout(timeoutId);
           setPaypalLoaded(true);
           setLoadError(null);
           resolve();
         };
         
-        script.onerror = (e) => {
-          console.error('Failed to load PayPal SDK:', e);
-          clearTimeout(timeoutId);
+        script.onerror = () => {
           reject(new Error('Failed to load payment system'));
         };
-        
+
         paypalScriptRef.current = script;
         document.body.appendChild(script);
       });
-
     } catch (error) {
-      console.error('Error in loadPaypalScript:', error);
       throw error;
     }
   };
@@ -110,19 +88,12 @@ const Subscription = () => {
   const retryLoadPaypal = async () => {
     try {
       await loadPaypalScript();
-      retryCountRef.current = 0; // Reset counter on success
+      retryCountRef.current = 0;
     } catch (error) {
-      console.error(`PayPal load attempt ${retryCountRef.current + 1} failed:`, error);
-      
       if (retryCountRef.current < MAX_RETRIES) {
         retryCountRef.current++;
-        console.log(`Retrying PayPal load in ${RETRY_DELAY}ms... (Attempt ${retryCountRef.current}/${MAX_RETRIES})`);
-        
-        setTimeout(() => {
-          retryLoadPaypal();
-        }, RETRY_DELAY);
+        setTimeout(retryLoadPaypal, RETRY_DELAY);
       } else {
-        console.error('Max retries reached for PayPal loading');
         setLoadError('Unable to load payment system. Please refresh the page or try again later.');
       }
     }
@@ -130,10 +101,9 @@ const Subscription = () => {
 
   useEffect(() => {
     retryLoadPaypal();
-
     return () => {
       if (paypalScriptRef.current) {
-        paypalScriptRef.current.remove();
+        document.body.removeChild(paypalScriptRef.current);
       }
     };
   }, []);
@@ -148,21 +118,13 @@ const Subscription = () => {
       return;
     }
 
-    if (isProcessing) {
+    if (isProcessing || !paypalLoaded) {
       return;
     }
 
-    console.log('Starting subscription process for plan:', plan);
-    console.log('Available plan IDs:', planIds);
-    
     setIsProcessing(true);
     try {
-      if (!paypalLoaded) {
-        throw new Error('PayPal SDK not loaded yet. Please wait and try again.');
-      }
-
       const planDetails = PLAN_PRICES[plan as keyof typeof PLAN_PRICES];
-      console.log('Plan details:', planDetails);
       
       // Create subscription record
       const { data: subscription, error: dbError } = await supabase
@@ -178,11 +140,8 @@ const Subscription = () => {
         .single();
 
       if (dbError) {
-        console.error('Database error:', dbError);
         throw dbError;
       }
-
-      console.log('Created subscription record:', subscription);
 
       // Clear existing PayPal buttons
       const container = buttonContainersRef.current[plan];
@@ -190,13 +149,6 @@ const Subscription = () => {
         container.innerHTML = '';
       }
 
-      if (!window.paypal) {
-        console.error('PayPal SDK not loaded');
-        throw new Error('PayPal SDK not loaded');
-      }
-
-      console.log('Initializing PayPal buttons for plan:', plan);
-      
       // Common button configuration
       const commonConfig = {
         style: {
@@ -206,8 +158,6 @@ const Subscription = () => {
           label: 'subscribe'
         },
         onApprove: async (data: any, actions: any) => {
-          console.log('Payment approved:', data);
-          
           // Update subscription status
           const { error: updateError } = await supabase
             .from('paypal_subscriptions')
@@ -219,7 +169,6 @@ const Subscription = () => {
             .eq('id', subscription.id);
 
           if (updateError) {
-            console.error('Error updating subscription:', updateError);
             throw updateError;
           }
 
@@ -243,12 +192,10 @@ const Subscription = () => {
       // Create buttons based on plan type
       let buttonConfig;
       if (plan === 'lifetime') {
-        // One-time payment configuration
         buttonConfig = {
           ...commonConfig,
-          createOrder: async (data: any, actions: any) => {
-            console.log('Creating one-time payment order');
-            return actions.order.create({
+          createOrder: async () => {
+            return window.paypal.Buttons.createOrder({
               purchase_units: [{
                 amount: {
                   currency_code: planDetails.currency,
@@ -259,34 +206,17 @@ const Subscription = () => {
           }
         };
       } else {
-        // Subscription configuration
         const planId = planIds[plan];
-        console.log(`Using plan ID for ${plan}:`, planId);
-        
         if (!planId) {
-          console.error(`No plan ID found for ${plan} subscription`);
-          toast({
-            title: "Error",
-            description: "This subscription plan is not available at the moment. Please try again later.",
-            variant: "destructive",
-          });
-          return;
+          throw new Error('This subscription plan is not available at the moment.');
         }
         
         buttonConfig = {
           ...commonConfig,
-          createSubscription: async (data: any, actions: any) => {
-            console.log(`Creating subscription with plan ID: ${planId}`);
-            try {
-              const result = await actions.subscription.create({
-                plan_id: planId
-              });
-              console.log('Subscription creation result:', result);
-              return result;
-            } catch (error) {
-              console.error('Error creating subscription:', error);
-              throw error;
-            }
+          createSubscription: async () => {
+            return window.paypal.Buttons.createSubscription({
+              plan_id: planId
+            });
           }
         };
       }
@@ -295,16 +225,13 @@ const Subscription = () => {
 
       if (container && await Buttons.isEligible()) {
         await Buttons.render(container);
-        console.log('PayPal buttons rendered successfully');
       } else {
-        console.error('PayPal Buttons not eligible for rendering');
-        setLoadError('Payment system not available for this plan. Please try again later.');
+        throw new Error('Payment system not available for this plan.');
       }
     } catch (error) {
-      console.error('Subscription error:', error);
       toast({
         title: "Error",
-        description: error instanceof Error ? error.message : "There was a problem setting up your subscription. Please try again.",
+        description: error instanceof Error ? error.message : "There was a problem setting up your subscription.",
         variant: "destructive",
       });
     } finally {
