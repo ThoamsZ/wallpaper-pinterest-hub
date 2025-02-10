@@ -29,28 +29,37 @@ const Subscription = () => {
 
   useEffect(() => {
     const loadPaypalScript = async () => {
-      // Get PayPal client ID from Supabase
-      const { data: { value: clientId }, error } = await supabase
-        .from('secrets')
-        .select('value')
-        .eq('name', 'PAYPAL_CLIENT_ID')
-        .single();
+      try {
+        // Get PayPal client ID from Supabase
+        const { data, error } = await supabase
+          .from('secrets')
+          .select('value')
+          .eq('name', 'PAYPAL_CLIENT_ID')
+          .maybeSingle();
 
-      if (error || !clientId) {
-        console.error('Error loading PayPal client ID:', error);
-        return;
+        if (error) {
+          console.error('Error loading PayPal client ID:', error);
+          return;
+        }
+
+        if (!data?.value) {
+          console.error('PayPal client ID not found');
+          return;
+        }
+
+        // Load PayPal SDK
+        const script = document.createElement('script');
+        script.src = `https://www.paypal.com/sdk/js?client-id=${data.value}&vault=true&intent=subscription`;
+        script.async = true;
+        script.onload = () => setPaypalLoaded(true);
+        document.body.appendChild(script);
+
+        return () => {
+          document.body.removeChild(script);
+        };
+      } catch (error) {
+        console.error('Error initializing PayPal:', error);
       }
-
-      // Load PayPal SDK
-      const script = document.createElement('script');
-      script.src = `https://www.paypal.com/sdk/js?client-id=${clientId}&vault=true&intent=subscription`;
-      script.async = true;
-      script.onload = () => setPaypalLoaded(true);
-      document.body.appendChild(script);
-
-      return () => {
-        document.body.removeChild(script);
-      };
     };
 
     loadPaypalScript();
@@ -278,4 +287,3 @@ const Subscription = () => {
 };
 
 export default Subscription;
-
