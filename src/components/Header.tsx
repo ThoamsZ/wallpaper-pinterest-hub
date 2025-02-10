@@ -175,21 +175,30 @@ const Header = ({ isDisabled = false }: HeaderProps) => {
       // Get current session
       const { data: { session } } = await supabase.auth.getSession();
       
-      // If we have a session, sign out locally
       if (session) {
-        await supabase.auth.signOut({ scope: 'local' });
+        try {
+          // Try local signout first
+          await supabase.auth.signOut({ scope: 'local' });
+        } catch (signOutError) {
+          console.error('Local sign out error:', signOutError);
+          // Continue with the flow even if local sign out fails
+        }
       }
 
       // Try to sign in as guest after logout
-      const { data: guestData, error: guestError } = await supabase.auth.signInWithPassword({
-        email: 'guest@wallpaperhub.com',
-        password: 'guest123',
-      });
+      try {
+        const { error: guestError } = await supabase.auth.signInWithPassword({
+          email: 'guest@wallpaperhub.com',
+          password: 'guest123',
+        });
 
-      if (guestError) {
-        console.error('Guest login error after logout:', guestError);
-      } else if (guestData.session) {
-        console.log('Successfully logged in as guest after logout');
+        if (guestError) {
+          console.error('Guest login error after logout:', guestError);
+        } else {
+          console.log('Successfully logged in as guest after logout');
+        }
+      } catch (guestLoginError) {
+        console.error('Error during guest login:', guestLoginError);
       }
 
       // Always navigate to auth page
@@ -200,7 +209,7 @@ const Header = ({ isDisabled = false }: HeaderProps) => {
         description: "Successfully logged out",
       });
     } catch (error) {
-      console.error('Logout error:', error);
+      console.error('Main logout error:', error);
       // Always navigate to auth page, even on error
       navigate("/auth");
       
