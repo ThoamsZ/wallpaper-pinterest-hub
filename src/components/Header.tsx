@@ -166,28 +166,14 @@ const Header = ({ isDisabled = false }: HeaderProps) => {
 
     setIsProcessing(true);
     try {
-      // First clear cache and local state to ensure clean state
+      // First clear cache and local state
       queryClient.clear();
       setIsAuthenticated(false);
       setUserEmail("");
       setIsAdmin(false);
 
-      try {
-        // Check if we have a valid session before attempting to sign out
-        const { data: { session } } = await supabase.auth.getSession();
-        if (session) {
-          // We have a valid session, attempt to sign out
-          const { error } = await supabase.auth.signOut({ scope: 'local' }); // Only clear local session
-          if (error) {
-            console.error('Logout error:', error);
-            // Even if there's an error, we'll continue with the logout flow
-            // since we've already cleared the local state
-          }
-        }
-      } catch (error) {
-        console.error('Error checking session:', error);
-        // Continue with logout flow even if session check fails
-      }
+      // Sign out with local scope only - this prevents the 403 error
+      await supabase.auth.signOut({ scope: 'local' });
 
       // Try to sign in as guest after logout
       try {
@@ -198,7 +184,6 @@ const Header = ({ isDisabled = false }: HeaderProps) => {
 
         if (guestError) {
           console.error('Guest login error after logout:', guestError);
-          // Even if guest login fails, we'll continue with navigation
         } else if (guestData.session) {
           console.log('Successfully logged in as guest after logout');
         }
@@ -214,7 +199,7 @@ const Header = ({ isDisabled = false }: HeaderProps) => {
         description: "Successfully logged out",
       });
     } catch (error) {
-      console.error('General logout error:', error);
+      console.error('Logout error:', error);
       // Already cleared local state above, just ensure navigation happens
       navigate("/auth");
       
@@ -364,3 +349,4 @@ const Header = ({ isDisabled = false }: HeaderProps) => {
 };
 
 export default Header;
+
