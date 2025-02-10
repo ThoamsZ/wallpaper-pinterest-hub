@@ -1,4 +1,3 @@
-
 import { DollarSign, CheckCircle2 } from "lucide-react";
 import Header from "@/components/Header";
 import { Button } from "@/components/ui/button";
@@ -31,7 +30,7 @@ const Subscription = () => {
   useEffect(() => {
     const loadPaypalScript = async () => {
       try {
-        // Get PayPal client ID from Supabase
+        console.log('Fetching PayPal client ID...');
         const { data, error } = await supabase
           .from('secrets')
           .select('value')
@@ -45,20 +44,24 @@ const Subscription = () => {
         }
 
         if (!data?.value) {
-          console.error('PayPal client ID not found');
+          console.error('PayPal client ID not found in secrets table');
           setLoadError('Payment system configuration is incomplete. Please try again later.');
           return;
         }
+
+        console.log('PayPal client ID retrieved successfully');
 
         // Load PayPal SDK
         const script = document.createElement('script');
         script.src = `https://www.paypal.com/sdk/js?client-id=${data.value}&vault=true&intent=subscription`;
         script.async = true;
         script.onload = () => {
+          console.log('PayPal SDK loaded successfully');
           setPaypalLoaded(true);
           setLoadError(null);
         };
-        script.onerror = () => {
+        script.onerror = (e) => {
+          console.error('Failed to load PayPal SDK:', e);
           setLoadError('Failed to load payment system. Please try again later.');
         };
         document.body.appendChild(script);
@@ -99,16 +102,21 @@ const Subscription = () => {
           subscription_type: plan,
           amount: planDetails.amount,
           currency: planDetails.currency,
+          status: 'pending'
         })
         .select()
         .single();
 
       if (dbError) {
+        console.error('Database error:', dbError);
         throw dbError;
       }
 
+      console.log('Created subscription record:', subscription);
+
       // Initialize PayPal buttons
       if (window.paypal) {
+        console.log('Initializing PayPal buttons for plan:', plan);
         const Buttons = window.paypal.Buttons({
           style: {
             shape: 'rect',
@@ -145,6 +153,7 @@ const Subscription = () => {
             }
           },
           onApprove: async (data: any, actions: any) => {
+            console.log('Payment approved:', data);
             if (plan === 'lifetime') {
               await actions.order.capture();
             }
@@ -160,6 +169,7 @@ const Subscription = () => {
               .eq('id', subscription.id);
 
             if (updateError) {
+              console.error('Error updating subscription:', updateError);
               throw updateError;
             }
 
@@ -186,6 +196,13 @@ const Subscription = () => {
           container.innerHTML = '';
           Buttons.render(container);
         }
+      } else {
+        console.error('PayPal SDK not loaded');
+        toast({
+          title: "Error",
+          description: "Payment system is not ready. Please try again later.",
+          variant: "destructive",
+        });
       }
     } catch (error) {
       console.error('Subscription error:', error);
