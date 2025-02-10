@@ -1,3 +1,4 @@
+
 import { Search, Heart, Archive } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -170,13 +171,40 @@ const Header = ({ isDisabled = false }: HeaderProps) => {
       setIsAuthenticated(false);
       setUserEmail("");
       setIsAdmin(false);
-      
-      // Then attempt to sign out from Supabase
-      const { error } = await supabase.auth.signOut();
-      if (error) {
-        console.error('Logout error:', error);
+
+      try {
+        // Check if we have a valid session before attempting to sign out
+        const { data: { session } } = await supabase.auth.getSession();
+        if (session) {
+          const { error } = await supabase.auth.signOut();
+          if (error) {
+            console.error('Logout error:', error);
+            // Even if there's an error, we'll continue with the logout flow
+            // since we've already cleared the local state
+          }
+        }
+      } catch (error) {
+        console.error('Error checking session:', error);
+        // Continue with logout flow even if session check fails
       }
-      
+
+      // Try to sign in as guest after logout
+      try {
+        const { data: guestData, error: guestError } = await supabase.auth.signInWithPassword({
+          email: 'guest@wallpaperhub.com',
+          password: 'guest123',
+        });
+
+        if (guestError) {
+          console.error('Guest login error after logout:', guestError);
+          // Even if guest login fails, we'll continue with navigation
+        } else if (guestData.session) {
+          console.log('Successfully logged in as guest after logout');
+        }
+      } catch (guestError) {
+        console.error('Error during guest login after logout:', guestError);
+      }
+
       // Navigate to auth page
       navigate("/auth");
       
@@ -185,7 +213,7 @@ const Header = ({ isDisabled = false }: HeaderProps) => {
         description: "Successfully logged out",
       });
     } catch (error) {
-      console.error('Logout error:', error);
+      console.error('General logout error:', error);
       // Already cleared local state above, just ensure navigation happens
       navigate("/auth");
       
