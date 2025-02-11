@@ -161,6 +161,7 @@ export type Database = {
           status: string
           updated_at: string
           user_id: string | null
+          webhook_data: Json | null
         }
         Insert: {
           amount: number
@@ -170,6 +171,7 @@ export type Database = {
           status?: string
           updated_at?: string
           user_id?: string | null
+          webhook_data?: Json | null
         }
         Update: {
           amount?: number
@@ -179,6 +181,7 @@ export type Database = {
           status?: string
           updated_at?: string
           user_id?: string | null
+          webhook_data?: Json | null
         }
         Relationships: []
       }
