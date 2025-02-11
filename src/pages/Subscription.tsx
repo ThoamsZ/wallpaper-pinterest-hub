@@ -3,7 +3,6 @@ import Header from "@/components/Header";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/App";
 import { useEffect, useState, useRef } from "react";
-import ReactDOM from 'react-dom';
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 import SubscriptionPlanCard from "@/components/subscription/SubscriptionPlanCard";
@@ -354,56 +353,68 @@ const Subscription = () => {
       const buttonContainerRef = document.createElement('div');
       document.body.appendChild(buttonContainerRef);
 
-      const createOrder = async () => {
-        try {
-          const response = await fetch('https://api-m.sandbox.paypal.com/v2/checkout/orders', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              Authorization: `Bearer ${secretData.value}`,
-            },
-            body: JSON.stringify({
-              intent: 'CAPTURE',
-              purchase_units: [
-                {
-                  amount: {
-                    currency_code: PLAN_PRICES.lifetime.currency,
-                    value: PLAN_PRICES.lifetime.amount.toString(),
-                  },
-                },
-              ],
-            }),
-          });
-
-          const order = await response.json();
-          return order.id;
-        } catch (err) {
-          console.error('Error creating order:', err);
-          throw err;
-        }
-      };
-
       const onApprove = async (data: any) => {
         try {
-          // Update payment status to completed
-          const { error: updateError } = await supabase
+          console.log('Payment approved. Verifying order:', data.orderID);
+          
+          // First, update the order ID in our database
+          const { error: updateOrderIdError } = await supabase
             .from('paypal_one_time_payments')
             .update({
-              status: 'completed',
               paypal_order_id: data.orderID
             })
             .eq('id', payment.id);
 
-          if (updateError) {
-            throw updateError;
+          if (updateOrderIdError) {
+            console.error('Error updating order ID:', updateOrderIdError);
+            throw updateOrderIdError;
           }
 
-          toast({
-            title: "Success!",
-            description: "Your lifetime subscription has been activated.",
+          // Get the PayPal access token
+          const { data: authData } = await supabase
+            .from('secrets')
+            .select('value')
+            .eq('name', 'PAYPAL_ACCESS_TOKEN')
+            .single();
+
+          if (!authData?.value) {
+            throw new Error('PayPal access token not found');
+          }
+
+          // Verify the order status with PayPal
+          const orderResponse = await fetch(`https://api-m.sandbox.paypal.com/v2/checkout/orders/${data.orderID}`, {
+            method: 'GET',
+            headers: {
+              'Authorization': `Bearer ${authData.value}`,
+              'Content-Type': 'application/json',
+            },
           });
 
-          window.location.reload();
+          const orderDetails = await orderResponse.json();
+          console.log('Order details:', orderDetails);
+
+          if (orderDetails.status === 'COMPLETED') {
+            // Update payment status to completed
+            const { error: updateError } = await supabase
+              .from('paypal_one_time_payments')
+              .update({
+                status: 'completed'
+              })
+              .eq('id', payment.id);
+
+            if (updateError) {
+              throw updateError;
+            }
+
+            toast({
+              title: "Success!",
+              description: "Your lifetime subscription has been activated.",
+            });
+
+            window.location.reload();
+          } else {
+            throw new Error(`Invalid order status: ${orderDetails.status}`);
+          }
         } catch (err) {
           console.error('Error processing payment:', err);
           toast({
@@ -415,7 +426,34 @@ const Subscription = () => {
       };
 
       const PayPalButtons = window.paypal.Buttons({
-        createOrder,
+        createOrder: async () => {
+          try {
+            const response = await fetch('https://api-m.sandbox.paypal.com/v2/checkout/orders', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                Authorization: `Bearer ${secretData.value}`,
+              },
+              body: JSON.stringify({
+                intent: 'CAPTURE',
+                purchase_units: [
+                  {
+                    amount: {
+                      currency_code: PLAN_PRICES.lifetime.currency,
+                      value: PLAN_PRICES.lifetime.amount.toString(),
+                    },
+                  },
+                ],
+              }),
+            });
+
+            const order = await response.json();
+            return order.id;
+          } catch (err) {
+            console.error('Error creating order:', err);
+            throw err;
+          }
+        },
         onApprove,
         onError: (err: any) => {
           console.error('PayPal error:', err);
