@@ -1,4 +1,3 @@
-
 import Header from "@/components/Header";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/App";
@@ -317,6 +316,8 @@ const Subscription = () => {
     setIsProcessing(true);
 
     try {
+      console.log('Starting lifetime payment process...');
+
       // Create a payment record in the database
       const { data: payment, error: paymentError } = await supabase
         .from('paypal_one_time_payments')
@@ -331,7 +332,7 @@ const Subscription = () => {
 
       if (paymentError) {
         console.error('Error creating payment record:', paymentError);
-        throw paymentError;
+        throw new Error('Failed to create payment record');
       }
 
       console.log('Created payment record:', payment);
@@ -341,11 +342,19 @@ const Subscription = () => {
         .from('secrets')
         .select('value')
         .eq('name', 'PAYPAL_LIFETIME_LINK')
-        .maybeSingle();
+        .single();
 
-      if (linkError || !linkData?.value) {
-        throw new Error('PayPal payment link not found');
+      if (linkError) {
+        console.error('Error fetching PayPal payment link:', linkError);
+        throw new Error('Failed to fetch PayPal payment configuration');
       }
+
+      if (!linkData?.value) {
+        console.error('PayPal payment link not found in secrets');
+        throw new Error('PayPal payment link not configured');
+      }
+
+      console.log('Successfully retrieved PayPal payment link');
 
       // Open PayPal payment link in a new window
       window.open(linkData.value, '_blank');
@@ -359,7 +368,7 @@ const Subscription = () => {
       console.error('Error in lifetime payment flow:', error);
       toast({
         title: "Error",
-        description: "There was a problem processing your payment. Please try again.",
+        description: error instanceof Error ? error.message : "There was a problem processing your payment. Please try again.",
         variant: "destructive",
       });
     } finally {
