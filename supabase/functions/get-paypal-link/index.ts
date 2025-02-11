@@ -23,16 +23,39 @@ serve(async (req) => {
 
     console.log('Creating PayPal order...');
 
-    // Create a new PayPal order using PayPal API
-    const paypalAccessToken = Deno.env.get('PAYPAL_ACCESS_TOKEN');
-    if (!paypalAccessToken) {
-      throw new Error('PayPal access token not configured');
+    // Get PayPal credentials
+    const clientId = Deno.env.get('PAYPAL_CLIENT_ID');
+    const clientSecret = Deno.env.get('PAYPAL_SECRET_KEY');
+
+    if (!clientId || !clientSecret) {
+      throw new Error('PayPal credentials not configured');
     }
 
+    // Get access token
+    const authResponse = await fetch('https://api-m.sandbox.paypal.com/v1/oauth2/token', {
+      method: 'POST',
+      headers: {
+        'Accept': 'application/json',
+        'Accept-Language': 'en_US',
+        'Authorization': `Basic ${btoa(`${clientId}:${clientSecret}`)}`,
+        'Content-Type': 'application/x-www-form-urlencoded',
+      },
+      body: 'grant_type=client_credentials'
+    });
+
+    const authData = await authResponse.json();
+    console.log('PayPal auth response:', authData);
+
+    if (!authData.access_token) {
+      console.error('Failed to get PayPal access token:', authData);
+      throw new Error('Failed to authenticate with PayPal');
+    }
+
+    // Create PayPal order
     const orderResponse = await fetch('https://api-m.sandbox.paypal.com/v2/checkout/orders', {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${paypalAccessToken}`,
+        'Authorization': `Bearer ${authData.access_token}`,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
