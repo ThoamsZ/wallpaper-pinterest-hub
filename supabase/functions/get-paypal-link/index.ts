@@ -15,7 +15,41 @@ serve(async (req) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     )
 
-    // Get PayPal payment link from payment_links table
+    console.log('Creating PayPal order...');
+
+    // Create a new PayPal order using PayPal API
+    const paypalAccessToken = Deno.env.get('PAYPAL_ACCESS_TOKEN');
+    if (!paypalAccessToken) {
+      throw new Error('PayPal access token not configured');
+    }
+
+    const orderResponse = await fetch('https://api-m.sandbox.paypal.com/v2/checkout/orders', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${paypalAccessToken}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        intent: 'CAPTURE',
+        purchase_units: [{
+          amount: {
+            currency_code: 'USD',
+            value: '99.99'
+          },
+          description: 'Lifetime VIP Subscription'
+        }]
+      })
+    });
+
+    const orderData = await orderResponse.json();
+    console.log('PayPal order created:', orderData);
+
+    if (!orderData.id) {
+      console.error('Failed to create PayPal order:', orderData);
+      throw new Error('Failed to create PayPal order');
+    }
+
+    // Get PayPal payment link
     const { data: linkData, error: linkError } = await supabase
       .from('payment_links')
       .select('url')
@@ -35,14 +69,14 @@ serve(async (req) => {
       throw new Error('PayPal payment link is not properly configured');
     }
 
-    const paypalLink = linkData.url.trim();
-    if (!paypalLink || !paypalLink.startsWith('http')) {
-      console.error('Invalid PayPal payment link format:', paypalLink);
-      throw new Error('Invalid PayPal payment link configuration');
-    }
+    // Construct the full payment URL with the order ID
+    const paymentUrl = `${linkData.url}?token=${orderData.id}`;
 
     return new Response(
-      JSON.stringify({ paypalLink }),
+      JSON.stringify({ 
+        paypalLink: paymentUrl,
+        orderId: orderData.id 
+      }),
       { 
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         status: 200 
@@ -62,4 +96,3 @@ serve(async (req) => {
     );
   }
 })
-

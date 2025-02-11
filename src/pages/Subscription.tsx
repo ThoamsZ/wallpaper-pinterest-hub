@@ -1,4 +1,3 @@
-
 import Header from "@/components/Header";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/App";
@@ -29,6 +28,7 @@ const Subscription = () => {
   const [isVip, setIsVip] = useState(false);
   const [vipType, setVipType] = useState<string | null>(null);
   const lifetimeButtonRef = useRef<HTMLDivElement | null>(null);
+  const statusCheckInterval = useRef<number | null>(null);
 
   useEffect(() => {
     const fetchUserVipStatus = async () => {
@@ -150,6 +150,38 @@ const Subscription = () => {
       }
     };
   }, []);
+
+  const checkPaymentStatus = async (paymentId: string) => {
+    console.log('Checking payment status for ID:', paymentId);
+    
+    const { data, error } = await supabase
+      .from('paypal_one_time_payments')
+      .select('status')
+      .eq('paypal_order_id', paymentId)
+      .single();
+
+    if (error) {
+      console.error('Error checking payment status:', error);
+      return;
+    }
+
+    console.log('Payment status:', data.status);
+
+    if (data.status === 'completed') {
+      // Clear the interval and reload the page
+      if (statusCheckInterval.current) {
+        window.clearInterval(statusCheckInterval.current);
+        statusCheckInterval.current = null;
+      }
+      
+      toast({
+        title: "Success!",
+        description: "Your lifetime subscription has been activated.",
+      });
+      
+      window.location.reload();
+    }
+  };
 
   const handleSubscribe = async (plan: string) => {
     if (!session || session.user.email === 'guest@wallpaperhub.com') {
@@ -338,7 +370,7 @@ const Subscription = () => {
 
       console.log('Created payment record:', payment);
 
-      // Get PayPal payment link using the Edge Function
+      // Get PayPal payment link and order ID
       const { data, error } = await supabase.functions.invoke('get-paypal-link');
 
       if (error) {
@@ -346,9 +378,20 @@ const Subscription = () => {
         throw new Error('Failed to get PayPal payment link');
       }
 
-      if (!data?.paypalLink) {
-        console.error('No PayPal link received from function');
-        throw new Error('Failed to get PayPal payment link');
+      if (!data?.paypalLink || !data?.orderId) {
+        console.error('No PayPal link or order ID received from function');
+        throw new Error('Failed to get PayPal payment information');
+      }
+
+      // Update the payment record with the PayPal order ID
+      const { error: updateError } = await supabase
+        .from('paypal_one_time_payments')
+        .update({ paypal_order_id: data.orderId })
+        .eq('id', payment.id);
+
+      if (updateError) {
+        console.error('Error updating payment record:', updateError);
+        // Continue anyway as this is not critical
       }
 
       // Open PayPal payment link in a new window
@@ -358,6 +401,15 @@ const Subscription = () => {
         title: "Payment Link Opened",
         description: "Please complete the payment in the new window. Your account will be upgraded once the payment is confirmed.",
       });
+
+      // Start checking payment status
+      if (statusCheckInterval.current) {
+        window.clearInterval(statusCheckInterval.current);
+      }
+
+      statusCheckInterval.current = window.setInterval(() => {
+        checkPaymentStatus(data.orderId);
+      }, 5000); // Check every 5 seconds
 
     } catch (error) {
       console.error('Error in lifetime payment flow:', error);
@@ -370,6 +422,14 @@ const Subscription = () => {
       setIsProcessing(false);
     }
   };
+
+  useEffect(() => {
+    return () => {
+      if (statusCheckInterval.current) {
+        window.clearInterval(statusCheckInterval.current);
+      }
+    };
+  }, []);
 
   return (
     <div className="min-h-screen bg-background">
