@@ -343,7 +343,7 @@ const Subscription = () => {
         .from('secrets')
         .select('value')
         .eq('name', 'PAYPAL_LIFETIME_LINK')
-        .maybeSingle();
+        .single();
 
       console.log('Secret fetch response:', { data: secretData, error: secretError });
 
@@ -353,7 +353,7 @@ const Subscription = () => {
       }
 
       if (!secretData?.value) {
-        console.error('PayPal payment link not found or empty in secrets');
+        console.error('PayPal payment link not found in secrets');
         throw new Error('PayPal payment link is not properly configured. Please contact support.');
       }
 
