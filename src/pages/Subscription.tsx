@@ -335,151 +335,24 @@ const Subscription = () => {
 
       console.log('Created payment record:', payment);
 
-      // Get PayPal client ID
-      const { data: clientIdData, error: clientIdError } = await supabase
+      // Get PayPal payment link from secrets
+      const { data: linkData, error: linkError } = await supabase
         .from('secrets')
         .select('value')
-        .eq('name', 'PAYPAL_CLIENT_ID')
+        .eq('name', 'PAYPAL_LIFETIME_LINK')
         .maybeSingle();
 
-      if (clientIdError || !clientIdData?.value) {
-        throw new Error('PayPal configuration not found');
+      if (linkError || !linkData?.value) {
+        throw new Error('PayPal payment link not found');
       }
 
-      // Set up PayPal buttons
-      if (!window.paypal) {
-        throw new Error('PayPal SDK not loaded');
-      }
+      // Open PayPal payment link in a new window
+      window.open(linkData.value, '_blank');
 
-      // Clear existing PayPal buttons if any
-      if (lifetimeButtonRef.current) {
-        lifetimeButtonRef.current.innerHTML = '';
-      }
-
-      const PayPalButtons = window.paypal.Buttons({
-        createOrder: async () => {
-          try {
-            const response = await fetch('https://api-m.sandbox.paypal.com/v2/checkout/orders', {
-              method: 'POST',
-              headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${clientIdData.value}`,
-              },
-              body: JSON.stringify({
-                intent: 'CAPTURE',
-                purchase_units: [
-                  {
-                    amount: {
-                      currency_code: PLAN_PRICES.lifetime.currency,
-                      value: PLAN_PRICES.lifetime.amount.toString(),
-                    },
-                  },
-                ],
-              }),
-            });
-
-            const orderData = await response.json();
-            
-            if (!orderData.id) {
-              console.error('Invalid order data:', orderData);
-              throw new Error('Failed to create PayPal order');
-            }
-            
-            // Update order ID in database
-            const { error: updateError } = await supabase
-              .from('paypal_one_time_payments')
-              .update({
-                paypal_order_id: orderData.id
-              })
-              .eq('id', payment.id);
-
-            if (updateError) {
-              console.error('Error updating order ID:', updateError);
-              throw updateError;
-            }
-
-            return orderData.id;
-          } catch (err) {
-            console.error('Error creating order:', err);
-            throw err;
-          }
-        },
-        onApprove: async (data: any) => {
-          try {
-            console.log('Payment approved. Verifying order:', data.orderID);
-            
-            // Verify the order status with PayPal
-            const orderResponse = await fetch(`https://api-m.sandbox.paypal.com/v2/checkout/orders/${data.orderID}`, {
-              method: 'GET',
-              headers: {
-                'Authorization': `Bearer ${clientIdData.value}`,
-                'Content-Type': 'application/json',
-              },
-            });
-
-            const orderDetails = await orderResponse.json();
-            console.log('Order details:', orderDetails);
-
-            // Only proceed if the order status is COMPLETED
-            if (orderDetails.status === 'COMPLETED') {
-              // Update payment status to completed
-              const { error: updateError } = await supabase
-                .from('paypal_one_time_payments')
-                .update({
-                  status: 'completed'
-                })
-                .eq('id', payment.id);
-
-              if (updateError) {
-                throw updateError;
-              }
-
-              toast({
-                title: "Success!",
-                description: "Your lifetime subscription has been activated.",
-              });
-
-              window.location.reload();
-            } else {
-              throw new Error(`Invalid order status: ${orderDetails.status}`);
-            }
-          } catch (err) {
-            console.error('Error processing payment:', err);
-            toast({
-              title: "Error",
-              description: "There was a problem processing your payment. Please contact support.",
-              variant: "destructive",
-            });
-          } finally {
-            setIsProcessing(false);
-          }
-        },
-        onError: (err: any) => {
-          console.error('PayPal error:', err);
-          toast({
-            title: "Error",
-            description: "There was a problem with the payment. Please try again.",
-            variant: "destructive",
-          });
-          setIsProcessing(false);
-        },
-        onCancel: () => {
-          console.log('Payment cancelled');
-          toast({
-            title: "Payment Cancelled",
-            description: "You've cancelled the payment process.",
-          });
-          setIsProcessing(false);
-        }
+      toast({
+        title: "Payment Link Opened",
+        description: "Please complete the payment in the new window. Your account will be upgraded once the payment is confirmed.",
       });
-
-      if (await PayPalButtons.isEligible()) {
-        if (lifetimeButtonRef.current) {
-          await PayPalButtons.render(lifetimeButtonRef.current);
-        }
-      } else {
-        throw new Error('PayPal payment is not available at this time');
-      }
 
     } catch (error) {
       console.error('Error in lifetime payment flow:', error);
