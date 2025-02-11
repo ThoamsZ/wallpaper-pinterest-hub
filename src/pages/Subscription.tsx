@@ -335,14 +335,14 @@ const Subscription = () => {
 
       console.log('Created payment record:', payment);
 
-      // Get PayPal access token
-      const { data: authData } = await supabase
+      // Get PayPal client ID
+      const { data: clientIdData, error: clientIdError } = await supabase
         .from('secrets')
         .select('value')
-        .eq('name', 'PAYPAL_ACCESS_TOKEN')
-        .single();
+        .eq('name', 'PAYPAL_CLIENT_ID')
+        .maybeSingle();
 
-      if (!authData?.value) {
+      if (clientIdError || !clientIdData?.value) {
         throw new Error('PayPal configuration not found');
       }
 
@@ -363,7 +363,7 @@ const Subscription = () => {
               method: 'POST',
               headers: {
                 'Content-Type': 'application/json',
-                Authorization: `Bearer ${authData.value}`,
+                'Authorization': `Bearer ${clientIdData.value}`,
               },
               body: JSON.stringify({
                 intent: 'CAPTURE',
@@ -412,7 +412,7 @@ const Subscription = () => {
             const orderResponse = await fetch(`https://api-m.sandbox.paypal.com/v2/checkout/orders/${data.orderID}`, {
               method: 'GET',
               headers: {
-                'Authorization': `Bearer ${authData.value}`,
+                'Authorization': `Bearer ${clientIdData.value}`,
                 'Content-Type': 'application/json',
               },
             });
