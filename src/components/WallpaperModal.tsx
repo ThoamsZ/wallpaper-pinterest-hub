@@ -1,4 +1,3 @@
-
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Heart, Download, X } from "lucide-react";
@@ -6,6 +5,7 @@ import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 import { useNavigate } from "react-router-dom";
+import { useDownloadLimits } from "@/hooks/use-download-limits";
 import type { Database } from "@/integrations/supabase/types";
 
 type Wallpaper = Database['public']['Tables']['wallpapers']['Row'];
@@ -21,6 +21,7 @@ interface WallpaperModalProps {
 const WallpaperModal = ({ wallpaper, isOpen, onClose, onLike, isLiked }: WallpaperModalProps) => {
   const [isDownloading, setIsDownloading] = useState(false);
   const navigate = useNavigate();
+  const { downloadsRemaining, decrementDownloads } = useDownloadLimits();
 
   // Disable F12 and other keyboard shortcuts
   useEffect(() => {
@@ -90,43 +91,14 @@ const WallpaperModal = ({ wallpaper, isOpen, onClose, onLike, isLiked }: Wallpap
         return;
       }
 
-      // Check download limit
-      const { data: userData, error: userError } = await supabase
-        .from('users')
-        .select('download_count, last_download_reset, subscription_status')
-        .eq('id', session.user.id)
-        .single();
-
-      if (userError) throw userError;
-
-      const now = new Date();
-      const lastReset = userData.last_download_reset ? new Date(userData.last_download_reset) : null;
-      const isNewDay = !lastReset || now.getDate() !== lastReset.getDate();
-
-      if (isNewDay) {
-        // Reset counter for new day
-        await supabase
-          .from('users')
-          .update({
-            download_count: 1,
-            last_download_reset: now.toISOString()
-          })
-          .eq('id', session.user.id);
-      } else if (userData.subscription_status !== 'active' && userData.download_count >= 3) {
+      // Check download limits
+      if (downloadsRemaining !== null && downloadsRemaining <= 0) {
         toast({
-          title: "Download limit reached",
-          description: "Free users can only download 3 wallpapers per day",
+          title: "Daily download limit reached",
+          description: "Please wait until tomorrow or upgrade your subscription for more downloads",
           variant: "destructive",
         });
         return;
-      } else {
-        // Increment download count for user
-        await supabase
-          .from('users')
-          .update({
-            download_count: (userData.download_count || 0) + 1
-          })
-          .eq('id', session.user.id);
       }
 
       // Increment wallpaper download count
@@ -138,6 +110,9 @@ const WallpaperModal = ({ wallpaper, isOpen, onClose, onLike, isLiked }: Wallpap
         .eq('id', wallpaper.id);
 
       if (wallpaperError) throw wallpaperError;
+
+      // Decrement user's remaining downloads
+      await decrementDownloads();
 
       // Trigger download
       const response = await fetch(wallpaper.url);
@@ -153,7 +128,9 @@ const WallpaperModal = ({ wallpaper, isOpen, onClose, onLike, isLiked }: Wallpap
 
       toast({
         title: "Download started",
-        description: "Your wallpaper is being downloaded",
+        description: downloadsRemaining !== null ? 
+          `You have ${downloadsRemaining - 1} downloads remaining today` : 
+          "Your wallpaper is being downloaded",
       });
     } catch (error) {
       console.error('Download error:', error);
@@ -206,7 +183,7 @@ const WallpaperModal = ({ wallpaper, isOpen, onClose, onLike, isLiked }: Wallpap
                 size="icon"
                 className="rounded-full bg-black/50 hover:bg-black/70 border-0 h-14 w-14"
                 onClick={handleDownload}
-                disabled={isDownloading}
+                disabled={isDownloading || (downloadsRemaining !== null && downloadsRemaining <= 0)}
               >
                 <Download className="h-7 w-7 text-white" />
               </Button>
