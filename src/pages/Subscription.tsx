@@ -1,3 +1,4 @@
+
 import Header from "@/components/Header";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/App";
@@ -338,26 +339,34 @@ const Subscription = () => {
       console.log('Created payment record:', payment);
 
       // Get PayPal payment link from secrets
-      const { data: linkData, error: linkError } = await supabase
+      const { data: secretData, error: secretError } = await supabase
         .from('secrets')
         .select('value')
         .eq('name', 'PAYPAL_LIFETIME_LINK')
         .maybeSingle();
 
-      if (linkError) {
-        console.error('Error fetching PayPal payment link:', linkError);
+      console.log('Secret fetch response:', { data: secretData, error: secretError });
+
+      if (secretError) {
+        console.error('Error fetching PayPal payment link:', secretError);
         throw new Error('Failed to fetch PayPal payment configuration');
       }
 
-      if (!linkData) {
-        console.error('PayPal payment link not found in secrets');
-        throw new Error('PayPal payment link has not been configured. Please contact support.');
+      if (!secretData?.value) {
+        console.error('PayPal payment link not found or empty in secrets');
+        throw new Error('PayPal payment link is not properly configured. Please contact support.');
+      }
+
+      const paypalLink = secretData.value.trim();
+      if (!paypalLink || !paypalLink.startsWith('http')) {
+        console.error('Invalid PayPal payment link format:', paypalLink);
+        throw new Error('Invalid PayPal payment link configuration. Please contact support.');
       }
 
       console.log('Successfully retrieved PayPal payment link');
 
       // Open PayPal payment link in a new window
-      window.open(linkData.value, '_blank');
+      window.open(paypalLink, '_blank');
 
       toast({
         title: "Payment Link Opened",
