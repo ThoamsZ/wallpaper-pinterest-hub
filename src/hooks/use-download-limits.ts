@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -12,7 +11,7 @@ export const useDownloadLimits = () => {
       if (session && session.user.email !== 'guest@wallpaperhub.com') {
         const { data: userData, error } = await supabase
           .from('users')
-          .select('daily_downloads_remaining, subscription_status')
+          .select('daily_downloads_remaining, subscription_status, vip_type')
           .eq('id', session.user.id)
           .maybeSingle();
 
@@ -21,7 +20,23 @@ export const useDownloadLimits = () => {
           return;
         }
 
-        setDownloadsRemaining(userData?.daily_downloads_remaining ?? 0);
+        let downloadLimit = 5; // default for non-subscribers
+
+        if (userData) {
+          if (userData.subscription_status === 'active') {
+            if (userData.vip_type === 'yearly') {
+              downloadLimit = 30;
+            } else if (userData.vip_type === 'monthly') {
+              downloadLimit = 20;
+            }
+          }
+        }
+
+        setDownloadsRemaining(
+          userData.daily_downloads_remaining !== null 
+            ? Math.min(userData.daily_downloads_remaining, downloadLimit)
+            : downloadLimit
+        );
       }
       setIsLoading(false);
     };
