@@ -27,6 +27,7 @@ const Subscription = () => {
   const [vipExpiresAt, setVipExpiresAt] = useState<string | null>(null);
   const [isVip, setIsVip] = useState(false);
   const [vipType, setVipType] = useState<string | null>(null);
+  const lifetimeButtonRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     const fetchUserVipStatus = async () => {
@@ -308,6 +309,12 @@ const Subscription = () => {
       return;
     }
 
+    if (isProcessing) {
+      return;
+    }
+
+    setIsProcessing(true);
+
     try {
       // Create a payment record in the database
       const { data: payment, error: paymentError } = await supabase
@@ -323,30 +330,19 @@ const Subscription = () => {
 
       if (paymentError) {
         console.error('Error creating payment record:', paymentError);
-        toast({
-          title: "Error",
-          description: "Failed to initiate payment. Please try again.",
-          variant: "destructive",
-        });
-        return;
+        throw paymentError;
       }
 
       console.log('Created payment record:', payment);
 
       // Get PayPal client ID and access token
-      const { data: secretData } = await supabase
-        .from('secrets')
-        .select('value')
-        .eq('name', 'PAYPAL_CLIENT_ID')
-        .single();
-
       const { data: authData } = await supabase
         .from('secrets')
         .select('value')
         .eq('name', 'PAYPAL_ACCESS_TOKEN')
         .single();
 
-      if (!secretData?.value || !authData?.value) {
+      if (!authData?.value) {
         throw new Error('PayPal configuration not found');
       }
 
@@ -355,8 +351,10 @@ const Subscription = () => {
         throw new Error('PayPal SDK not loaded');
       }
 
-      const buttonContainerRef = document.createElement('div');
-      document.body.appendChild(buttonContainerRef);
+      // Clear existing PayPal buttons if any
+      if (lifetimeButtonRef.current) {
+        lifetimeButtonRef.current.innerHTML = '';
+      }
 
       const PayPalButtons = window.paypal.Buttons({
         createOrder: async () => {
@@ -380,13 +378,18 @@ const Subscription = () => {
               }),
             });
 
-            const order = await response.json();
+            const orderData = await response.json();
+            
+            if (!orderData.id) {
+              console.error('Invalid order data:', orderData);
+              throw new Error('Failed to create PayPal order');
+            }
             
             // Update order ID in database
             const { error: updateError } = await supabase
               .from('paypal_one_time_payments')
               .update({
-                paypal_order_id: order.id
+                paypal_order_id: orderData.id
               })
               .eq('id', payment.id);
 
@@ -395,7 +398,7 @@ const Subscription = () => {
               throw updateError;
             }
 
-            return order.id;
+            return orderData.id;
           } catch (err) {
             console.error('Error creating order:', err);
             throw err;
@@ -446,6 +449,8 @@ const Subscription = () => {
               description: "There was a problem processing your payment. Please contact support.",
               variant: "destructive",
             });
+          } finally {
+            setIsProcessing(false);
           }
         },
         onError: (err: any) => {
@@ -455,17 +460,24 @@ const Subscription = () => {
             description: "There was a problem with the payment. Please try again.",
             variant: "destructive",
           });
+          setIsProcessing(false);
+        },
+        onCancel: () => {
+          console.log('Payment cancelled');
+          toast({
+            title: "Payment Cancelled",
+            description: "You've cancelled the payment process.",
+          });
+          setIsProcessing(false);
         }
       });
 
       if (await PayPalButtons.isEligible()) {
-        await PayPalButtons.render(buttonContainerRef);
+        if (lifetimeButtonRef.current) {
+          await PayPalButtons.render(lifetimeButtonRef.current);
+        }
       } else {
-        toast({
-          title: "Error",
-          description: "PayPal payment is not available at this time. Please try again later.",
-          variant: "destructive",
-        });
+        throw new Error('PayPal payment is not available at this time');
       }
 
     } catch (error) {
@@ -475,6 +487,8 @@ const Subscription = () => {
         description: "There was a problem processing your payment. Please try again.",
         variant: "destructive",
       });
+    } finally {
+      setIsProcessing(false);
     }
   };
 
@@ -565,7 +579,10 @@ const Subscription = () => {
               onLifetimePayment={handleLifetimePayment}
               isProcessing={isProcessing}
               loadError={loadError}
-              buttonContainerRef={(el) => buttonContainersRef.current['lifetime'] = el}
+              buttonContainerRef={(el) => {
+                buttonContainersRef.current['lifetime'] = el;
+                lifetimeButtonRef.current = el;
+              }}
             />
           </div>
 
