@@ -43,19 +43,38 @@ const SubscriptionPlanCard = ({
         <div className="text-sm text-gray-500">{interval}</div>
       </CardHeader>
       <CardContent className="space-y-4">
-        <Button 
-          className="w-full" 
-          variant={isHighlighted ? "default" : "outline"}
-          onClick={() => onSubscribe(planType)}
-          disabled={isProcessing || !!loadError}
-        >
-          <DollarSign className="w-4 h-4 mr-2" />
-          {planType === 'lifetime' ? 'Buy Lifetime' : `Subscribe ${planType === 'monthly' ? 'Monthly' : 'Yearly'}`}
-        </Button>
-        <div 
-          id={`paypal-button-${planType}`} 
-          ref={buttonContainerRef}
-        ></div>
+        {planType === 'lifetime' ? (
+          <a 
+            href="https://www.sandbox.paypal.com/ncp/payment/AN2TT43YXVM8C" 
+            target="_blank" 
+            rel="noopener noreferrer"
+            className="block"
+          >
+            <Button 
+              className="w-full" 
+              variant={isHighlighted ? "default" : "outline"}
+            >
+              <DollarSign className="w-4 h-4 mr-2" />
+              Buy Lifetime Access
+            </Button>
+          </a>
+        ) : (
+          <>
+            <Button 
+              className="w-full" 
+              variant={isHighlighted ? "default" : "outline"}
+              onClick={() => onSubscribe(planType)}
+              disabled={isProcessing || !!loadError}
+            >
+              <DollarSign className="w-4 h-4 mr-2" />
+              Subscribe {planType === 'monthly' ? 'Monthly' : 'Yearly'}
+            </Button>
+            <div 
+              id={`paypal-button-${planType}`} 
+              ref={buttonContainerRef}
+            ></div>
+          </>
+        )}
       </CardContent>
     </Card>
   );

@@ -1,4 +1,3 @@
-
 import Header from "@/components/Header";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/App";
@@ -164,7 +163,7 @@ const Subscription = () => {
       return;
     }
 
-    if (!planIds[plan] && plan !== 'lifetime') {
+    if (!planIds[plan]) {
       console.error(`No plan ID found for plan type: ${plan}`);
       toast({
         title: "Error",
@@ -219,13 +218,29 @@ const Subscription = () => {
 
       console.log('Initializing PayPal buttons for plan:', plan);
       
-      // Common button configuration
-      const commonConfig = {
+      // Subscription configuration
+      const planId = planIds[plan];
+      console.log(`Using plan ID for ${plan}:`, planId);
+      
+      const buttonConfig = {
         style: {
           shape: 'rect',
           color: 'blue',
           layout: 'vertical',
           label: 'subscribe'
+        },
+        createSubscription: async (data: any, actions: any) => {
+          console.log(`Creating subscription with plan ID: ${planId}`);
+          try {
+            const result = await actions.subscription.create({
+              plan_id: planId
+            });
+            console.log('Subscription creation result:', result);
+            return result;
+          } catch (error) {
+            console.error('Error creating subscription:', error);
+            throw error;
+          }
         },
         onApprove: async (data: any, actions: any) => {
           console.log('Payment approved:', data);
@@ -261,52 +276,6 @@ const Subscription = () => {
           });
         }
       };
-
-      // Create buttons based on plan type
-      let buttonConfig;
-      if (plan === 'lifetime') {
-        // One-time payment configuration
-        buttonConfig = {
-          ...commonConfig,
-          style: {
-            ...commonConfig.style,
-            label: 'pay' // Change label for one-time payment
-          },
-          createOrder: async (data: any, actions: any) => {
-            console.log('Creating one-time payment order');
-            return actions.order.create({
-              purchase_units: [{
-                amount: {
-                  currency_code: planDetails.currency,
-                  value: planDetails.amount.toString()
-                },
-                description: 'Lifetime VIP Membership'
-              }]
-            });
-          }
-        };
-      } else {
-        // Subscription configuration
-        const planId = planIds[plan];
-        console.log(`Using plan ID for ${plan}:`, planId);
-        
-        buttonConfig = {
-          ...commonConfig,
-          createSubscription: async (data: any, actions: any) => {
-            console.log(`Creating subscription with plan ID: ${planId}`);
-            try {
-              const result = await actions.subscription.create({
-                plan_id: planId
-              });
-              console.log('Subscription creation result:', result);
-              return result;
-            } catch (error) {
-              console.error('Error creating subscription:', error);
-              throw error;
-            }
-          }
-        };
-      }
 
       const Buttons = window.paypal.Buttons(buttonConfig);
 
@@ -425,4 +394,3 @@ const Subscription = () => {
 };
 
 export default Subscription;
-
