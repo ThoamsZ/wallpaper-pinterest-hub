@@ -335,7 +335,7 @@ const Subscription = () => {
 
       console.log('Created payment record:', payment);
 
-      // Get PayPal client ID and access token
+      // Get PayPal access token
       const { data: authData } = await supabase
         .from('secrets')
         .select('value')
@@ -420,6 +420,7 @@ const Subscription = () => {
             const orderDetails = await orderResponse.json();
             console.log('Order details:', orderDetails);
 
+            // Only proceed if the order status is COMPLETED
             if (orderDetails.status === 'COMPLETED') {
               // Update payment status to completed
               const { error: updateError } = await supabase
