@@ -1,3 +1,4 @@
+
 import Header from "@/components/Header";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/App";
@@ -163,7 +164,7 @@ const Subscription = () => {
       return;
     }
 
-    if (!planIds[plan]) {
+    if (!planIds[plan] && plan !== 'lifetime') {
       console.error(`No plan ID found for plan type: ${plan}`);
       toast({
         title: "Error",
@@ -267,6 +268,10 @@ const Subscription = () => {
         // One-time payment configuration
         buttonConfig = {
           ...commonConfig,
+          style: {
+            ...commonConfig.style,
+            label: 'pay' // Change label for one-time payment
+          },
           createOrder: async (data: any, actions: any) => {
             console.log('Creating one-time payment order');
             return actions.order.create({
@@ -274,7 +279,8 @@ const Subscription = () => {
                 amount: {
                   currency_code: planDetails.currency,
                   value: planDetails.amount.toString()
-                }
+                },
+                description: 'Lifetime VIP Membership'
               }]
             });
           }
@@ -419,3 +425,4 @@ const Subscription = () => {
 };
 
 export default Subscription;
+
