@@ -98,6 +98,36 @@ export type Database = {
         }
         Relationships: []
       }
+      paypal_one_time_payments: {
+        Row: {
+          amount: number
+          created_at: string
+          currency: string
+          id: string
+          paypal_order_id: string | null
+          status: string
+          user_id: string
+        }
+        Insert: {
+          amount: number
+          created_at?: string
+          currency: string
+          id?: string
+          paypal_order_id?: string | null
+          status?: string
+          user_id: string
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          currency?: string
+          id?: string
+          paypal_order_id?: string | null
+          status?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       paypal_subscription_logs: {
         Row: {
           amount: number

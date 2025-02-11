@@ -17,6 +17,7 @@ interface SubscriptionPlanCardProps {
   planType: 'monthly' | 'yearly' | 'lifetime';
   isHighlighted?: boolean;
   onSubscribe: (plan: string) => void;
+  onLifetimePayment: () => void;
   isProcessing: boolean;
   loadError: string | null;
   buttonContainerRef: (el: HTMLDivElement | null) => void;
@@ -30,6 +31,7 @@ const SubscriptionPlanCard = ({
   planType,
   isHighlighted,
   onSubscribe,
+  onLifetimePayment,
   isProcessing,
   loadError,
   buttonContainerRef
@@ -44,20 +46,15 @@ const SubscriptionPlanCard = ({
       </CardHeader>
       <CardContent className="space-y-4">
         {planType === 'lifetime' ? (
-          <a 
-            href="https://www.sandbox.paypal.com/ncp/payment/AN2TT43YXVM8C" 
-            target="_blank" 
-            rel="noopener noreferrer"
-            className="block"
+          <Button 
+            className="w-full" 
+            variant={isHighlighted ? "default" : "outline"}
+            onClick={onLifetimePayment}
+            disabled={isProcessing}
           >
-            <Button 
-              className="w-full" 
-              variant={isHighlighted ? "default" : "outline"}
-            >
-              <DollarSign className="w-4 h-4 mr-2" />
-              Buy Lifetime Access
-            </Button>
-          </a>
+            <DollarSign className="w-4 h-4 mr-2" />
+            Buy Lifetime Access
+          </Button>
         ) : (
           <>
             <Button 

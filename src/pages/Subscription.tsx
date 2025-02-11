@@ -298,6 +298,82 @@ const Subscription = () => {
     }
   };
 
+  const handleLifetimePayment = async () => {
+    if (!session || session.user.email === 'guest@wallpaperhub.com') {
+      toast({
+        title: "Authentication Required",
+        description: "Please register or login to subscribe.",
+      });
+      navigate("/auth");
+      return;
+    }
+
+    try {
+      // Create a payment record in the database
+      const { data: payment, error: paymentError } = await supabase
+        .from('paypal_one_time_payments')
+        .insert({
+          user_id: session.user.id,
+          amount: PLAN_PRICES.lifetime.amount,
+          currency: PLAN_PRICES.lifetime.currency,
+          status: 'pending'
+        })
+        .select()
+        .single();
+
+      if (paymentError) {
+        console.error('Error creating payment record:', paymentError);
+        toast({
+          title: "Error",
+          description: "Failed to initiate payment. Please try again.",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      console.log('Created payment record:', payment);
+
+      // Open PayPal payment page in new window
+      window.open('https://www.sandbox.paypal.com/ncp/payment/AN2TT43YXVM8C', '_blank');
+
+      // Start polling for payment status
+      const pollInterval = setInterval(async () => {
+        const { data: updatedPayment, error: fetchError } = await supabase
+          .from('paypal_one_time_payments')
+          .select('status')
+          .eq('id', payment.id)
+          .single();
+
+        if (fetchError) {
+          console.error('Error checking payment status:', fetchError);
+          return;
+        }
+
+        if (updatedPayment.status === 'completed') {
+          clearInterval(pollInterval);
+          toast({
+            title: "Success!",
+            description: "Your lifetime subscription has been activated.",
+          });
+          window.location.reload();
+        }
+      }, 5000); // Check every 5 seconds
+
+      // Clear interval after 5 minutes (maximum waiting time)
+      setTimeout(() => {
+        clearInterval(pollInterval);
+      }, 300000);
+
+    } catch (error) {
+      console.error('Error in lifetime payment flow:', error);
+      toast({
+        title: "Error",
+        description: "There was a problem processing your payment. Please try again.",
+        variant: "destructive",
+      });
+    }
+  };
+
   return (
     <div className="min-h-screen bg-background">
       <Header />
@@ -357,6 +433,7 @@ const Subscription = () => {
               interval="per month"
               planType="monthly"
               onSubscribe={handleSubscribe}
+              onLifetimePayment={handleLifetimePayment}
               isProcessing={isProcessing}
               loadError={loadError}
               buttonContainerRef={(el) => buttonContainersRef.current['monthly'] = el}
@@ -369,6 +446,7 @@ const Subscription = () => {
               planType="yearly"
               isHighlighted={true}
               onSubscribe={handleSubscribe}
+              onLifetimePayment={handleLifetimePayment}
               isProcessing={isProcessing}
               loadError={loadError}
               buttonContainerRef={(el) => buttonContainersRef.current['yearly'] = el}
@@ -380,6 +458,7 @@ const Subscription = () => {
               interval="one-time payment"
               planType="lifetime"
               onSubscribe={handleSubscribe}
+              onLifetimePayment={handleLifetimePayment}
               isProcessing={isProcessing}
               loadError={loadError}
               buttonContainerRef={(el) => buttonContainersRef.current['lifetime'] = el}
