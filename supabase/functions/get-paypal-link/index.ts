@@ -15,26 +15,27 @@ serve(async (req) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     )
 
-    // Get PayPal payment link from secrets
-    const { data: secretData, error: secretError } = await supabase
-      .from('secrets')
-      .select('value')
-      .eq('name', 'PAYPAL_LIFETIME_LINK')
-      .single();
+    // Get PayPal payment link from payment_links table
+    const { data: linkData, error: linkError } = await supabase
+      .from('payment_links')
+      .select('url')
+      .eq('name', 'lifetime_subscription')
+      .eq('is_active', true)
+      .maybeSingle();
 
-    console.log('Secret fetch response:', { data: secretData, error: secretError });
+    console.log('Payment link fetch response:', { data: linkData, error: linkError });
 
-    if (secretError) {
-      console.error('Error fetching PayPal payment link:', secretError);
+    if (linkError) {
+      console.error('Error fetching PayPal payment link:', linkError);
       throw new Error('Failed to fetch PayPal payment configuration');
     }
 
-    if (!secretData?.value) {
-      console.error('PayPal payment link not found in secrets');
+    if (!linkData?.url) {
+      console.error('PayPal payment link not found or not active');
       throw new Error('PayPal payment link is not properly configured');
     }
 
-    const paypalLink = secretData.value.trim();
+    const paypalLink = linkData.url.trim();
     if (!paypalLink || !paypalLink.startsWith('http')) {
       console.error('Invalid PayPal payment link format:', paypalLink);
       throw new Error('Invalid PayPal payment link configuration');
@@ -61,3 +62,4 @@ serve(async (req) => {
     );
   }
 })
+

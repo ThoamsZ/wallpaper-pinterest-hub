@@ -98,6 +98,30 @@ export type Database = {
         }
         Relationships: []
       }
+      payment_links: {
+        Row: {
+          created_at: string
+          id: string
+          is_active: boolean | null
+          name: string
+          url: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          is_active?: boolean | null
+          name: string
+          url: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_active?: boolean | null
+          name?: string
+          url?: string
+        }
+        Relationships: []
+      }
       paypal_one_time_payments: {
         Row: {
           amount: number
