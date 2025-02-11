@@ -1,4 +1,3 @@
-
 import Header from "@/components/Header";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/App";
@@ -7,6 +6,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 import SubscriptionPlanCard from "@/components/subscription/SubscriptionPlanCard";
 import VIPBenefits from "@/components/subscription/VIPBenefits";
+import { Crown, CalendarClock } from "lucide-react";
+import { format } from "date-fns";
 
 const PLAN_PRICES = {
   monthly: { amount: 4.99, currency: "USD" },
@@ -23,6 +24,37 @@ const Subscription = () => {
   const [planIds, setPlanIds] = useState<{[key: string]: string}>({});
   const paypalScriptRef = useRef<HTMLScriptElement | null>(null);
   const buttonContainersRef = useRef<{[key: string]: HTMLDivElement | null}>({});
+  const [vipExpiresAt, setVipExpiresAt] = useState<string | null>(null);
+  const [isVip, setIsVip] = useState(false);
+  const [vipType, setVipType] = useState<string | null>(null);
+
+  useEffect(() => {
+    const fetchUserVipStatus = async () => {
+      if (!session?.user?.id) return;
+
+      const { data, error } = await supabase
+        .from('users')
+        .select('vip_expires_at, vip_type')
+        .eq('id', session.user.id)
+        .single();
+
+      if (error) {
+        console.error('Error fetching VIP status:', error);
+        return;
+      }
+
+      if (data) {
+        setVipType(data.vip_type);
+        setVipExpiresAt(data.vip_expires_at);
+        setIsVip(
+          data.vip_type === 'lifetime' || 
+          (data.vip_type && data.vip_expires_at && new Date(data.vip_expires_at) > new Date())
+        );
+      }
+    };
+
+    fetchUserVipStatus();
+  }, [session]);
 
   useEffect(() => {
     const loadPaypalScript = async () => {
@@ -296,6 +328,39 @@ const Subscription = () => {
       <Header />
       <main className="container mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="max-w-4xl mx-auto">
+          {isVip && (
+            <div className="mb-12">
+              <div className="bg-gradient-to-r from-purple-500/10 via-purple-500/5 to-purple-500/10 rounded-lg p-8 text-center relative overflow-hidden">
+                <div className="absolute inset-0 bg-grid-slate-100/50 [mask-image:linear-gradient(0deg,white,rgba(255,255,255,0.6))] dark:bg-grid-slate-700/50" />
+                
+                <div className="relative space-y-4">
+                  <div className="flex items-center justify-center space-x-2 animate-fade-in">
+                    <Crown className="w-8 h-8 text-primary fill-primary animate-pulse" />
+                    <h2 className="text-4xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-primary to-purple-600">
+                      Active Member
+                    </h2>
+                    <Crown className="w-8 h-8 text-primary fill-primary animate-pulse" />
+                  </div>
+                  
+                  {vipType !== 'lifetime' && vipExpiresAt && (
+                    <div className="flex items-center justify-center space-x-2 text-gray-600 animate-fade-in">
+                      <CalendarClock className="w-5 h-5" />
+                      <p className="text-sm">
+                        Subscription ends: {format(new Date(vipExpiresAt), 'MMMM dd, yyyy')}
+                      </p>
+                    </div>
+                  )}
+                  
+                  {vipType === 'lifetime' && (
+                    <p className="text-sm text-gray-600 animate-fade-in">
+                      ✨ Lifetime VIP Member ✨
+                    </p>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
+
           <div className="text-center mb-8">
             <h1 className="text-3xl font-bold mb-4">💎 xxWallpaper VIP Membership</h1>
             <p className="text-gray-600">
