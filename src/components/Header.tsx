@@ -196,32 +196,25 @@ const Header = ({ isDisabled = false }: HeaderProps) => {
 
     setIsProcessing(true);
     try {
-      // Clear local state first - this ensures UI updates immediately
+      // Clear local state and query cache first
       queryClient.clear();
       setIsAuthenticated(false);
       setUserEmail("");
       setIsAdmin(false);
       setIsVip(false);
 
-      // Check for existing session and attempt sign out
-      const { data: { session } } = await supabase.auth.getSession();
-      
-      if (session) {
-        try {
-          await supabase.auth.signOut();
-        } catch (error: any) {
-          console.error('Logout error:', error);
-          // Even if there's an error, we've already cleared local state
-          toast({
-            title: "Notice",
-            description: "You have been logged out locally",
-          });
-        }
+      try {
+        // Attempt to sign out, but don't wait for it
+        await supabase.auth.signOut();
+      } catch (error) {
+        // Ignore any signOut errors since we've already cleared local state
+        console.log('Logout note:', error);
       }
 
+      // Always show success since local state is cleared
       toast({
         title: "Success",
-        description: "Successfully logged out",
+        description: "You have been logged out",
       });
 
       // Always navigate to auth page
