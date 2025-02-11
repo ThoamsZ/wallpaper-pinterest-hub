@@ -338,35 +338,21 @@ const Subscription = () => {
 
       console.log('Created payment record:', payment);
 
-      // Get PayPal payment link from secrets
-      const { data: secretData, error: secretError } = await supabase
-        .from('secrets')
-        .select('value')
-        .eq('name', 'PAYPAL_LIFETIME_LINK')
-        .single();
+      // Get PayPal payment link using the Edge Function
+      const { data, error } = await supabase.functions.invoke('get-paypal-link');
 
-      console.log('Secret fetch response:', { data: secretData, error: secretError });
-
-      if (secretError) {
-        console.error('Error fetching PayPal payment link:', secretError);
-        throw new Error('Failed to fetch PayPal payment configuration');
+      if (error) {
+        console.error('Error calling get-paypal-link function:', error);
+        throw new Error('Failed to get PayPal payment link');
       }
 
-      if (!secretData?.value) {
-        console.error('PayPal payment link not found in secrets');
-        throw new Error('PayPal payment link is not properly configured. Please contact support.');
+      if (!data?.paypalLink) {
+        console.error('No PayPal link received from function');
+        throw new Error('Failed to get PayPal payment link');
       }
-
-      const paypalLink = secretData.value.trim();
-      if (!paypalLink || !paypalLink.startsWith('http')) {
-        console.error('Invalid PayPal payment link format:', paypalLink);
-        throw new Error('Invalid PayPal payment link configuration. Please contact support.');
-      }
-
-      console.log('Successfully retrieved PayPal payment link');
 
       // Open PayPal payment link in a new window
-      window.open(paypalLink, '_blank');
+      window.open(data.paypalLink, '_blank');
 
       toast({
         title: "Payment Link Opened",
