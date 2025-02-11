@@ -1,4 +1,3 @@
-
 import { Search, Heart, Archive, Crown } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -197,45 +196,29 @@ const Header = ({ isDisabled = false }: HeaderProps) => {
 
     setIsProcessing(true);
     try {
-      // First check if we have a valid session
-      const { data: { session } } = await supabase.auth.getSession();
-      
-      if (!session) {
-        // If no session, just clear local state and redirect
-        queryClient.clear();
-        setIsAuthenticated(false);
-        setUserEmail("");
-        setIsAdmin(false);
-        setIsVip(false);
-        navigate("/auth");
-        return;
-      }
-
-      // We have a valid session, try to sign out
-      const { error } = await supabase.auth.signOut({
-        scope: 'local'  // Only clear local session first
-      });
-
-      if (error) {
-        console.error('Local logout error:', error);
-      }
-
-      // Clear all local state regardless of signout success
+      // Clear local state first to ensure UI updates immediately
       queryClient.clear();
       setIsAuthenticated(false);
       setUserEmail("");
       setIsAdmin(false);
       setIsVip(false);
 
-      // Try global signout but don't wait for it
-      try {
-        await supabase.auth.signOut({
-          scope: 'global'
-        });
-      } catch (error) {
-        // Ignore global signout errors
-        console.log('Global logout note:', error);
+      // Attempt local signout first
+      const { error: localError } = await supabase.auth.signOut({
+        scope: 'local'
+      });
+
+      if (localError) {
+        console.log('Local signout note:', localError);
       }
+
+      // Don't block on global signout, just attempt it
+      supabase.auth.signOut({
+        scope: 'global'
+      }).catch(error => {
+        // Just log global signout errors, don't block the flow
+        console.log('Global signout note:', error);
+      });
 
       toast({
         title: "Success",
@@ -245,18 +228,10 @@ const Header = ({ isDisabled = false }: HeaderProps) => {
       navigate("/auth");
     } catch (error) {
       console.error('Logout error:', error);
-      // Clear state and redirect anyway
-      queryClient.clear();
-      setIsAuthenticated(false);
-      setUserEmail("");
-      setIsAdmin(false);
-      setIsVip(false);
-      
       toast({
         title: "Notice",
         description: "You have been logged out",
       });
-      
       navigate("/auth");
     } finally {
       setIsProcessing(false);
@@ -404,4 +379,3 @@ const Header = ({ isDisabled = false }: HeaderProps) => {
 };
 
 export default Header;
-
