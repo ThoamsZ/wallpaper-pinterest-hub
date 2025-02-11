@@ -1,3 +1,4 @@
+
 import { Search, Heart, Archive, Crown } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -196,36 +197,66 @@ const Header = ({ isDisabled = false }: HeaderProps) => {
 
     setIsProcessing(true);
     try {
-      // Clear local state and query cache first
+      // First check if we have a valid session
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      if (!session) {
+        // If no session, just clear local state and redirect
+        queryClient.clear();
+        setIsAuthenticated(false);
+        setUserEmail("");
+        setIsAdmin(false);
+        setIsVip(false);
+        navigate("/auth");
+        return;
+      }
+
+      // We have a valid session, try to sign out
+      const { error } = await supabase.auth.signOut({
+        scope: 'local'  // Only clear local session first
+      });
+
+      if (error) {
+        console.error('Local logout error:', error);
+      }
+
+      // Clear all local state regardless of signout success
       queryClient.clear();
       setIsAuthenticated(false);
       setUserEmail("");
       setIsAdmin(false);
       setIsVip(false);
 
+      // Try global signout but don't wait for it
       try {
-        // Attempt to sign out, but don't wait for it
-        await supabase.auth.signOut();
+        await supabase.auth.signOut({
+          scope: 'global'
+        });
       } catch (error) {
-        // Ignore any signOut errors since we've already cleared local state
-        console.log('Logout note:', error);
+        // Ignore global signout errors
+        console.log('Global logout note:', error);
       }
 
-      // Always show success since local state is cleared
       toast({
         title: "Success",
         description: "You have been logged out",
       });
 
-      // Always navigate to auth page
       navigate("/auth");
     } catch (error) {
       console.error('Logout error:', error);
-      // Already cleared state above, just notify user
+      // Clear state and redirect anyway
+      queryClient.clear();
+      setIsAuthenticated(false);
+      setUserEmail("");
+      setIsAdmin(false);
+      setIsVip(false);
+      
       toast({
         title: "Notice",
         description: "You have been logged out",
       });
+      
       navigate("/auth");
     } finally {
       setIsProcessing(false);
@@ -373,3 +404,4 @@ const Header = ({ isDisabled = false }: HeaderProps) => {
 };
 
 export default Header;
+
