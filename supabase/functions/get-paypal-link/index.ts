@@ -51,22 +51,50 @@ serve(async (req) => {
       throw new Error('Failed to authenticate with PayPal');
     }
 
-    // Create PayPal order
+    // Create PayPal order with proper structure
     const orderResponse = await fetch('https://api-m.sandbox.paypal.com/v2/checkout/orders', {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${authData.access_token}`,
         'Content-Type': 'application/json',
+        'Prefer': 'return=representation'
       },
       body: JSON.stringify({
-        intent: 'CAPTURE',
-        purchase_units: [{
-          amount: {
-            currency_code: 'USD',
-            value: '99.99'
-          },
-          description: 'Lifetime VIP Subscription'
-        }]
+        intent: "CAPTURE",
+        purchase_units: [
+          {
+            reference_id: user_id,
+            description: "Lifetime VIP Subscription",
+            amount: {
+              currency_code: "USD",
+              value: "99.99",
+              breakdown: {
+                item_total: {
+                  currency_code: "USD",
+                  value: "99.99"
+                }
+              }
+            },
+            items: [
+              {
+                name: "Lifetime VIP Access",
+                description: "Unlimited access to all premium features",
+                quantity: "1",
+                unit_amount: {
+                  currency_code: "USD",
+                  value: "99.99"
+                }
+              }
+            ]
+          }
+        ],
+        application_context: {
+          brand_name: "xxWallpaper",
+          landing_page: "NO_PREFERENCE",
+          user_action: "PAY_NOW",
+          return_url: "https://xxwallpaper.com/subscription?success=true",
+          cancel_url: "https://xxwallpaper.com/subscription?success=false"
+        }
       })
     });
 
