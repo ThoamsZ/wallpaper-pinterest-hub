@@ -333,36 +333,109 @@ const Subscription = () => {
 
       console.log('Created payment record:', payment);
 
-      // Open PayPal payment page in new window
-      window.open('https://www.sandbox.paypal.com/ncp/payment/AN2TT43YXVM8C', '_blank');
+      // Load PayPal client ID
+      const { data: secretData } = await supabase
+        .from('secrets')
+        .select('value')
+        .eq('name', 'PAYPAL_CLIENT_ID')
+        .single();
 
-      // Start polling for payment status
-      const pollInterval = setInterval(async () => {
-        const { data: updatedPayment, error: fetchError } = await supabase
-          .from('paypal_one_time_payments')
-          .select('status')
-          .eq('id', payment.id)
-          .single();
+      if (!secretData?.value) {
+        throw new Error('PayPal configuration not found');
+      }
 
-        if (fetchError) {
-          console.error('Error checking payment status:', fetchError);
-          return;
+      // Set up PayPal buttons
+      if (!window.paypal) {
+        throw new Error('PayPal SDK not loaded');
+      }
+
+      const PayPalButton = window.paypal.Buttons.driver("react", { React, ReactDOM });
+
+      const createOrder = async () => {
+        try {
+          const response = await fetch('https://api-m.sandbox.paypal.com/v2/checkout/orders', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              Authorization: `Bearer ${secretData.value}`,
+            },
+            body: JSON.stringify({
+              intent: 'CAPTURE',
+              purchase_units: [
+                {
+                  amount: {
+                    currency_code: PLAN_PRICES.lifetime.currency,
+                    value: PLAN_PRICES.lifetime.amount.toString(),
+                  },
+                },
+              ],
+            }),
+          });
+
+          const order = await response.json();
+          return order.id;
+        } catch (err) {
+          console.error('Error creating order:', err);
+          throw err;
         }
+      };
 
-        if (updatedPayment.status === 'completed') {
-          clearInterval(pollInterval);
+      const onApprove = async (data: any) => {
+        try {
+          // Update payment status to completed
+          const { error: updateError } = await supabase
+            .from('paypal_one_time_payments')
+            .update({
+              status: 'completed',
+              paypal_order_id: data.orderID
+            })
+            .eq('id', payment.id);
+
+          if (updateError) {
+            throw updateError;
+          }
+
           toast({
             title: "Success!",
             description: "Your lifetime subscription has been activated.",
           });
-          window.location.reload();
-        }
-      }, 5000); // Check every 5 seconds
 
-      // Clear interval after 5 minutes (maximum waiting time)
-      setTimeout(() => {
-        clearInterval(pollInterval);
-      }, 300000);
+          window.location.reload();
+        } catch (err) {
+          console.error('Error processing payment:', err);
+          toast({
+            title: "Error",
+            description: "There was a problem processing your payment. Please contact support.",
+            variant: "destructive",
+          });
+        }
+      };
+
+      const buttonContainerRef = document.createElement('div');
+      document.body.appendChild(buttonContainerRef);
+
+      const PayPalButtons = window.paypal.Buttons({
+        createOrder,
+        onApprove,
+        onError: (err: any) => {
+          console.error('PayPal error:', err);
+          toast({
+            title: "Error",
+            description: "There was a problem with the payment. Please try again.",
+            variant: "destructive",
+          });
+        }
+      });
+
+      if (await PayPalButtons.isEligible()) {
+        await PayPalButtons.render(buttonContainerRef);
+      } else {
+        toast({
+          title: "Error",
+          description: "PayPal payment is not available at this time. Please try again later.",
+          variant: "destructive",
+        });
+      }
 
     } catch (error) {
       console.error('Error in lifetime payment flow:', error);
