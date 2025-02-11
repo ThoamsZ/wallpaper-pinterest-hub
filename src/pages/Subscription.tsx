@@ -334,69 +334,11 @@ const Subscription = () => {
   };
 
   const handleLifetimePayment = async () => {
-    if (!session || session.user.email === 'guest@wallpaperhub.com') {
-      toast({
-        title: "Authentication Required",
-        description: "Please register or login to subscribe.",
-      });
-      navigate("/auth");
-      return;
-    }
-
-    if (isProcessing) {
-      return;
-    }
-
-    setIsProcessing(true);
-
-    try {
-      console.log('Starting lifetime payment process...');
-
-      // Get PayPal payment link and order ID
-      const { data, error } = await supabase.functions.invoke('get-paypal-link', {
-        body: { user_id: session.user.id }
-      });
-
-      if (error) {
-        console.error('Error calling get-paypal-link function:', error);
-        throw new Error('Failed to get PayPal payment link');
-      }
-
-      if (!data?.paypalLink || !data?.orderId) {
-        console.error('No PayPal link or order ID received from function');
-        throw new Error('Failed to get PayPal payment information');
-      }
-
-      // Store the current order ID
-      setCurrentOrderId(data.orderId);
-
-      // Open PayPal payment link in a new window
-      window.open(data.paypalLink, '_blank');
-
-      toast({
-        title: "Payment Link Opened",
-        description: "Please complete the payment in the new window. Your account will be upgraded once the payment is confirmed.",
-      });
-
-      // Start checking payment status
-      if (statusCheckInterval.current) {
-        window.clearInterval(statusCheckInterval.current);
-      }
-
-      statusCheckInterval.current = window.setInterval(() => {
-        checkPaymentStatus(data.orderId);
-      }, 5000); // Check every 5 seconds
-
-    } catch (error) {
-      console.error('Error in lifetime payment flow:', error);
-      toast({
-        title: "Error",
-        description: error instanceof Error ? error.message : "There was a problem processing your payment. Please try again.",
-        variant: "destructive",
-      });
-    } finally {
-      setIsProcessing(false);
-    }
+    toast({
+      title: "Plan Unavailable",
+      description: "The lifetime plan is currently unavailable. Please contact our support team for more information.",
+      variant: "destructive",
+    });
   };
 
   useEffect(() => {

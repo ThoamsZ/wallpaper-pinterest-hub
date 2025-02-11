@@ -48,12 +48,12 @@ const SubscriptionPlanCard = ({
         {planType === 'lifetime' ? (
           <Button 
             className="w-full" 
-            variant={isHighlighted ? "default" : "outline"}
+            variant="ghost"
             onClick={onLifetimePayment}
-            disabled={isProcessing}
+            disabled={true}
           >
             <DollarSign className="w-4 h-4 mr-2" />
-            Buy Lifetime Access
+            Currently Unavailable
           </Button>
         ) : (
           <>
