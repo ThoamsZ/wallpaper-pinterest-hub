@@ -36,9 +36,15 @@ const Subscription = () => {
           .eq('name', 'PAYPAL_CLIENT_ID')
           .maybeSingle();
 
-        if (secretError || !secretData?.value) {
+        if (secretError) {
           console.error('Error loading PayPal client ID:', secretError);
           setLoadError('Failed to load payment system. Please try again later.');
+          return;
+        }
+
+        if (!secretData?.value) {
+          console.error('PayPal client ID not found');
+          setLoadError('Payment system configuration is incomplete. Please try again later.');
           return;
         }
 
@@ -55,11 +61,19 @@ const Subscription = () => {
           return;
         }
 
+        if (!plansData || plansData.length === 0) {
+          console.error('No plans found in database');
+          setLoadError('Subscription plans are not available at the moment. Please try again later.');
+          return;
+        }
+
         console.log('Fetched plans from database:', plansData);
 
         // Create a map of plan types to their PayPal plan IDs
         const planIdMap = plansData.reduce((acc: {[key: string]: string}, plan) => {
-          acc[plan.type] = plan.paypal_plan_id;
+          if (plan.type && plan.paypal_plan_id) {
+            acc[plan.type] = plan.paypal_plan_id;
+          }
           return acc;
         }, {});
 
@@ -117,12 +131,26 @@ const Subscription = () => {
       return;
     }
 
+    if (!planIds[plan]) {
+      console.error(`No plan ID found for plan type: ${plan}`);
+      toast({
+        title: "Error",
+        description: "This subscription plan is not available at the moment. Please try again later.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     console.log('Starting subscription process for plan:', plan);
     console.log('Available plan IDs:', planIds);
     
     setIsProcessing(true);
     try {
       const planDetails = PLAN_PRICES[plan as keyof typeof PLAN_PRICES];
+      if (!planDetails) {
+        throw new Error('Invalid plan type');
+      }
+      
       console.log('Plan details:', planDetails);
       
       // Create subscription record
@@ -223,16 +251,6 @@ const Subscription = () => {
         // Subscription configuration
         const planId = planIds[plan];
         console.log(`Using plan ID for ${plan}:`, planId);
-        
-        if (!planId) {
-          console.error(`No plan ID found for ${plan} subscription`);
-          toast({
-            title: "Error",
-            description: "This subscription plan is not available at the moment. Please try again later.",
-            variant: "destructive",
-          });
-          return;
-        }
         
         buttonConfig = {
           ...commonConfig,
