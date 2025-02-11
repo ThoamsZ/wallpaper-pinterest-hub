@@ -1,4 +1,3 @@
-
 import Header from "@/components/Header";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/App";
@@ -338,26 +337,27 @@ const Subscription = () => {
 
       console.log('Created payment record:', payment);
 
-      // Get PayPal payment link from secrets
-      const { data: secretData, error: secretError } = await supabase
-        .from('secrets')
-        .select('value')
-        .eq('name', 'PAYPAL_LIFETIME_LINK')
-        .single();
+      // Get PayPal payment link from Edge Function
+      const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/get-paypal-link`, {
+        method: 'GET',
+        headers: {
+          Authorization: `Bearer ${session.access_token}`,
+        },
+      });
 
-      console.log('Secret fetch response:', { data: secretData, error: secretError });
-
-      if (secretError) {
-        console.error('Error fetching PayPal payment link:', secretError);
+      if (!response.ok) {
+        const errorData = await response.json();
+        console.error('Error response from Edge Function:', errorData);
         throw new Error('Failed to fetch PayPal payment configuration');
       }
 
-      if (!secretData?.value) {
-        console.error('PayPal payment link not found in secrets');
-        throw new Error('PayPal payment link is not properly configured. Please contact support.');
+      const { paypalLink, error } = await response.json();
+
+      if (error) {
+        console.error('Error in Edge Function response:', error);
+        throw new Error('Failed to fetch PayPal payment configuration');
       }
 
-      const paypalLink = secretData.value.trim();
       if (!paypalLink || !paypalLink.startsWith('http')) {
         console.error('Invalid PayPal payment link format:', paypalLink);
         throw new Error('Invalid PayPal payment link configuration. Please contact support.');
