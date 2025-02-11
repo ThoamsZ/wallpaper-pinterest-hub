@@ -21,7 +21,7 @@ serve(async (req) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     )
 
-    console.log('Creating PayPal order...');
+    console.log('[PayPal] Creating order for user:', user_id);
 
     // Get PayPal credentials
     const clientId = Deno.env.get('PAYPAL_CLIENT_ID');
@@ -44,10 +44,10 @@ serve(async (req) => {
     });
 
     const authData = await authResponse.json();
-    console.log('PayPal auth response:', authData);
+    console.log('[PayPal] Auth response:', authData);
 
     if (!authData.access_token) {
-      console.error('Failed to get PayPal access token:', authData);
+      console.error('[PayPal] Failed to get access token:', authData);
       throw new Error('Failed to authenticate with PayPal');
     }
 
@@ -90,7 +90,7 @@ serve(async (req) => {
       }
     };
 
-    console.log('Creating PayPal order with payload:', orderPayload);
+    console.log('[PayPal] Creating order with payload:', orderPayload);
 
     const orderResponse = await fetch('https://api-m.sandbox.paypal.com/v2/checkout/orders', {
       method: 'POST',
@@ -103,27 +103,41 @@ serve(async (req) => {
     });
 
     const orderData = await orderResponse.json();
-    console.log('PayPal order created:', orderData);
+    console.log('[PayPal] Order created:', orderData);
 
     if (!orderData.id) {
-      console.error('Failed to create PayPal order:', orderData);
+      console.error('[PayPal] Failed to create order:', orderData);
       throw new Error('Failed to create PayPal order');
     }
 
     // Store complete order information in the database
-    const { error: orderError } = await supabase
+    const { data: existingOrder, error: checkError } = await supabase
       .from('paypal_orders')
-      .insert({
-        order_id: orderData.id,
-        user_id: user_id,
-        amount: 99.99,
-        status: 'pending',
-        webhook_data: orderData
-      });
+      .select('id')
+      .eq('order_id', orderData.id)
+      .maybeSingle();
 
-    if (orderError) {
-      console.error('Error storing order:', orderError);
-      throw new Error('Failed to store order information');
+    if (checkError) {
+      console.error('[Database] Error checking existing order:', checkError);
+      throw new Error('Failed to check existing order');
+    }
+
+    if (!existingOrder) {
+      const { error: orderError } = await supabase
+        .from('paypal_orders')
+        .insert({
+          order_id: orderData.id,
+          user_id: user_id,
+          amount: 99.99,
+          status: 'pending',
+          webhook_data: orderData,
+          transaction_id: null // Will be set when payment is completed
+        });
+
+      if (orderError) {
+        console.error('[Database] Error storing order:', orderError);
+        throw new Error('Failed to store order information');
+      }
     }
 
     // Get PayPal payment link
@@ -134,15 +148,15 @@ serve(async (req) => {
       .eq('is_active', true)
       .maybeSingle();
 
-    console.log('Payment link fetch response:', { data: linkData, error: linkError });
+    console.log('[Database] Payment link fetch response:', { data: linkData, error: linkError });
 
     if (linkError) {
-      console.error('Error fetching PayPal payment link:', linkError);
+      console.error('[Database] Error fetching PayPal payment link:', linkError);
       throw new Error('Failed to fetch PayPal payment configuration');
     }
 
     if (!linkData?.url) {
-      console.error('PayPal payment link not found or not active');
+      console.error('[Database] PayPal payment link not found or not active');
       throw new Error('PayPal payment link is not properly configured');
     }
 
@@ -161,7 +175,7 @@ serve(async (req) => {
     );
 
   } catch (error) {
-    console.error('Error in get-paypal-link function:', error);
+    console.error('[Error] in get-paypal-link function:', error);
     return new Response(
       JSON.stringify({ 
         error: error instanceof Error ? error.message : 'An unexpected error occurred'

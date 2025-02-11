@@ -159,6 +159,7 @@ export type Database = {
           id: number
           order_id: string
           status: string
+          transaction_id: string | null
           updated_at: string
           user_id: string | null
           webhook_data: Json | null
@@ -169,6 +170,7 @@ export type Database = {
           id?: number
           order_id: string
           status?: string
+          transaction_id?: string | null
           updated_at?: string
           user_id?: string | null
           webhook_data?: Json | null
@@ -179,6 +181,7 @@ export type Database = {
           id?: number
           order_id?: string
           status?: string
+          transaction_id?: string | null
           updated_at?: string
           user_id?: string | null
           webhook_data?: Json | null
