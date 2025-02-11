@@ -1,4 +1,3 @@
-
 import { Search, Heart, Archive, Crown } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -202,31 +201,28 @@ const Header = ({ isDisabled = false }: HeaderProps) => {
       setIsAuthenticated(false);
       setUserEmail("");
       setIsAdmin(false);
+      setIsVip(false);
 
       // Check for existing session and attempt sign out
       const { data: { session } } = await supabase.auth.getSession();
+      
       if (session) {
-        const { error } = await supabase.auth.signOut();
-        if (error) {
+        try {
+          await supabase.auth.signOut();
+        } catch (error: any) {
           console.error('Logout error:', error);
           // Even if there's an error, we've already cleared local state
           toast({
             title: "Notice",
             description: "You have been logged out locally",
           });
-        } else {
-          toast({
-            title: "Success",
-            description: "Successfully logged out",
-          });
         }
-      } else {
-        // No session exists, just show a notification
-        toast({
-          title: "Notice",
-          description: "No active session found",
-        });
       }
+
+      toast({
+        title: "Success",
+        description: "Successfully logged out",
+      });
 
       // Always navigate to auth page
       navigate("/auth");
