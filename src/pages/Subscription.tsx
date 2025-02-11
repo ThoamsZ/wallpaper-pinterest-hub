@@ -1,4 +1,3 @@
-
 import Header from "@/components/Header";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/App";
@@ -334,14 +333,20 @@ const Subscription = () => {
 
       console.log('Created payment record:', payment);
 
-      // Load PayPal client ID
+      // Get PayPal client ID and access token
       const { data: secretData } = await supabase
         .from('secrets')
         .select('value')
         .eq('name', 'PAYPAL_CLIENT_ID')
         .single();
 
-      if (!secretData?.value) {
+      const { data: authData } = await supabase
+        .from('secrets')
+        .select('value')
+        .eq('name', 'PAYPAL_ACCESS_TOKEN')
+        .single();
+
+      if (!secretData?.value || !authData?.value) {
         throw new Error('PayPal configuration not found');
       }
 
@@ -353,78 +358,6 @@ const Subscription = () => {
       const buttonContainerRef = document.createElement('div');
       document.body.appendChild(buttonContainerRef);
 
-      const onApprove = async (data: any) => {
-        try {
-          console.log('Payment approved. Verifying order:', data.orderID);
-          
-          // First, update the order ID in our database
-          const { error: updateOrderIdError } = await supabase
-            .from('paypal_one_time_payments')
-            .update({
-              paypal_order_id: data.orderID
-            })
-            .eq('id', payment.id);
-
-          if (updateOrderIdError) {
-            console.error('Error updating order ID:', updateOrderIdError);
-            throw updateOrderIdError;
-          }
-
-          // Get the PayPal access token
-          const { data: authData } = await supabase
-            .from('secrets')
-            .select('value')
-            .eq('name', 'PAYPAL_ACCESS_TOKEN')
-            .single();
-
-          if (!authData?.value) {
-            throw new Error('PayPal access token not found');
-          }
-
-          // Verify the order status with PayPal
-          const orderResponse = await fetch(`https://api-m.sandbox.paypal.com/v2/checkout/orders/${data.orderID}`, {
-            method: 'GET',
-            headers: {
-              'Authorization': `Bearer ${authData.value}`,
-              'Content-Type': 'application/json',
-            },
-          });
-
-          const orderDetails = await orderResponse.json();
-          console.log('Order details:', orderDetails);
-
-          if (orderDetails.status === 'COMPLETED') {
-            // Update payment status to completed
-            const { error: updateError } = await supabase
-              .from('paypal_one_time_payments')
-              .update({
-                status: 'completed'
-              })
-              .eq('id', payment.id);
-
-            if (updateError) {
-              throw updateError;
-            }
-
-            toast({
-              title: "Success!",
-              description: "Your lifetime subscription has been activated.",
-            });
-
-            window.location.reload();
-          } else {
-            throw new Error(`Invalid order status: ${orderDetails.status}`);
-          }
-        } catch (err) {
-          console.error('Error processing payment:', err);
-          toast({
-            title: "Error",
-            description: "There was a problem processing your payment. Please contact support.",
-            variant: "destructive",
-          });
-        }
-      };
-
       const PayPalButtons = window.paypal.Buttons({
         createOrder: async () => {
           try {
@@ -432,7 +365,7 @@ const Subscription = () => {
               method: 'POST',
               headers: {
                 'Content-Type': 'application/json',
-                Authorization: `Bearer ${secretData.value}`,
+                Authorization: `Bearer ${authData.value}`,
               },
               body: JSON.stringify({
                 intent: 'CAPTURE',
@@ -448,13 +381,73 @@ const Subscription = () => {
             });
 
             const order = await response.json();
+            
+            // Update order ID in database
+            const { error: updateError } = await supabase
+              .from('paypal_one_time_payments')
+              .update({
+                paypal_order_id: order.id
+              })
+              .eq('id', payment.id);
+
+            if (updateError) {
+              console.error('Error updating order ID:', updateError);
+              throw updateError;
+            }
+
             return order.id;
           } catch (err) {
             console.error('Error creating order:', err);
             throw err;
           }
         },
-        onApprove,
+        onApprove: async (data: any) => {
+          try {
+            console.log('Payment approved. Verifying order:', data.orderID);
+            
+            // Verify the order status with PayPal
+            const orderResponse = await fetch(`https://api-m.sandbox.paypal.com/v2/checkout/orders/${data.orderID}`, {
+              method: 'GET',
+              headers: {
+                'Authorization': `Bearer ${authData.value}`,
+                'Content-Type': 'application/json',
+              },
+            });
+
+            const orderDetails = await orderResponse.json();
+            console.log('Order details:', orderDetails);
+
+            if (orderDetails.status === 'COMPLETED') {
+              // Update payment status to completed
+              const { error: updateError } = await supabase
+                .from('paypal_one_time_payments')
+                .update({
+                  status: 'completed'
+                })
+                .eq('id', payment.id);
+
+              if (updateError) {
+                throw updateError;
+              }
+
+              toast({
+                title: "Success!",
+                description: "Your lifetime subscription has been activated.",
+              });
+
+              window.location.reload();
+            } else {
+              throw new Error(`Invalid order status: ${orderDetails.status}`);
+            }
+          } catch (err) {
+            console.error('Error processing payment:', err);
+            toast({
+              title: "Error",
+              description: "There was a problem processing your payment. Please contact support.",
+              variant: "destructive",
+            });
+          }
+        },
         onError: (err: any) => {
           console.error('PayPal error:', err);
           toast({
