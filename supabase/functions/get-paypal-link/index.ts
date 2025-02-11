@@ -10,6 +10,12 @@ serve(async (req) => {
   }
 
   try {
+    const { user_id } = await req.json();
+    
+    if (!user_id) {
+      throw new Error('User ID is required');
+    }
+
     const supabase = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
@@ -47,6 +53,21 @@ serve(async (req) => {
     if (!orderData.id) {
       console.error('Failed to create PayPal order:', orderData);
       throw new Error('Failed to create PayPal order');
+    }
+
+    // Store order information in the database
+    const { error: orderError } = await supabase
+      .from('paypal_orders')
+      .insert({
+        order_id: orderData.id,
+        user_id: user_id,
+        amount: 99.99,
+        status: 'pending'
+      });
+
+    if (orderError) {
+      console.error('Error storing order:', orderError);
+      throw new Error('Failed to store order information');
     }
 
     // Get PayPal payment link

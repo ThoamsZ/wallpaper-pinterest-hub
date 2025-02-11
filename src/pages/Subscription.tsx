@@ -29,6 +29,7 @@ const Subscription = () => {
   const [vipType, setVipType] = useState<string | null>(null);
   const lifetimeButtonRef = useRef<HTMLDivElement | null>(null);
   const statusCheckInterval = useRef<number | null>(null);
+  const [currentOrderId, setCurrentOrderId] = useState<string | null>(null);
 
   useEffect(() => {
     const fetchUserVipStatus = async () => {
@@ -151,13 +152,13 @@ const Subscription = () => {
     };
   }, []);
 
-  const checkPaymentStatus = async (paymentId: string) => {
-    console.log('Checking payment status for ID:', paymentId);
+  const checkPaymentStatus = async (orderId: string) => {
+    console.log('Checking payment status for order:', orderId);
     
     const { data, error } = await supabase
-      .from('paypal_one_time_payments')
+      .from('paypal_orders')
       .select('status')
-      .eq('paypal_order_id', paymentId)
+      .eq('order_id', orderId)
       .single();
 
     if (error) {
@@ -351,27 +352,10 @@ const Subscription = () => {
     try {
       console.log('Starting lifetime payment process...');
 
-      // Create a payment record in the database
-      const { data: payment, error: paymentError } = await supabase
-        .from('paypal_one_time_payments')
-        .insert({
-          user_id: session.user.id,
-          amount: PLAN_PRICES.lifetime.amount,
-          currency: PLAN_PRICES.lifetime.currency,
-          status: 'pending'
-        })
-        .select()
-        .single();
-
-      if (paymentError) {
-        console.error('Error creating payment record:', paymentError);
-        throw new Error('Failed to create payment record');
-      }
-
-      console.log('Created payment record:', payment);
-
       // Get PayPal payment link and order ID
-      const { data, error } = await supabase.functions.invoke('get-paypal-link');
+      const { data, error } = await supabase.functions.invoke('get-paypal-link', {
+        body: { user_id: session.user.id }
+      });
 
       if (error) {
         console.error('Error calling get-paypal-link function:', error);
@@ -383,16 +367,8 @@ const Subscription = () => {
         throw new Error('Failed to get PayPal payment information');
       }
 
-      // Update the payment record with the PayPal order ID
-      const { error: updateError } = await supabase
-        .from('paypal_one_time_payments')
-        .update({ paypal_order_id: data.orderId })
-        .eq('id', payment.id);
-
-      if (updateError) {
-        console.error('Error updating payment record:', updateError);
-        // Continue anyway as this is not critical
-      }
+      // Store the current order ID
+      setCurrentOrderId(data.orderId);
 
       // Open PayPal payment link in a new window
       window.open(data.paypalLink, '_blank');

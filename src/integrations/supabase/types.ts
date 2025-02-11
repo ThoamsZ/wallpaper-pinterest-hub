@@ -152,6 +152,36 @@ export type Database = {
         }
         Relationships: []
       }
+      paypal_orders: {
+        Row: {
+          amount: number
+          created_at: string
+          id: number
+          order_id: string
+          status: string
+          updated_at: string
+          user_id: string | null
+        }
+        Insert: {
+          amount: number
+          created_at?: string
+          id?: number
+          order_id: string
+          status?: string
+          updated_at?: string
+          user_id?: string | null
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          id?: number
+          order_id?: string
+          status?: string
+          updated_at?: string
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       paypal_subscription_logs: {
         Row: {
           amount: number
