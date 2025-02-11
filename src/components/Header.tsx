@@ -196,29 +196,25 @@ const Header = ({ isDisabled = false }: HeaderProps) => {
 
     setIsProcessing(true);
     try {
-      // Clear local state first to ensure UI updates immediately
+      // First check if we have a valid session
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      // Clear local state immediately regardless of session status
       queryClient.clear();
       setIsAuthenticated(false);
       setUserEmail("");
       setIsAdmin(false);
       setIsVip(false);
 
-      // Attempt local signout first
-      const { error: localError } = await supabase.auth.signOut({
-        scope: 'local'
-      });
-
-      if (localError) {
-        console.log('Local signout note:', localError);
+      if (session) {
+        try {
+          // Only attempt signout if we have a session
+          await supabase.auth.signOut();
+        } catch (error) {
+          console.log('Signout note:', error);
+          // We don't throw here as we've already cleared local state
+        }
       }
-
-      // Don't block on global signout, just attempt it
-      supabase.auth.signOut({
-        scope: 'global'
-      }).catch(error => {
-        // Just log global signout errors, don't block the flow
-        console.log('Global signout note:', error);
-      });
 
       toast({
         title: "Success",
