@@ -342,16 +342,16 @@ const Subscription = () => {
         .from('secrets')
         .select('value')
         .eq('name', 'PAYPAL_LIFETIME_LINK')
-        .single();
+        .maybeSingle();
 
       if (linkError) {
         console.error('Error fetching PayPal payment link:', linkError);
         throw new Error('Failed to fetch PayPal payment configuration');
       }
 
-      if (!linkData?.value) {
+      if (!linkData) {
         console.error('PayPal payment link not found in secrets');
-        throw new Error('PayPal payment link not configured');
+        throw new Error('PayPal payment link has not been configured. Please contact support.');
       }
 
       console.log('Successfully retrieved PayPal payment link');
