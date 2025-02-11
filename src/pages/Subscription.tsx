@@ -1,7 +1,9 @@
+
 import Header from "@/components/Header";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/App";
 import { useEffect, useState, useRef } from "react";
+import ReactDOM from 'react-dom';
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 import SubscriptionPlanCard from "@/components/subscription/SubscriptionPlanCard";
@@ -349,7 +351,8 @@ const Subscription = () => {
         throw new Error('PayPal SDK not loaded');
       }
 
-      const PayPalButton = window.paypal.Buttons.driver("react", { React, ReactDOM });
+      const buttonContainerRef = document.createElement('div');
+      document.body.appendChild(buttonContainerRef);
 
       const createOrder = async () => {
         try {
@@ -410,9 +413,6 @@ const Subscription = () => {
           });
         }
       };
-
-      const buttonContainerRef = document.createElement('div');
-      document.body.appendChild(buttonContainerRef);
 
       const PayPalButtons = window.paypal.Buttons({
         createOrder,
