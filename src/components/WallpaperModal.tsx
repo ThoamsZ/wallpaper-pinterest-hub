@@ -1,4 +1,5 @@
-import { Dialog, DialogContent } from "@/components/ui/dialog";
+
+import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Heart, Download, X } from "lucide-react";
 import { useState, useEffect } from "react";
@@ -149,6 +150,7 @@ const WallpaperModal = ({ wallpaper, isOpen, onClose, onLike, isLiked }: Wallpap
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="max-w-[95vw] max-h-[95vh] p-0 overflow-hidden border-0 bg-transparent">
+        <DialogTitle className="sr-only">Wallpaper Preview</DialogTitle>
         <div className="relative w-full h-full flex items-center justify-center">
           <div className="relative">
             <Button
