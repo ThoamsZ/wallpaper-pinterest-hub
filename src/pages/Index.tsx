@@ -2,6 +2,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import Header from "@/components/Header";
+import Footer from "@/components/Footer";
 import WallpaperGrid from "@/components/WallpaperGrid";
 import FilterBar from "@/components/FilterBar";
 import { useAuth } from "@/App";
@@ -91,14 +92,15 @@ const Index = () => {
   }
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-background flex flex-col">
       <Header isDisabled={false} />
-      <main className="container mx-auto px-4 sm:px-6 lg:px-8">
+      <main className="container mx-auto px-4 sm:px-6 lg:px-8 flex-grow">
         <div className="mt-4 mb-6">
           <FilterBar />
         </div>
         <WallpaperGrid tag={tag || undefined} />
       </main>
+      <Footer />
     </div>
   );
 };
