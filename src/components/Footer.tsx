@@ -3,7 +3,7 @@ import { Mail, Link, Copyright } from "lucide-react";
 
 const Footer = () => {
   // Prevent navigation on policy link click if route doesn't exist yet
-  const handlePolicyClick = (e: React.MouseEvent<HTMLAnchorElement>) => {
+  const handlePolicyClick = (e: React.MouseEvent) => {
     e.preventDefault();
     console.log('Policy page is not implemented yet');
   };
