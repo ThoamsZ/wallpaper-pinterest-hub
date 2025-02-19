@@ -99,24 +99,26 @@ function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <ThemeProvider defaultTheme="dark" attribute="class">
-        <Router>
-          <Routes>
-            <Route path="/" element={<Index />} />
-            <Route path="/auth" element={<Auth />} />
-            <Route path="/likes" element={<Likes />} />
-            <Route path="/collections" element={<Collections />} />
-            <Route path="/upload" element={<Upload />} />
-            <Route path="/subscription" element={<Subscription />} />
-            <Route path="/admin" element={<AdminPanel />} />
-            <Route path="/admin/login" element={<AdminLogin />} />
-            <Route path="/admin/register" element={<AdminRegister />} />
-            <Route path="/admin/manager" element={<AdminManager />} />
-            <Route path="/creator/:id" element={<CreatorProfile />} />
-            <Route path="/policy" element={<Policy />} />
-            <Route path="*" element={<NotFound />} />
-          </Routes>
-        </Router>
-        <Toaster />
+        <AuthProvider>
+          <Router>
+            <Routes>
+              <Route path="/" element={<Index />} />
+              <Route path="/auth" element={<Auth />} />
+              <Route path="/likes" element={<Likes />} />
+              <Route path="/collections" element={<Collections />} />
+              <Route path="/upload" element={<Upload />} />
+              <Route path="/subscription" element={<Subscription />} />
+              <Route path="/admin" element={<AdminPanel />} />
+              <Route path="/admin/login" element={<AdminLogin />} />
+              <Route path="/admin/register" element={<AdminRegister />} />
+              <Route path="/admin/manager" element={<AdminManager />} />
+              <Route path="/creator/:id" element={<CreatorProfile />} />
+              <Route path="/policy" element={<Policy />} />
+              <Route path="*" element={<NotFound />} />
+            </Routes>
+          </Router>
+          <Toaster />
+        </AuthProvider>
       </ThemeProvider>
     </QueryClientProvider>
   );
