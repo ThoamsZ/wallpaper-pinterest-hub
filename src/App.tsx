@@ -22,11 +22,18 @@ import { ThemeProvider } from "@/components/theme-provider";
 
 import "./App.css";
 
-// Create AuthContext
-const AuthContext = createContext({
+// Create AuthContext with proper types
+type AuthContextType = {
+  session: any;
+  isLoading: boolean;
+  signIn: (email: string) => Promise<void>;
+  signOut: () => Promise<void>;
+};
+
+const AuthContext = createContext<AuthContextType>({
   session: null,
   isLoading: false,
-  signIn: async () => {},
+  signIn: async (_email: string) => {},
   signOut: async () => {},
 });
 
