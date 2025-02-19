@@ -40,27 +40,23 @@ const AdminLogin = () => {
           .eq('user_id', signInData.session.user.id)
           .single();
 
-        if (adminError) {
-          throw adminError;
-        }
-
-        if (!adminData) {
-          await supabase.auth.signOut();
+        if (adminError || !adminData) {
           toast({
             title: "Access denied",
             description: "This page is only for administrators",
             variant: "destructive",
           });
+          await supabase.auth.signOut();
           return;
         }
 
         if (adminData.is_blocked) {
-          await supabase.auth.signOut();
           toast({
             title: "Access denied",
             description: "Your account has been blocked. Please contact the admin manager.",
             variant: "destructive",
           });
+          await supabase.auth.signOut();
           return;
         }
 
@@ -70,6 +66,11 @@ const AdminLogin = () => {
         } else if (adminData.admin_type === 'admin') {
           navigate("/admin-panel");
         }
+
+        toast({
+          title: "Success",
+          description: "Welcome back, admin!",
+        });
       }
     } catch (error: any) {
       toast({
