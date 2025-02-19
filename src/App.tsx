@@ -14,8 +14,8 @@ import AdminManager from '@/pages/AdminManager';
 import CreatorProfile from '@/pages/CreatorProfile';
 import NotFound from '@/pages/NotFound';
 import Policy from "@/pages/Policy";
-import { Toaster } from "@/components/ui/toaster"
-import { ThemeProvider } from "@/components/theme-provider"
+import { Toaster } from "@/components/ui/toaster";
+import { ThemeProvider } from "./components/theme-provider";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Session } from '@supabase/supabase-js';
 import { supabase } from './integrations/supabase/client';
