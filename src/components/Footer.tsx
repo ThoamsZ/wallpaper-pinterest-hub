@@ -1,13 +1,8 @@
 
 import { Mail, Link, Copyright } from "lucide-react";
+import { Link as RouterLink } from "react-router-dom";
 
 const Footer = () => {
-  // Prevent navigation on policy link click if route doesn't exist yet
-  const handlePolicyClick = (e: React.MouseEvent) => {
-    e.preventDefault();
-    console.log('Policy page is not implemented yet');
-  };
-
   return (
     <footer className="w-full py-6 mt-8 border-t bg-background">
       <div className="container mx-auto px-4">
@@ -26,14 +21,13 @@ const Footer = () => {
               <span>Contact Us</span>
             </a>
             
-            <a 
-              href="/policy" 
-              onClick={handlePolicyClick}
+            <RouterLink 
+              to="/policy" 
               className="flex items-center gap-2 hover:text-primary transition-colors"
             >
               <Link className="h-4 w-4" />
               <span>Policy</span>
-            </a>
+            </RouterLink>
           </div>
         </div>
       </div>
