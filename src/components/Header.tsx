@@ -242,7 +242,7 @@ const Header = ({
 
   const isButtonDisabled = isDisabled || isProcessing;
   return <header className="bg-white/95 backdrop-blur-md z-40">
-      <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-3 pb-6 bg-slate-950 hover:bg-slate-800">
+      <div className="bg-slate-950 py-3 pb-6">
         <div className="flex flex-col gap-3 px-4">
           <div className="flex justify-center items-center gap-3">
             <h1 className={`text-xl font-bold ${isButtonDisabled ? 'text-gray-400' : 'text-white cursor-pointer'}`} onClick={() => !isButtonDisabled && handleNavigation("/")}>
@@ -251,19 +251,19 @@ const Header = ({
           </div>
 
           <div className="flex items-center gap-4 text-sm">
-            {!isAdminPanel && <button onClick={() => handleNavigation("/")} className={`${isButtonDisabled ? 'text-gray-400' : 'text-white hover:text-primary'} transition-colors`} disabled={isButtonDisabled}>
+            {!isAdminPanel && <button onClick={() => handleNavigation("/")} className={`${isButtonDisabled ? 'text-gray-400' : 'text-white'} transition-colors`} disabled={isButtonDisabled}>
                 Explore
               </button>}
             {isAuthenticated && !isAdminPanel && <>
-                <button onClick={() => handleNavigation("/collections")} className={`${isButtonDisabled ? 'text-gray-400' : 'text-white hover:text-primary'} transition-colors flex items-center gap-1`} disabled={isButtonDisabled}>
+                <button onClick={() => handleNavigation("/collections")} className={`${isButtonDisabled ? 'text-gray-400' : 'text-white'} transition-colors flex items-center gap-1`} disabled={isButtonDisabled}>
                   <Archive className="w-4 h-4" />
                   Collections
                 </button>
-                <button onClick={() => handleNavigation("/likes")} className={`${isButtonDisabled ? 'text-gray-400' : 'text-white hover:text-primary'} transition-colors flex items-center gap-1`} disabled={isButtonDisabled}>
+                <button onClick={() => handleNavigation("/likes")} className={`${isButtonDisabled ? 'text-gray-400' : 'text-white'} transition-colors flex items-center gap-1`} disabled={isButtonDisabled}>
                   <Heart className="w-4 h-4" />
                   Likes
                 </button>
-                <button onClick={() => handleNavigation("/subscription")} className={`${isButtonDisabled ? 'text-gray-400' : isVip ? 'text-primary' : 'text-white hover:text-primary'} transition-colors flex items-center gap-1`} disabled={isButtonDisabled}>
+                <button onClick={() => handleNavigation("/subscription")} className={`${isButtonDisabled ? 'text-gray-400' : isVip ? 'text-primary' : 'text-white'} transition-colors flex items-center gap-1`} disabled={isButtonDisabled}>
                   <Crown className={`w-4 h-4 ${isVip ? 'fill-primary' : ''}`} />
                   {isVip ? "VIP Active" : "Upgrade to VIP"}
                 </button>
@@ -277,7 +277,7 @@ const Header = ({
                   {isAdmin && !isAdminPanel && <Button variant="outline" onClick={() => handleNavigation("/admin-panel")} className="text-sm py-1.5" size="sm" disabled={isButtonDisabled}>
                       Admin
                     </Button>}
-                  <Button variant="ghost" onClick={handleLogout} className="text-sm py-1.5 text-white hover:text-primary" size="sm" disabled={isButtonDisabled}>
+                  <Button variant="ghost" onClick={handleLogout} className="text-sm py-1.5 text-white" size="sm" disabled={isButtonDisabled}>
                     Logout
                   </Button>
                 </> : <Button onClick={() => handleNavigation("/auth")} className="text-sm py-1.5" size="sm" disabled={isButtonDisabled}>
