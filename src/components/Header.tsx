@@ -280,7 +280,7 @@ const Header = ({
           </div>
 
           {!isAdminPanel && <form onSubmit={handleSearch} className="w-full">
-              <div className="relative">
+              <div className="relative px-[8px] my-0 py-0 rounded-none">
                 <Input type="search" placeholder="Search for wallpapers or creator codes..." className={`w-full pl-10 pr-4 py-1.5 rounded-full border-gray-200 text-sm ${isButtonDisabled ? 'bg-gray-100 cursor-not-allowed' : ''}`} value={searchQuery} onChange={e => {
               setSearchQuery(e.target.value);
               if (!e.target.value.trim()) {
@@ -288,7 +288,7 @@ const Header = ({
                 if (form) form.requestSubmit();
               }
             }} disabled={isButtonDisabled} />
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4" />
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4 px-0 mx-[14px]" />
               </div>
             </form>}
         </div>
