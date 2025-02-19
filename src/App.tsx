@@ -3,6 +3,8 @@ import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
 import { createContext, useContext, useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { ThemeProvider } from "@/components/theme-provider";
 
 import Index from "@/pages/Index";
 import Auth from "@/pages/Auth";
@@ -16,6 +18,7 @@ import AdminManager from "@/pages/AdminManager";
 import NotFound from "@/pages/NotFound";
 import Upload from "@/pages/Upload";
 import Subscription from "@/pages/Subscription";
+import Policy from "@/pages/Policy";
 import { Toaster } from "@/components/ui/toaster";
 
 import "./App.css";
@@ -37,10 +40,10 @@ export const useAuth = () => {
   return context;
 };
 
-// AuthProvider component
-function AuthProvider({ children }: { children: React.ReactNode }) {
+function App() {
   const [session, setSession] = useState<any | null>(null);
   const [isInitializing, setIsInitializing] = useState(true);
+  const [queryClient] = useState(() => new QueryClient());
 
   useEffect(() => {
     const initializeAuth = async () => {
@@ -102,34 +105,30 @@ function AuthProvider({ children }: { children: React.ReactNode }) {
   }
 
   return (
-    <AuthContext.Provider value={{ session }}>
-      {children}
-    </AuthContext.Provider>
-  );
-}
-
-// App component
-function App() {
-  return (
-    <AuthProvider>
-      <Router>
-        <Routes>
-          <Route path="/" element={<Index />} />
-          <Route path="/auth" element={<Auth />} />
-          <Route path="/admin" element={<AdminLogin />} />
-          <Route path="/admin/register" element={<AdminRegister />} />
-          <Route path="/collections" element={<Collections />} />
-          <Route path="/likes" element={<Likes />} />
-          <Route path="/creator/:creatorCode" element={<CreatorProfile />} />
-          <Route path="/admin-panel" element={<AdminPanel />} />
-          <Route path="/admin-manager" element={<AdminManager />} />
-          <Route path="/upload" element={<Upload />} />
-          <Route path="/subscription" element={<Subscription />} />
-          <Route path="*" element={<NotFound />} />
-        </Routes>
-        <Toaster />
-      </Router>
-    </AuthProvider>
+    <QueryClientProvider client={queryClient}>
+      <ThemeProvider>
+        <AuthContext.Provider value={{ session }}>
+          <Router>
+            <Routes>
+              <Route path="/" element={<Index />} />
+              <Route path="/auth" element={<Auth />} />
+              <Route path="/admin" element={<AdminLogin />} />
+              <Route path="/admin/register" element={<AdminRegister />} />
+              <Route path="/collections" element={<Collections />} />
+              <Route path="/likes" element={<Likes />} />
+              <Route path="/creator/:creatorCode" element={<CreatorProfile />} />
+              <Route path="/admin-panel" element={<AdminPanel />} />
+              <Route path="/admin-manager" element={<AdminManager />} />
+              <Route path="/upload" element={<Upload />} />
+              <Route path="/subscription" element={<Subscription />} />
+              <Route path="/policy" element={<Policy />} />
+              <Route path="*" element={<NotFound />} />
+            </Routes>
+            <Toaster />
+          </Router>
+        </AuthContext.Provider>
+      </ThemeProvider>
+    </QueryClientProvider>
   );
 }
 
