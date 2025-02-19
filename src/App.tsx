@@ -1,4 +1,3 @@
-
 import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
 import { createContext, useContext, useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
@@ -16,6 +15,7 @@ import AdminManager from "@/pages/AdminManager";
 import NotFound from "@/pages/NotFound";
 import Upload from "@/pages/Upload";
 import Subscription from "@/pages/Subscription";
+import Policy from "@/pages/Policy";
 import { Toaster } from "@/components/ui/toaster";
 
 import "./App.css";
@@ -125,6 +125,7 @@ function App() {
           <Route path="/admin-manager" element={<AdminManager />} />
           <Route path="/upload" element={<Upload />} />
           <Route path="/subscription" element={<Subscription />} />
+          <Route path="/policy" element={<Policy />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
         <Toaster />

@@ -1,9 +1,21 @@
 
 import { Card } from "@/components/ui/card";
+import { useNavigate } from "react-router-dom";
+import { ArrowLeft } from "lucide-react";
 
 const Policy = () => {
+  const navigate = useNavigate();
+
   return (
     <div className="container mx-auto px-4 py-8">
+      <button
+        onClick={() => navigate('/')}
+        className="mb-4 flex items-center gap-2 text-muted-foreground hover:text-primary transition-colors"
+      >
+        <ArrowLeft className="h-4 w-4" />
+        <span>Return to Homepage</span>
+      </button>
+      
       <Card className="max-w-4xl mx-auto p-6 space-y-8 mb-8">
         <div className="prose prose-sm max-w-none">
           <h1 className="text-3xl font-bold mb-4">Terms of Use</h1>
