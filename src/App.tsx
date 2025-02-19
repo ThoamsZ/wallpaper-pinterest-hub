@@ -2,122 +2,134 @@
 import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
 import { createContext, useContext, useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { toast } from "@/hooks/use-toast";
 
 import Index from "@/pages/Index";
 import Auth from "@/pages/Auth";
-import Likes from "@/pages/Likes";
-import Collections from "@/pages/Collections";
-import Upload from "@/pages/Upload";
-import Subscription from "@/pages/Subscription";
-import AdminPanel from "@/pages/AdminPanel";
 import AdminLogin from "@/pages/AdminLogin";
 import AdminRegister from "@/pages/AdminRegister";
-import AdminManager from "@/pages/AdminManager";
+import Collections from "@/pages/Collections";
+import Likes from "@/pages/Likes";
 import CreatorProfile from "@/pages/CreatorProfile";
+import AdminPanel from "@/pages/AdminPanel";
+import AdminManager from "@/pages/AdminManager";
 import NotFound from "@/pages/NotFound";
-import Policy from "@/pages/Policy";
+import Upload from "@/pages/Upload";
+import Subscription from "@/pages/Subscription";
 import { Toaster } from "@/components/ui/toaster";
-import { ThemeProvider } from "@/components/theme-provider";
 
 import "./App.css";
 
-// Create AuthContext with proper types
-type AuthContextType = {
-  session: any;
-  isLoading: boolean;
-  signIn: (email: string) => Promise<void>;
-  signOut: () => Promise<void>;
-};
+// Define AuthContext type
+interface AuthContextType {
+  session: any | null;
+}
 
-const AuthContext = createContext<AuthContextType>({
-  session: null,
-  isLoading: false,
-  signIn: async (_email: string) => {},
-  signOut: async () => {},
-});
+// Create AuthContext
+const AuthContext = createContext<AuthContextType | null>(null);
 
 // Custom Hook for accessing AuthContext
 export const useAuth = () => {
-  return useContext(AuthContext);
+  const context = useContext(AuthContext);
+  if (!context) {
+    throw new Error("useAuth must be used within an AuthProvider");
+  }
+  return context;
 };
 
 // AuthProvider component
-export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
-  const [session, setSession] = useState(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const queryClient = new QueryClient();
+function AuthProvider({ children }: { children: React.ReactNode }) {
+  const [session, setSession] = useState<any | null>(null);
+  const [isInitializing, setIsInitializing] = useState(true);
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session);
-      setIsLoading(false);
-    });
+    const initializeAuth = async () => {
+      try {
+        // Check for existing session
+        const { data: { session: currentSession } } = await supabase.auth.getSession();
+        
+        if (currentSession) {
+          console.log("Existing session found:", currentSession.user.email);
+          setSession(currentSession);
+        } else {
+          // If no session exists, try to sign in as guest
+          console.log("No session found, attempting guest login");
+          const { data, error } = await supabase.auth.signInWithPassword({
+            email: 'guest@wallpaperhub.com',
+            password: 'guest123',
+          });
 
-    supabase.auth.onAuthStateChange((_event, session) => {
-      setSession(session);
-      queryClient.invalidateQueries();
-    });
-  }, [queryClient]);
+          if (error) {
+            console.error("Guest login error:", error);
+            setSession(null);
+          } else if (data.session) {
+            console.log("Successfully logged in as guest");
+            setSession(data.session);
+            toast({
+              title: "Welcome to xxWallpaper",
+              description: "You're browsing as a guest. Sign up to like and collect wallpapers!",
+            });
+          }
+        }
 
-  const signIn = async (email: string) => {
-    try {
-      const { error } = await supabase.auth.signInWithOtp({ email });
-      if (error) throw error;
-      alert('Check your email for the login link!');
-    } catch (error) {
-      alert(error);
-    }
-  };
+        // Listen for auth state changes
+        const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, newSession) => {
+          console.log("Auth state changed:", _event, newSession?.user?.email);
+          setSession(newSession);
+        });
 
-  const signOut = async () => {
-    try {
-      await supabase.auth.signOut();
-    } catch (error) {
-      console.error("Error signing out:", error);
-    }
-  };
+        return () => {
+          subscription.unsubscribe();
+        };
+      } catch (error) {
+        console.error("Auth initialization error:", error);
+        setSession(null);
+      } finally {
+        setIsInitializing(false);
+      }
+    };
 
-  const value = {
-    session,
-    isLoading,
-    signIn,
-    signOut,
-  };
+    initializeAuth();
+  }, []);
+
+  // Show loading state while initializing
+  if (isInitializing) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+      </div>
+    );
+  }
 
   return (
-    <AuthContext.Provider value={value}>
-      {!isLoading && children}
+    <AuthContext.Provider value={{ session }}>
+      {children}
     </AuthContext.Provider>
   );
-};
+}
 
+// App component
 function App() {
-  const [queryClient] = useState(() => new QueryClient());
-
   return (
-    <QueryClientProvider client={queryClient}>
-      <ThemeProvider>
-        <Router>
-          <Routes>
-            <Route path="/" element={<Index />} />
-            <Route path="/auth" element={<Auth />} />
-            <Route path="/likes" element={<Likes />} />
-            <Route path="/collections" element={<Collections />} />
-            <Route path="/upload" element={<Upload />} />
-            <Route path="/subscription" element={<Subscription />} />
-            <Route path="/admin" element={<AdminPanel />} />
-            <Route path="/admin/login" element={<AdminLogin />} />
-            <Route path="/admin/register" element={<AdminRegister />} />
-            <Route path="/admin/manager" element={<AdminManager />} />
-            <Route path="/creator/:id" element={<CreatorProfile />} />
-            <Route path="/policy" element={<Policy />} />
-            <Route path="*" element={<NotFound />} />
-          </Routes>
-          <Toaster />
-        </Router>
-      </ThemeProvider>
-    </QueryClientProvider>
+    <AuthProvider>
+      <Router>
+        <Routes>
+          <Route path="/" element={<Index />} />
+          <Route path="/auth" element={<Auth />} />
+          <Route path="/admin" element={<AdminLogin />} />
+          <Route path="/admin/register" element={<AdminRegister />} />
+          <Route path="/collections" element={<Collections />} />
+          <Route path="/likes" element={<Likes />} />
+          <Route path="/creator/:creatorCode" element={<CreatorProfile />} />
+          <Route path="/admin-panel" element={<AdminPanel />} />
+          <Route path="/admin-manager" element={<AdminManager />} />
+          <Route path="/upload" element={<Upload />} />
+          <Route path="/subscription" element={<Subscription />} />
+          <Route path="*" element={<NotFound />} />
+        </Routes>
+        <Toaster />
+      </Router>
+    </AuthProvider>
   );
 }
 
