@@ -1,135 +1,115 @@
+import React, { useState, useEffect, createContext, useContext } from 'react';
+import { BrowserRouter as Router, Route, Routes, Navigate } from 'react-router-dom';
+import Index from '@/pages/Index';
+import Auth from '@/pages/Auth';
+import Likes from '@/pages/Likes';
+import Collections from '@/pages/Collections';
+import Upload from '@/pages/Upload';
+import Subscription from '@/pages/Subscription';
+import AdminPanel from '@/pages/AdminPanel';
+import AdminLogin from '@/pages/AdminLogin';
+import AdminRegister from '@/pages/AdminRegister';
+import AdminManager from '@/pages/AdminManager';
+import CreatorProfile from '@/pages/CreatorProfile';
+import NotFound from '@/pages/NotFound';
+import Policy from "@/pages/Policy";
+import { Toaster } from "@/components/ui/toaster"
+import { ThemeProvider } from "@/components/theme-provider"
+import { useQueryClient } from "@tanstack/react-query";
+import { QueryClientProvider } from "@tanstack/react-query";
+import { Session } from '@supabase/supabase-js';
+import { supabase } from './integrations/supabase/client';
 
-import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
-import { createContext, useContext, useState, useEffect } from "react";
-import { supabase } from "@/integrations/supabase/client";
-import { toast } from "@/hooks/use-toast";
-
-import Index from "@/pages/Index";
-import Auth from "@/pages/Auth";
-import AdminLogin from "@/pages/AdminLogin";
-import AdminRegister from "@/pages/AdminRegister";
-import Collections from "@/pages/Collections";
-import Likes from "@/pages/Likes";
-import CreatorProfile from "@/pages/CreatorProfile";
-import AdminPanel from "@/pages/AdminPanel";
-import AdminManager from "@/pages/AdminManager";
-import NotFound from "@/pages/NotFound";
-import Upload from "@/pages/Upload";
-import Subscription from "@/pages/Subscription";
-import { Toaster } from "@/components/ui/toaster";
-
-import "./App.css";
-
-// Define AuthContext type
-interface AuthContextType {
-  session: any | null;
+interface AuthContextProps {
+  session: Session | null;
+  isLoading: boolean;
+  signIn: (email: string) => Promise<void>;
+  signOut: () => Promise<void>;
 }
 
-// Create AuthContext
-const AuthContext = createContext<AuthContextType | null>(null);
+const AuthContext = createContext<AuthContextProps>({
+  session: null,
+  isLoading: false,
+  signIn: async () => {},
+  signOut: async () => {},
+});
 
-// Custom Hook for accessing AuthContext
-export const useAuth = () => {
-  const context = useContext(AuthContext);
-  if (!context) {
-    throw new Error("useAuth must be used within an AuthProvider");
-  }
-  return context;
-};
+export const useAuth = () => useContext(AuthContext);
 
-// AuthProvider component
-function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [session, setSession] = useState<any | null>(null);
-  const [isInitializing, setIsInitializing] = useState(true);
+interface AuthProviderProps {
+  children: React.ReactNode;
+}
+
+export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
+  const [session, setSession] = useState<Session | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const queryClient = useQueryClient();
 
   useEffect(() => {
-    const initializeAuth = async () => {
-      try {
-        // Check for existing session
-        const { data: { session: currentSession } } = await supabase.auth.getSession();
-        
-        if (currentSession) {
-          console.log("Existing session found:", currentSession.user.email);
-          setSession(currentSession);
-        } else {
-          // If no session exists, try to sign in as guest
-          console.log("No session found, attempting guest login");
-          const { data, error } = await supabase.auth.signInWithPassword({
-            email: 'guest@wallpaperhub.com',
-            password: 'guest123',
-          });
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setSession(session);
+      setIsLoading(false);
+    });
 
-          if (error) {
-            console.error("Guest login error:", error);
-            setSession(null);
-          } else if (data.session) {
-            console.log("Successfully logged in as guest");
-            setSession(data.session);
-            toast({
-              title: "Welcome to xxWallpaper",
-              description: "You're browsing as a guest. Sign up to like and collect wallpapers!",
-            });
-          }
-        }
+    supabase.auth.onAuthStateChange((_event, session) => {
+      setSession(session);
+      queryClient.invalidateQueries();
+    });
+  }, [queryClient]);
 
-        // Listen for auth state changes
-        const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, newSession) => {
-          console.log("Auth state changed:", _event, newSession?.user?.email);
-          setSession(newSession);
-        });
+  const signIn = async (email: string) => {
+    try {
+      const { error } = await supabase.auth.signInWithOtp({ email });
+      if (error) throw error;
+      alert('Check your email for the login link!');
+    } catch (error) {
+      alert(error);
+    }
+  };
 
-        return () => {
-          subscription.unsubscribe();
-        };
-      } catch (error) {
-        console.error("Auth initialization error:", error);
-        setSession(null);
-      } finally {
-        setIsInitializing(false);
-      }
-    };
+  const signOut = async () => {
+    try {
+      await supabase.auth.signOut();
+    } catch (error) {
+      console.error("Error signing out:", error);
+    }
+  };
 
-    initializeAuth();
-  }, []);
-
-  // Show loading state while initializing
-  if (isInitializing) {
-    return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-      </div>
-    );
-  }
+  const value: AuthContextProps = { session, isLoading, signIn, signOut };
 
   return (
-    <AuthContext.Provider value={{ session }}>
-      {children}
+    <AuthContext.Provider value={value}>
+      {!isLoading && children}
     </AuthContext.Provider>
   );
-}
+};
 
-// App component
 function App() {
+  const [queryClient] = useState(() => new useQueryClient());
+
   return (
-    <AuthProvider>
-      <Router>
-        <Routes>
-          <Route path="/" element={<Index />} />
-          <Route path="/auth" element={<Auth />} />
-          <Route path="/admin" element={<AdminLogin />} />
-          <Route path="/admin/register" element={<AdminRegister />} />
-          <Route path="/collections" element={<Collections />} />
-          <Route path="/likes" element={<Likes />} />
-          <Route path="/creator/:creatorCode" element={<CreatorProfile />} />
-          <Route path="/admin-panel" element={<AdminPanel />} />
-          <Route path="/admin-manager" element={<AdminManager />} />
-          <Route path="/upload" element={<Upload />} />
-          <Route path="/subscription" element={<Subscription />} />
-          <Route path="*" element={<NotFound />} />
-        </Routes>
+    <QueryClientProvider client={queryClient}>
+      <ThemeProvider>
+        <Router>
+          <Routes>
+            <Route path="/" element={<Index />} />
+            <Route path="/auth" element={<Auth />} />
+            <Route path="/likes" element={<Likes />} />
+            <Route path="/collections" element={<Collections />} />
+            <Route path="/upload" element={<Upload />} />
+            <Route path="/subscription" element={<Subscription />} />
+            <Route path="/admin" element={<AdminPanel />} />
+            <Route path="/admin/login" element={<AdminLogin />} />
+            <Route path="/admin/register" element={<AdminRegister />} />
+            <Route path="/admin/manager" element={<AdminManager />} />
+            <Route path="/creator/:id" element={<CreatorProfile />} />
+            <Route path="/policy" element={<Policy />} />
+            <Route path="*" element={<NotFound />} />
+          </Routes>
+        </Router>
         <Toaster />
-      </Router>
-    </AuthProvider>
+      </ThemeProvider>
+    </QueryClientProvider>
   );
 }
 
