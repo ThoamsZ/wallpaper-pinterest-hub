@@ -29,12 +29,18 @@ interface AuthContextProps {
 
 const AuthContext = createContext<AuthContextProps>({
   session: null,
-  isLoading: false,
+  isLoading: true,  // Changed initial loading state to true
   signIn: async () => {},
   signOut: async () => {},
 });
 
-export const useAuth = () => useContext(AuthContext);
+export const useAuth = () => {
+  const context = useContext(AuthContext);
+  if (!context) {
+    throw new Error('useAuth must be used within an AuthProvider');
+  }
+  return context;
+};
 
 interface AuthProviderProps {
   children: React.ReactNode;
@@ -46,15 +52,33 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const queryClient = new QueryClient();
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session);
-      setIsLoading(false);
-    });
+    const initializeAuth = async () => {
+      try {
+        const { data: { session: initialSession }, error } = await supabase.auth.getSession();
+        if (error) {
+          console.error('Error getting session:', error);
+          setSession(null);
+        } else {
+          setSession(initialSession);
+        }
+      } catch (error) {
+        console.error('Auth initialization error:', error);
+        setSession(null);
+      } finally {
+        setIsLoading(false);
+      }
+    };
 
-    supabase.auth.onAuthStateChange((_event, session) => {
+    initializeAuth();
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
       setSession(session);
       queryClient.invalidateQueries();
     });
+
+    return () => {
+      subscription.unsubscribe();
+    };
   }, [queryClient]);
 
   const signIn = async (email: string) => {
@@ -63,23 +87,37 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       if (error) throw error;
       alert('Check your email for the login link!');
     } catch (error) {
+      console.error('Sign in error:', error);
       alert(error);
     }
   };
 
   const signOut = async () => {
     try {
-      await supabase.auth.signOut();
+      const { error } = await supabase.auth.signOut();
+      if (error) throw error;
     } catch (error) {
       console.error("Error signing out:", error);
     }
   };
 
-  const value: AuthContextProps = { session, isLoading, signIn, signOut };
+  const value = {
+    session,
+    isLoading,
+    signIn,
+    signOut,
+  };
+
+  // Don't render children while loading
+  if (isLoading) {
+    return <div className="min-h-screen flex items-center justify-center">
+      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+    </div>;
+  }
 
   return (
     <AuthContext.Provider value={value}>
-      {!isLoading && children}
+      {children}
     </AuthContext.Provider>
   );
 };
