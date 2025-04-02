@@ -36,11 +36,12 @@ const AdminRegister = () => {
         throw new Error("No user data returned");
       }
 
-      // Then create the admin user entry without setting admin_type
+      // Then create the admin user entry with email information
       const { error: adminError } = await supabase
         .from('admin_users')
         .insert([{ 
-          user_id: signUpData.user.id
+          user_id: signUpData.user.id,
+          email: email // Add the email to the admin_users record
           // admin_type will be set manually later
         }]);
 

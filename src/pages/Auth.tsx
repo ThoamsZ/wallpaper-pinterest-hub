@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -14,7 +13,6 @@ const Auth = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [isSignUp, setIsSignUp] = useState(false);
 
-  // Check session on mount and redirect if already authenticated
   useEffect(() => {
     console.log("Auth: Checking session");
     const checkSession = async () => {
@@ -61,6 +59,24 @@ const Auth = () => {
           return;
         }
 
+        if (signUpData.user) {
+          console.log("User created with email:", signUpData.user.email);
+          
+          setTimeout(async () => {
+            const { data: userData, error: userError } = await supabase
+              .from('users')
+              .select('email')
+              .eq('id', signUpData.user!.id)
+              .single();
+              
+            if (userError) {
+              console.error("Error checking user record:", userError);
+            } else {
+              console.log("User record in database:", userData);
+            }
+          }, 1000);
+        }
+
         if (!signUpData.session) {
           toast({
             title: "Success",
@@ -94,7 +110,6 @@ const Auth = () => {
         }
 
         if (signInData.session) {
-          // Check if user is admin
           const { data: adminData, error: adminError } = await supabase
             .from('admin_users')
             .select('admin_type')
@@ -102,7 +117,6 @@ const Auth = () => {
             .maybeSingle();
 
           if (adminData) {
-            // If admin, sign out and show error
             await supabase.auth.signOut();
             toast({
               title: "Access denied",
