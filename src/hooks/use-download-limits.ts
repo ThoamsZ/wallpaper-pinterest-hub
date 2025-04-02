@@ -33,6 +33,9 @@ export const useDownloadLimits = () => {
       setIsLoading(false);
     };
 
+    // Check all expired subscriptions when component mounts
+    checkAllExpiredSubscriptions();
+    
     fetchDownloadLimits();
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(() => {
@@ -43,6 +46,49 @@ export const useDownloadLimits = () => {
       subscription.unsubscribe();
     };
   }, []);
+
+  // Function to check all users with expired subscriptions
+  const checkAllExpiredSubscriptions = async () => {
+    try {
+      // Find all users with expired subscriptions that are still marked as active
+      const { data, error } = await supabase
+        .from('users')
+        .select('id, vip_type, vip_expires_at, subscription_status')
+        .not('vip_type', 'eq', 'lifetime')
+        .not('vip_type', 'eq', 'none')
+        .eq('subscription_status', 'active')
+        .lt('vip_expires_at', new Date().toISOString());
+      
+      if (error) {
+        console.error('Error checking expired subscriptions:', error);
+        return;
+      }
+      
+      if (data && data.length > 0) {
+        console.log(`Found ${data.length} users with expired subscriptions`);
+        
+        // Update each user with expired subscription
+        for (const user of data) {
+          const { error: updateError } = await supabase
+            .from('users')
+            .update({
+              subscription_status: 'expired',
+              vip_type: 'none',
+              daily_downloads_remaining: 5 // Reset to non-VIP limit
+            })
+            .eq('id', user.id);
+          
+          if (updateError) {
+            console.error(`Error updating expired subscription for user ${user.id}:`, updateError);
+          } else {
+            console.log(`Updated expired subscription for user ${user.id}`);
+          }
+        }
+      }
+    } catch (error) {
+      console.error('Error in checkAllExpiredSubscriptions:', error);
+    }
+  };
 
   // Function to check if subscription has expired and update user status
   const checkAndUpdateExpiredSubscription = async (userId: string) => {
