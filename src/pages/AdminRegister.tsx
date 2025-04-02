@@ -18,6 +18,8 @@ const AdminRegister = () => {
     setIsLoading(true);
 
     try {
+      console.log("Starting admin registration for email:", email);
+      
       // First sign up the user
       const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
         email,
@@ -36,12 +38,14 @@ const AdminRegister = () => {
         throw new Error("No user data returned");
       }
 
+      console.log("User created successfully, creating admin record with ID:", signUpData.user.id);
+
       // Then create the admin user entry with email information
       const { error: adminError } = await supabase
         .from('admin_users')
         .insert([{ 
           user_id: signUpData.user.id,
-          email: email // Add the email to the admin_users record
+          email: email
           // admin_type will be set manually later
         }]);
 
@@ -51,6 +55,8 @@ const AdminRegister = () => {
         await supabase.auth.signOut();
         throw adminError;
       }
+
+      console.log("Admin user created successfully");
 
       toast({
         title: "Registration successful",

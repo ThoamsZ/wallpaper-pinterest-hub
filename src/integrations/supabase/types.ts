@@ -13,6 +13,7 @@ export type Database = {
         Row: {
           admin_type: string | null
           created_at: string
+          email: string | null
           id: string
           is_blocked: boolean | null
           user_id: string
@@ -20,6 +21,7 @@ export type Database = {
         Insert: {
           admin_type?: string | null
           created_at?: string
+          email?: string | null
           id?: string
           is_blocked?: boolean | null
           user_id: string
@@ -27,6 +29,7 @@ export type Database = {
         Update: {
           admin_type?: string | null
           created_at?: string
+          email?: string | null
           id?: string
           is_blocked?: boolean | null
           user_id?: string
