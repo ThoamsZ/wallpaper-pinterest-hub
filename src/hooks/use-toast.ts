@@ -1,10 +1,11 @@
 
-import { toast as sonnerToast, type Toast as SonnerToast } from "sonner"
+import { toast as sonnerToast } from "sonner"
 
-type ToastProps = SonnerToast & {
+type ToastProps = {
   title?: string
   description?: string
   variant?: "default" | "destructive"
+  [key: string]: any
 }
 
 export function toast({ title, description, variant = "default", ...props }: ToastProps) {
