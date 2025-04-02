@@ -1,3 +1,4 @@
+
 import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
 import { createContext, useContext, useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
@@ -47,25 +48,31 @@ function AuthProvider({ children }: { children: React.ReactNode }) {
     const initializeAuth = async () => {
       try {
         // Check for existing session
-        const { data: { session: currentSession } } = await supabase.auth.getSession();
+        const { data, error } = await supabase.auth.getSession();
         
-        if (currentSession) {
-          console.log("Existing session found:", currentSession.user.email);
-          setSession(currentSession);
+        if (error) {
+          console.error("Session retrieval error:", error);
+          // Clear any invalid session data
+          await supabase.auth.signOut();
+        }
+        
+        if (data?.session) {
+          console.log("Existing session found:", data.session.user.email);
+          setSession(data.session);
         } else {
           // If no session exists, try to sign in as guest
           console.log("No session found, attempting guest login");
-          const { data, error } = await supabase.auth.signInWithPassword({
+          const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
             email: 'guest@wallpaperhub.com',
             password: 'guest123',
           });
 
-          if (error) {
-            console.error("Guest login error:", error);
+          if (authError) {
+            console.error("Guest login error:", authError);
             setSession(null);
-          } else if (data.session) {
+          } else if (authData.session) {
             console.log("Successfully logged in as guest");
-            setSession(data.session);
+            setSession(authData.session);
             toast({
               title: "Welcome to xxWallpaper",
               description: "You're browsing as a guest. Sign up to like and collect wallpapers!",
@@ -74,8 +81,8 @@ function AuthProvider({ children }: { children: React.ReactNode }) {
         }
 
         // Listen for auth state changes
-        const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, newSession) => {
-          console.log("Auth state changed:", _event, newSession?.user?.email);
+        const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, newSession) => {
+          console.log("Auth state changed:", event, newSession?.user?.email);
           setSession(newSession);
         });
 

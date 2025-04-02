@@ -32,42 +32,26 @@ const Index = () => {
 
     window.addEventListener('error', handleError);
     
-    const initializeSession = async () => {
+    const checkSession = async () => {
       try {
-        // First check if we already have a valid session
-        const { data: { session: currentSession } } = await supabase.auth.getSession();
-        
-        if (!currentSession) {
-          console.log("No session found, attempting guest login");
-          const { data, error } = await supabase.auth.signInWithPassword({
-            email: 'guest@wallpaperhub.com',
-            password: 'guest123',
-          });
-          
-          if (error) {
-            console.error('Guest login error:', error);
-            queryClient.clear();
-            navigate('/auth');
-            return;
-          }
-          
-          console.log("Successfully logged in as guest");
+        if (!session) {
+          console.log("No active session in Index page");
+        } else {
+          console.log("Active session detected:", session.user.email);
         }
       } catch (error) {
-        console.error('Session initialization error:', error);
-        queryClient.clear();
-        navigate('/auth');
+        console.error('Session check error:', error);
       } finally {
         setIsInitializing(false);
       }
     };
 
-    initializeSession();
+    checkSession();
 
     return () => {
       window.removeEventListener('error', handleError);
     };
-  }, [navigate, queryClient]);
+  }, [navigate, queryClient, session]);
 
   // Check if user is guest with proper null checking
   const isGuestUser = session?.user?.email === 'guest@wallpaperhub.com';
@@ -83,7 +67,7 @@ const Index = () => {
   }, [isGuestUser]);
 
   // Show loading state while initializing
-  if (isInitializing || session === null) {
+  if (isInitializing) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
