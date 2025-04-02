@@ -50,7 +50,7 @@ export const useDownloadLimits = () => {
   // Function to check all users with expired subscriptions
   const checkAllExpiredSubscriptions = async () => {
     try {
-      // Find all users with expired VIP subscriptions regardless of their current status
+      // Find all users with expired VIP subscriptions
       const { data, error } = await supabase
         .from('users')
         .select('id, vip_type, vip_expires_at, subscription_status')
@@ -68,19 +68,21 @@ export const useDownloadLimits = () => {
         
         // Update each user with expired subscription
         for (const user of data) {
-          const { error: updateError } = await supabase
-            .from('users')
-            .update({
-              subscription_status: 'expired',
-              vip_type: 'none',
-              daily_downloads_remaining: 5 // Reset to non-VIP limit
-            })
-            .eq('id', user.id);
-          
-          if (updateError) {
-            console.error(`Error updating expired subscription for user ${user.id}:`, updateError);
-          } else {
-            console.log(`Updated expired subscription for user ${user.id}`);
+          if (user.vip_expires_at && new Date(user.vip_expires_at) < new Date()) {
+            const { error: updateError } = await supabase
+              .from('users')
+              .update({
+                subscription_status: 'expired',
+                vip_type: 'none',
+                daily_downloads_remaining: 5 // Reset to non-VIP limit
+              })
+              .eq('id', user.id);
+            
+            if (updateError) {
+              console.error(`Error updating expired subscription for user ${user.id}:`, updateError);
+            } else {
+              console.log(`Updated expired subscription for user ${user.id}`);
+            }
           }
         }
       }
