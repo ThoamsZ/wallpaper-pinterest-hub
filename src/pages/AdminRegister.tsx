@@ -20,6 +20,17 @@ const AdminRegister = () => {
     try {
       console.log("Starting admin registration for email:", email);
       
+      // First, check if the user already exists
+      const { data: existingUsers, error: checkError } = await supabase
+        .from('admin_users')
+        .select('email')
+        .eq('email', email)
+        .maybeSingle();
+        
+      if (existingUsers) {
+        throw new Error("This email is already registered as a creator. Please login instead.");
+      }
+      
       // First sign up the user
       const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
         email,
@@ -31,6 +42,12 @@ const AdminRegister = () => {
 
       if (signUpError) {
         console.error("Sign up error:", signUpError);
+        
+        // Provide a more user-friendly error message for already registered users
+        if (signUpError.code === "user_already_exists") {
+          throw new Error("This email is already registered. Please use the login page instead.");
+        }
+        
         throw signUpError;
       }
 
