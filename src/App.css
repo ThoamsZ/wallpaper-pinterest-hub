@@ -1,3 +1,4 @@
+
 #root {
   max-width: 1280px;
   margin: 0 auto;
@@ -12,7 +13,7 @@
   transition: filter 300ms;
 }
 .logo:hover {
-  filter: drop-shadow(0 0 2em #646cffaa);
+  filter: drop-shadow(0 0 2em #8B5CF6aa);
 }
 .logo.react:hover {
   filter: drop-shadow(0 0 2em #61dafbaa);
@@ -39,4 +40,25 @@
 
 .read-the-docs {
   color: #888;
+}
+
+/* Dark mode overrides */
+.dark .bg-white\\/95 {
+  background-color: rgba(24, 24, 27, 0.95);
+}
+
+.dark .border-gray-200 {
+  border-color: rgba(75, 85, 99, 0.5);
+}
+
+.dark .text-gray-400 {
+  color: rgba(156, 163, 175, 1);
+}
+
+.dark .text-gray-600 {
+  color: rgba(209, 213, 219, 1);
+}
+
+.dark .hover\\:text-primary:hover {
+  color: #8B5CF6;
 }

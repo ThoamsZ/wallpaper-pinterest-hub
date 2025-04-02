@@ -119,7 +119,7 @@ function AuthProvider({ children }: { children: React.ReactNode }) {
 // App component
 function App() {
   return (
-    <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
+    <ThemeProvider attribute="class" defaultTheme="dark" enableSystem>
       <AuthProvider>
         <Router>
           <Routes>
