@@ -18,7 +18,7 @@ import NotFound from "@/pages/NotFound";
 import Upload from "@/pages/Upload";
 import Subscription from "@/pages/Subscription";
 import Policy from "@/pages/Policy";
-import { Toaster } from "@/components/ui/toaster";
+import { Toaster } from "@/components/ui/sonner";
 
 import "./App.css";
 
