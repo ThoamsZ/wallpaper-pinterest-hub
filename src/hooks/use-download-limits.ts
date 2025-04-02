@@ -50,14 +50,12 @@ export const useDownloadLimits = () => {
   // Function to check all users with expired subscriptions
   const checkAllExpiredSubscriptions = async () => {
     try {
-      // Find all users with expired subscriptions that are still marked as active
-      // OR have an expired subscription but still have a VIP type that's not 'none'
+      // Find all users with expired VIP subscriptions regardless of their current status
       const { data, error } = await supabase
         .from('users')
         .select('id, vip_type, vip_expires_at, subscription_status')
         .not('vip_type', 'eq', 'lifetime')
         .not('vip_type', 'eq', 'none')
-        .or('subscription_status.eq.active,vip_expires_at.lt.' + new Date().toISOString())
         .lt('vip_expires_at', new Date().toISOString());
       
       if (error) {
