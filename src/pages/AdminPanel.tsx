@@ -10,9 +10,10 @@ import {
   CardFooter,
   CardHeader,
   CardTitle,
+  CardDescription,
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Download, Heart, Trash } from "lucide-react";
+import { Download, Heart, Trash, Upload, Grid, Plus, Settings, LayoutGrid } from "lucide-react";
 import Header from "@/components/Header";
 import { CollectionManager } from "@/components/admin/CollectionManager";
 import {
@@ -34,6 +35,20 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
+import {
+  Sidebar,
+  SidebarContent,
+  SidebarFooter,
+  SidebarGroup,
+  SidebarGroupContent,
+  SidebarGroupLabel,
+  SidebarHeader,
+  SidebarMenu,
+  SidebarMenuButton,
+  SidebarMenuItem,
+  SidebarProvider,
+  SidebarTrigger,
+} from "@/components/ui/sidebar";
 
 interface Wallpaper {
   id: string;
@@ -298,148 +313,255 @@ const AdminPanel = () => {
   }
 
   return (
-    <>
-      <Header />
-      <div className="container mx-auto px-4 py-8 mt-20">
-        <div className="flex justify-between items-center mb-8">
-          <div>
-            <h1 className="text-2xl font-bold">Admin Panel</h1>
-            <p className="text-gray-600">Logged in as: {adminData.email}</p>
-          </div>
-          <Button onClick={() => navigate("/upload")}>Upload Wallpapers</Button>
-        </div>
+    <SidebarProvider defaultOpen={true}>
+      <div className="flex h-full">
+        <Sidebar variant="inset" collapsible="icon">
+          <SidebarHeader className="flex flex-col items-center justify-center py-4">
+            <h2 className="text-lg font-semibold text-center">Creator Dashboard</h2>
+            <p className="text-sm text-muted-foreground">{adminData.email}</p>
+          </SidebarHeader>
+          <SidebarContent>
+            <SidebarGroup>
+              <SidebarGroupLabel>Management</SidebarGroupLabel>
+              <SidebarGroupContent>
+                <SidebarMenu>
+                  <SidebarMenuItem>
+                    <SidebarMenuButton isActive={true} tooltip="Dashboard">
+                      <LayoutGrid className="w-4 h-4 mr-2" />
+                      <span>Dashboard</span>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                  <SidebarMenuItem>
+                    <SidebarMenuButton tooltip="Upload Wallpapers" onClick={() => navigate("/upload")}>
+                      <Upload className="w-4 h-4 mr-2" />
+                      <span>Upload Wallpapers</span>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                  <SidebarMenuItem>
+                    <SidebarMenuButton tooltip="Collections">
+                      <Grid className="w-4 h-4 mr-2" />
+                      <span>Collections</span>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                  <SidebarMenuItem>
+                    <SidebarMenuButton tooltip="Settings">
+                      <Settings className="w-4 h-4 mr-2" />
+                      <span>Settings</span>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                </SidebarMenu>
+              </SidebarGroupContent>
+            </SidebarGroup>
+          </SidebarContent>
+          <SidebarFooter>
+            <div className="p-4 text-xs text-center text-muted-foreground">
+              <p>© 2023 Creator Portal</p>
+            </div>
+          </SidebarFooter>
+        </Sidebar>
 
-        <Card className="mb-8">
-          <CardHeader>
-            <CardTitle>Creator Code Management</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              {currentCreatorCode && (
-                <p className="text-sm text-gray-600">
-                  Current Creator Code: <span className="font-semibold">{currentCreatorCode}</span>
-                </p>
-              )}
-              <div className="flex gap-4">
-                <Input
-                  placeholder="Enter new creator code"
-                  value={creatorCode}
-                  onChange={(e) => setCreatorCode(e.target.value)}
-                />
-                <Button onClick={handleUpdateCreatorCode}>
-                  {currentCreatorCode ? "Update" : "Set"} Creator Code
+        <div className="flex-1 bg-background min-h-screen">
+          <Header />
+          <div className="container mx-auto px-4 py-8 mt-20">
+            <div className="flex justify-between items-center mb-8">
+              <div>
+                <h1 className="text-2xl font-bold">Creator Dashboard</h1>
+                <p className="text-gray-600">Manage your wallpapers and collections</p>
+              </div>
+              <div className="flex gap-3">
+                <Button variant="outline" onClick={() => navigate("/")}>
+                  View Site
+                </Button>
+                <Button onClick={() => navigate("/upload")}>
+                  <Plus className="w-4 h-4 mr-2" />
+                  Upload Wallpapers
                 </Button>
               </div>
             </div>
-          </CardContent>
-        </Card>
 
-        <Tabs defaultValue="wallpapers">
-          <TabsList className="mb-8">
-            <TabsTrigger value="wallpapers">Wallpapers</TabsTrigger>
-            <TabsTrigger value="collections">Collections</TabsTrigger>
-          </TabsList>
-
-          <TabsContent value="wallpapers">
-            <div className="flex justify-between items-center mb-4">
-              {selectedWallpapers.length > 0 && (
-                <AlertDialog>
-                  <AlertDialogTrigger asChild>
-                    <Button variant="destructive">
-                      <Trash className="w-4 h-4 mr-2" />
-                      Delete Selected ({selectedWallpapers.length})
-                    </Button>
-                  </AlertDialogTrigger>
-                  <AlertDialogContent>
-                    <AlertDialogHeader>
-                      <AlertDialogTitle>Delete Multiple Wallpapers</AlertDialogTitle>
-                      <AlertDialogDescription>
-                        Are you sure you want to delete {selectedWallpapers.length} wallpapers? This action cannot be undone.
-                      </AlertDialogDescription>
-                    </AlertDialogHeader>
-                    <AlertDialogFooter>
-                      <AlertDialogCancel>Cancel</AlertDialogCancel>
-                      <AlertDialogAction
-                        onClick={handleDeleteMultiple}
-                        className="bg-red-500 hover:bg-red-600"
-                      >
-                        Delete
-                      </AlertDialogAction>
-                    </AlertDialogFooter>
-                  </AlertDialogContent>
-                </AlertDialog>
-              )}
-            </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {wallpapers.map((wallpaper) => (
-                <Card key={wallpaper.id} className={`relative ${selectedWallpapers.includes(wallpaper.id) ? 'ring-2 ring-primary' : ''}`}>
-                  <div className="absolute top-2 left-2 z-10">
-                    <Checkbox
-                      checked={selectedWallpapers.includes(wallpaper.id)}
-                      onCheckedChange={(checked) => {
-                        if (checked) {
-                          setSelectedWallpapers([...selectedWallpapers, wallpaper.id]);
-                        } else {
-                          setSelectedWallpapers(selectedWallpapers.filter(id => id !== wallpaper.id));
-                        }
-                      }}
-                    />
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+              <Card>
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-base font-medium">Total Wallpapers</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="text-3xl font-bold">{wallpapers.length}</div>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-base font-medium">Total Downloads</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="text-3xl font-bold">
+                    {wallpapers.reduce((sum, w) => sum + (w.download_count || 0), 0)}
                   </div>
-                  <CardHeader>
-                    <CardTitle className="text-lg">
-                      {wallpaper.type} Wallpaper
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    <img
-                      src={wallpaper.url}
-                      alt="Wallpaper"
-                      className="w-full h-48 object-cover rounded-md"
+                </CardContent>
+              </Card>
+              <Card>
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-base font-medium">Total Likes</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="text-3xl font-bold">
+                    {wallpapers.reduce((sum, w) => sum + (w.like_count || 0), 0)}
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+
+            <Card className="mb-8">
+              <CardHeader>
+                <CardTitle>Creator Code Management</CardTitle>
+                <CardDescription>Set or update your creator referral code</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  {currentCreatorCode && (
+                    <p className="text-sm">
+                      Current Creator Code: <span className="font-semibold bg-secondary px-2 py-1 rounded-md">{currentCreatorCode}</span>
+                    </p>
+                  )}
+                  <div className="flex gap-4">
+                    <Input
+                      placeholder="Enter new creator code"
+                      value={creatorCode}
+                      onChange={(e) => setCreatorCode(e.target.value)}
                     />
-                    <div className="flex flex-wrap gap-2">
-                      {wallpaper.tags.map((tag, index) => (
-                        <Badge key={index} variant="secondary">
-                          {tag}
-                        </Badge>
+                    <Button onClick={handleUpdateCreatorCode}>
+                      {currentCreatorCode ? "Update" : "Set"} Creator Code
+                    </Button>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Tabs defaultValue="wallpapers" className="space-y-6">
+              <TabsList className="mb-4">
+                <TabsTrigger value="wallpapers">Wallpapers</TabsTrigger>
+                <TabsTrigger value="collections">Collections</TabsTrigger>
+              </TabsList>
+
+              <TabsContent value="wallpapers" className="space-y-6">
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Your Wallpapers</CardTitle>
+                    <CardDescription>Manage your uploaded wallpapers</CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="flex justify-between items-center mb-4">
+                      {selectedWallpapers.length > 0 && (
+                        <AlertDialog>
+                          <AlertDialogTrigger asChild>
+                            <Button variant="destructive">
+                              <Trash className="w-4 h-4 mr-2" />
+                              Delete Selected ({selectedWallpapers.length})
+                            </Button>
+                          </AlertDialogTrigger>
+                          <AlertDialogContent>
+                            <AlertDialogHeader>
+                              <AlertDialogTitle>Delete Multiple Wallpapers</AlertDialogTitle>
+                              <AlertDialogDescription>
+                                Are you sure you want to delete {selectedWallpapers.length} wallpapers? This action cannot be undone.
+                              </AlertDialogDescription>
+                            </AlertDialogHeader>
+                            <AlertDialogFooter>
+                              <AlertDialogCancel>Cancel</AlertDialogCancel>
+                              <AlertDialogAction
+                                onClick={handleDeleteMultiple}
+                                className="bg-red-500 hover:bg-red-600"
+                              >
+                                Delete
+                              </AlertDialogAction>
+                            </AlertDialogFooter>
+                          </AlertDialogContent>
+                        </AlertDialog>
+                      )}
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                      {wallpapers.map((wallpaper) => (
+                        <Card key={wallpaper.id} className={`relative overflow-hidden hover:shadow-md transition-shadow ${selectedWallpapers.includes(wallpaper.id) ? 'ring-2 ring-primary' : ''}`}>
+                          <div className="absolute top-2 left-2 z-10">
+                            <Checkbox
+                              checked={selectedWallpapers.includes(wallpaper.id)}
+                              onCheckedChange={(checked) => {
+                                if (checked) {
+                                  setSelectedWallpapers([...selectedWallpapers, wallpaper.id]);
+                                } else {
+                                  setSelectedWallpapers(selectedWallpapers.filter(id => id !== wallpaper.id));
+                                }
+                              }}
+                            />
+                          </div>
+                          <div className="relative h-48">
+                            <img
+                              src={wallpaper.url}
+                              alt="Wallpaper"
+                              className="w-full h-full object-cover"
+                            />
+                          </div>
+                          <CardHeader className="pb-2">
+                            <CardTitle className="text-sm">{wallpaper.type} Wallpaper</CardTitle>
+                          </CardHeader>
+                          <CardContent className="space-y-3 pb-2">
+                            <div className="flex flex-wrap gap-1">
+                              {wallpaper.tags.map((tag, index) => (
+                                <Badge key={index} variant="secondary" className="text-xs">
+                                  {tag}
+                                </Badge>
+                              ))}
+                            </div>
+                            <Input
+                              defaultValue={wallpaper.tags.join(', ')}
+                              placeholder="Update tags (comma-separated)"
+                              onBlur={(e) => handleUpdateTags(wallpaper.id, e.target.value)}
+                              className="text-xs"
+                            />
+                            <div className="flex justify-between items-center text-xs text-muted-foreground">
+                              <div className="flex items-center gap-1">
+                                <Download className="w-3 h-3" />
+                                <span>{wallpaper.download_count || 0}</span>
+                              </div>
+                              <div className="flex items-center gap-1">
+                                <Heart className="w-3 h-3" />
+                                <span>{wallpaper.like_count || 0}</span>
+                              </div>
+                            </div>
+                          </CardContent>
+                          <CardFooter className="pt-0">
+                            <Button
+                              variant="destructive"
+                              size="sm"
+                              className="w-full"
+                              onClick={() => handleDelete(wallpaper.id, wallpaper.file_path)}
+                            >
+                              <Trash className="w-3 h-3 mr-1" />
+                              Delete
+                            </Button>
+                          </CardFooter>
+                        </Card>
                       ))}
                     </div>
-                    <Input
-                      defaultValue={wallpaper.tags.join(', ')}
-                      placeholder="Update tags (comma-separated)"
-                      onBlur={(e) => handleUpdateTags(wallpaper.id, e.target.value)}
-                    />
-                    <div className="flex justify-between items-center">
-                      <div className="flex items-center gap-2">
-                        <Download className="w-4 h-4" />
-                        <span>{wallpaper.download_count || 0}</span>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <Heart className="w-4 h-4" />
-                        <span>{wallpaper.like_count || 0}</span>
-                      </div>
-                    </div>
                   </CardContent>
-                  <CardFooter className="justify-end">
-                    <Button
-                      variant="destructive"
-                      size="sm"
-                      onClick={() => handleDelete(wallpaper.id, wallpaper.file_path)}
-                    >
-                      <Trash className="w-4 h-4 mr-2" />
-                      Delete
-                    </Button>
-                  </CardFooter>
                 </Card>
-              ))}
-            </div>
-          </TabsContent>
+              </TabsContent>
 
-          <TabsContent value="collections">
-            <CollectionManager />
-          </TabsContent>
-        </Tabs>
+              <TabsContent value="collections">
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Your Collections</CardTitle>
+                    <CardDescription>Manage your wallpaper collections</CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <CollectionManager />
+                  </CardContent>
+                </Card>
+              </TabsContent>
+            </Tabs>
+          </div>
+        </div>
       </div>
-    </>
+    </SidebarProvider>
   );
 };
 
