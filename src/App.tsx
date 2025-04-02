@@ -2,6 +2,7 @@ import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
 import { createContext, useContext, useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
+import { ThemeProvider } from "@/components/theme-provider";
 
 import Index from "@/pages/Index";
 import Auth from "@/pages/Auth";
@@ -111,26 +112,28 @@ function AuthProvider({ children }: { children: React.ReactNode }) {
 // App component
 function App() {
   return (
-    <AuthProvider>
-      <Router>
-        <Routes>
-          <Route path="/" element={<Index />} />
-          <Route path="/auth" element={<Auth />} />
-          <Route path="/admin" element={<AdminLogin />} />
-          <Route path="/admin/register" element={<AdminRegister />} />
-          <Route path="/collections" element={<Collections />} />
-          <Route path="/likes" element={<Likes />} />
-          <Route path="/creator/:creatorCode" element={<CreatorProfile />} />
-          <Route path="/admin-panel" element={<AdminPanel />} />
-          <Route path="/admin-manager" element={<AdminManager />} />
-          <Route path="/upload" element={<Upload />} />
-          <Route path="/subscription" element={<Subscription />} />
-          <Route path="/policy" element={<Policy />} />
-          <Route path="*" element={<NotFound />} />
-        </Routes>
-        <Toaster />
-      </Router>
-    </AuthProvider>
+    <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
+      <AuthProvider>
+        <Router>
+          <Routes>
+            <Route path="/" element={<Index />} />
+            <Route path="/auth" element={<Auth />} />
+            <Route path="/admin" element={<AdminLogin />} />
+            <Route path="/admin/register" element={<AdminRegister />} />
+            <Route path="/collections" element={<Collections />} />
+            <Route path="/likes" element={<Likes />} />
+            <Route path="/creator/:creatorCode" element={<CreatorProfile />} />
+            <Route path="/admin-panel" element={<AdminPanel />} />
+            <Route path="/admin-manager" element={<AdminManager />} />
+            <Route path="/upload" element={<Upload />} />
+            <Route path="/subscription" element={<Subscription />} />
+            <Route path="/policy" element={<Policy />} />
+            <Route path="*" element={<NotFound />} />
+          </Routes>
+          <Toaster />
+        </Router>
+      </AuthProvider>
+    </ThemeProvider>
   );
 }
 

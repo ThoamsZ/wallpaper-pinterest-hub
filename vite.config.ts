@@ -9,7 +9,6 @@ export default defineConfig(({ mode }) => ({
   server: {
     port: 8080,
     strictPort: true,
-    // Remove host configuration to let Vite handle it automatically
   },
   plugins: [
     react(),
@@ -22,4 +21,3 @@ export default defineConfig(({ mode }) => ({
     },
   },
 }));
-
