@@ -39,7 +39,10 @@ export const deleteWallpaper = async (wallpaperId: string): Promise<boolean> => 
     promises.push(
       supabase.rpc('remove_wallpaper_from_favorites', { wallpaper_id: wallpaperId })
         .then(({ error }) => {
-          if (error) console.error("Error removing from favorites:", error);
+          if (error) {
+            console.error("Error removing from favorites:", error);
+            throw new Error(`Failed to remove from favorites: ${error.message}`);
+          }
         })
     );
     
@@ -51,7 +54,10 @@ export const deleteWallpaper = async (wallpaperId: string): Promise<boolean> => 
         .delete()
         .eq('wallpaper_id', wallpaperId)
         .then(({ error }) => {
-          if (error) console.error("Error removing from collections:", error);
+          if (error) {
+            console.error("Error removing from collections:", error);
+            throw new Error(`Failed to remove from collections: ${error.message}`);
+          }
         })
     );
 
@@ -63,7 +69,10 @@ export const deleteWallpaper = async (wallpaperId: string): Promise<boolean> => 
         .delete()
         .eq('wallpaper_id', wallpaperId)
         .then(({ error }) => {
-          if (error) console.error("Error removing from VIP wallpapers:", error);
+          if (error) {
+            console.error("Error removing from VIP wallpapers:", error);
+            throw new Error(`Failed to remove from VIP wallpapers: ${error.message}`);
+          }
         })
     );
     

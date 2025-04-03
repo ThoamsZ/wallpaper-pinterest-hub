@@ -26,6 +26,9 @@ const CreatorDetail = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [isDeleting, setIsDeleting] = useState(false);
   const [currentDeletingId, setCurrentDeletingId] = useState(null);
+  const [deleteAlertOpen, setDeleteAlertOpen] = useState(false);
+  const [wallpaperToDelete, setWallpaperToDelete] = useState(null);
+  const [deleteError, setDeleteError] = useState(null);
 
   useEffect(() => {
     fetchCreatorWallpapers();
@@ -73,8 +76,14 @@ const CreatorDetail = () => {
     }
   };
 
-  const handleWallpaperDelete = async (wallpaperId) => {
-    if (!wallpaperId) {
+  const prepareWallpaperDelete = (wallpaper) => {
+    setWallpaperToDelete(wallpaper);
+    setDeleteAlertOpen(true);
+    setDeleteError(null);
+  };
+
+  const handleWallpaperDelete = async () => {
+    if (!wallpaperToDelete || !wallpaperToDelete.id) {
       console.error("No wallpaper ID provided for deletion");
       toast({
         title: "Error",
@@ -84,8 +93,10 @@ const CreatorDetail = () => {
       return;
     }
     
+    const wallpaperId = wallpaperToDelete.id;
     setIsDeleting(true);
     setCurrentDeletingId(wallpaperId);
+    setDeleteError(null);
     
     try {
       console.log("Starting wallpaper deletion for:", wallpaperId);
@@ -97,15 +108,18 @@ const CreatorDetail = () => {
       
       await deleteWallpaper(wallpaperId);
       
+      // Remove the deleted wallpaper from the state
+      setWallpapers(prevWallpapers => prevWallpapers.filter(w => w.id !== wallpaperId));
+      
       toast({
         title: "Wallpaper Deleted",
         description: "The wallpaper has been successfully deleted.",
       });
       
-      // Remove the deleted wallpaper from the state
-      setWallpapers(prevWallpapers => prevWallpapers.filter(w => w.id !== wallpaperId));
+      setDeleteAlertOpen(false);
     } catch (error) {
       console.error("Error in wallpaper deletion:", error);
+      setDeleteError(error.message || "An unexpected error occurred during deletion");
       toast({
         title: "Deletion Failed",
         description: error.message || "An unexpected error occurred during deletion.",
@@ -114,6 +128,7 @@ const CreatorDetail = () => {
     } finally {
       setIsDeleting(false);
       setCurrentDeletingId(null);
+      setWallpaperToDelete(null);
     }
   };
 
@@ -152,30 +167,15 @@ const CreatorDetail = () => {
               </div>
               <CardContent className="p-3">
                 <div className="mt-2">
-                  <AlertDialog>
-                    <AlertDialogTrigger asChild>
-                      <Button variant="destructive" size="sm" className="w-full">
-                        Delete
-                      </Button>
-                    </AlertDialogTrigger>
-                    <AlertDialogContent>
-                      <AlertDialogHeader>
-                        <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
-                        <AlertDialogDescription>
-                          This action cannot be undone. This will permanently delete this wallpaper from our servers.
-                        </AlertDialogDescription>
-                      </AlertDialogHeader>
-                      <AlertDialogFooter>
-                        <AlertDialogCancel>Cancel</AlertDialogCancel>
-                        <AlertDialogAction 
-                          onClick={() => handleWallpaperDelete(wallpaper.id)}
-                          disabled={isDeleting && currentDeletingId === wallpaper.id}
-                        >
-                          {isDeleting && currentDeletingId === wallpaper.id ? 'Deleting...' : 'Delete'}
-                        </AlertDialogAction>
-                      </AlertDialogFooter>
-                    </AlertDialogContent>
-                  </AlertDialog>
+                  <Button 
+                    variant="destructive" 
+                    size="sm" 
+                    className="w-full"
+                    onClick={() => prepareWallpaperDelete(wallpaper)}
+                    disabled={isDeleting && currentDeletingId === wallpaper.id}
+                  >
+                    {isDeleting && currentDeletingId === wallpaper.id ? 'Deleting...' : 'Delete'}
+                  </Button>
                 </div>
               </CardContent>
             </Card>
@@ -188,6 +188,31 @@ const CreatorDetail = () => {
           </CardContent>
         </Card>
       )}
+
+      <AlertDialog open={deleteAlertOpen} onOpenChange={setDeleteAlertOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This action cannot be undone. This will permanently delete this wallpaper from our servers.
+              {deleteError && (
+                <div className="mt-2 p-2 bg-destructive/10 text-destructive rounded">
+                  Error: {deleteError}
+                </div>
+              )}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isDeleting}>Cancel</AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={handleWallpaperDelete}
+              disabled={isDeleting}
+            >
+              {isDeleting ? 'Deleting...' : 'Delete'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };
