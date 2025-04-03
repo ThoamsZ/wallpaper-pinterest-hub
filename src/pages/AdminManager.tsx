@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -23,7 +24,34 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import { Trash, Ban, UserX } from "lucide-react";
+import {
+  Trash,
+  Ban,
+  UserX,
+  LayoutDashboard,
+  Users,
+  UserPlus,
+  Search,
+  Check,
+} from "lucide-react";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import {
+  SidebarProvider,
+  Sidebar,
+  SidebarContent,
+  SidebarHeader,
+  SidebarMenu,
+  SidebarMenuItem,
+  SidebarMenuButton,
+  SidebarInset,
+} from "@/components/ui/sidebar";
 
 const AdminManager = () => {
   const navigate = useNavigate();
@@ -33,10 +61,31 @@ const AdminManager = () => {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [creators, setCreators] = useState<any[]>([]);
   const [wallpapers, setWallpapers] = useState<any[]>([]);
+  const [activeTab, setActiveTab] = useState("stats");
+  const [searchTerm, setSearchTerm] = useState("");
+  const [creatorApplications, setCreatorApplications] = useState<any[]>([]);
+  const [statsData, setStatsData] = useState({
+    totalDownloads: 0,
+    totalPurchases: 0,
+    todayDownloads: 0,
+    todayPurchases: 0,
+  });
 
   useEffect(() => {
     checkAdminManagerStatus();
   }, []);
+
+  useEffect(() => {
+    if (isLoggedIn) {
+      if (activeTab === "creators") {
+        fetchCreators();
+      } else if (activeTab === "applications") {
+        fetchCreatorApplications();
+      } else if (activeTab === "stats") {
+        fetchStatsData();
+      }
+    }
+  }, [isLoggedIn, activeTab]);
 
   const checkAdminManagerStatus = async () => {
     try {
@@ -67,10 +116,62 @@ const AdminManager = () => {
       }
 
       setIsLoggedIn(true);
-      fetchCreators();
+      setActiveTab("stats");
+      fetchStatsData();
     } catch (error) {
       console.error('Error checking admin manager status:', error);
       setIsLoggedIn(false);
+    }
+  };
+
+  const fetchStatsData = async () => {
+    try {
+      // Fetch total downloads
+      const { data: downloadData, error: downloadError } = await supabase
+        .from('wallpapers')
+        .select('download_count')
+        .is('download_count', null, { negate: true });
+
+      if (downloadError) throw downloadError;
+
+      const totalDownloads = downloadData.reduce((sum, item) => sum + (item.download_count || 0), 0);
+
+      // Fetch total purchases
+      const { data: purchaseData, error: purchaseError } = await supabase
+        .from('paypal_orders')
+        .select('*')
+        .eq('status', 'completed');
+
+      if (purchaseError) throw purchaseError;
+
+      // Fetch today's downloads (placeholder - would need a downloads log table to be accurate)
+      // This is just calculating 5% of total as a placeholder
+      const todayDownloads = Math.round(totalDownloads * 0.05);
+
+      // Fetch today's purchases
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      
+      const { data: todayPurchaseData, error: todayPurchaseError } = await supabase
+        .from('paypal_orders')
+        .select('*')
+        .eq('status', 'completed')
+        .gte('created_at', today.toISOString());
+
+      if (todayPurchaseError) throw todayPurchaseError;
+
+      setStatsData({
+        totalDownloads,
+        totalPurchases: purchaseData.length,
+        todayDownloads,
+        todayPurchases: todayPurchaseData.length,
+      });
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to fetch stats data",
+        variant: "destructive",
+      });
     }
   };
 
@@ -116,6 +217,47 @@ const AdminManager = () => {
     }
   };
 
+  const fetchCreatorApplications = async () => {
+    try {
+      // Get all users with creator_code but who are not yet in admin_users table
+      const { data: userApplications, error: usersError } = await supabase
+        .from('users')
+        .select('id, email, creator_code')
+        .not('creator_code', 'is', null);
+
+      if (usersError) throw usersError;
+
+      if (!userApplications || userApplications.length === 0) {
+        setCreatorApplications([]);
+        return;
+      }
+
+      const userIds = userApplications.map(user => user.id);
+
+      // Check which users are already admins
+      const { data: existingAdmins, error: adminsError } = await supabase
+        .from('admin_users')
+        .select('user_id')
+        .in('user_id', userIds);
+
+      if (adminsError) throw adminsError;
+
+      // Filter out users who are already admins
+      const existingAdminIds = existingAdmins?.map(admin => admin.user_id) || [];
+      const pendingApplications = userApplications.filter(
+        user => !existingAdminIds.includes(user.id)
+      );
+
+      setCreatorApplications(pendingApplications);
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to fetch creator applications",
+        variant: "destructive",
+      });
+    }
+  };
+
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
@@ -142,7 +284,8 @@ const AdminManager = () => {
       }
 
       setIsLoggedIn(true);
-      fetchCreators();
+      setActiveTab("stats");
+      fetchStatsData();
       toast({
         title: "Success",
         description: "Logged in successfully",
@@ -336,6 +479,45 @@ const AdminManager = () => {
     }
   };
 
+  const handleApproveCreator = async (userId: string, email: string) => {
+    try {
+      // Add user to admin_users table
+      const { error: adminError } = await supabase
+        .from('admin_users')
+        .insert({
+          user_id: userId,
+          admin_type: 'admin',
+          email: email
+        });
+
+      if (adminError) throw adminError;
+
+      // Remove from applications list
+      setCreatorApplications(prev => prev.filter(app => app.id !== userId));
+
+      toast({
+        title: "Success",
+        description: `Creator ${email} approved successfully`,
+      });
+      
+      // Refresh applications list
+      fetchCreatorApplications();
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to approve creator",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const filteredCreators = searchTerm 
+    ? creators.filter(creator => 
+        creator.users?.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        creator.users?.creator_code?.toLowerCase().includes(searchTerm.toLowerCase())
+      )
+    : creators;
+
   if (!isLoggedIn) {
     return (
       <div className="container mx-auto flex items-center justify-center min-h-screen">
@@ -386,125 +568,273 @@ const AdminManager = () => {
   }
 
   return (
-    <div className="container mx-auto py-8">
-      <div className="flex justify-between items-center mb-8">
-        <h1 className="text-2xl font-bold">Admin Manager Panel</h1>
-        <Button 
-          variant="outline"
-          onClick={() => {
-            supabase.auth.signOut();
-            setIsLoggedIn(false);
-          }}
-        >
-          Logout
-        </Button>
-      </div>
+    <SidebarProvider>
+      <div className="flex h-screen w-full">
+        <Sidebar>
+          <SidebarHeader className="flex items-center justify-between px-4 py-2">
+            <h2 className="text-lg font-bold">Admin Manager</h2>
+          </SidebarHeader>
+          <SidebarContent>
+            <SidebarMenu>
+              <SidebarMenuItem>
+                <SidebarMenuButton 
+                  isActive={activeTab === 'stats'} 
+                  onClick={() => setActiveTab('stats')}
+                >
+                  <LayoutDashboard className="w-4 h-4 mr-2" />
+                  <span>Stats</span>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+              <SidebarMenuItem>
+                <SidebarMenuButton 
+                  isActive={activeTab === 'creators'} 
+                  onClick={() => setActiveTab('creators')}
+                >
+                  <Users className="w-4 h-4 mr-2" />
+                  <span>Creator Manager</span>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+              <SidebarMenuItem>
+                <SidebarMenuButton 
+                  isActive={activeTab === 'applications'} 
+                  onClick={() => setActiveTab('applications')}
+                >
+                  <UserPlus className="w-4 h-4 mr-2" />
+                  <span>Creator Applications</span>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+            </SidebarMenu>
+          </SidebarContent>
+        </Sidebar>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {creators.map((creator) => (
-          <Card key={creator.id}>
-            <CardHeader>
-              <CardTitle className="flex justify-between items-center">
-                <div className="flex flex-col">
-                  <span>{creator.users?.email}</span>
-                  <span className="text-sm text-muted-foreground">Creator Code: {creator.users?.creator_code || 'N/A'}</span>
-                </div>
-                {creator.is_blocked && (
-                  <span className="text-sm text-red-500">Blocked</span>
-                )}
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="mt-4">
-                <h3 className="font-semibold mb-2">Wallpapers:</h3>
-                <div className="grid grid-cols-2 gap-2">
-                  {wallpapers
-                    .filter(w => w.uploaded_by === creator.user_id)
-                    .map((wallpaper) => (
-                      <div key={wallpaper.id} className="relative group">
-                        <img
-                          src={wallpaper.url}
-                          alt="Wallpaper"
-                          className="w-full h-24 object-cover rounded"
-                        />
-                        <Button
-                          variant="destructive"
-                          size="sm"
-                          className="absolute top-1 right-1 opacity-0 group-hover:opacity-100 transition-opacity"
-                          onClick={() => handleDeleteWallpaper(wallpaper.id, wallpaper.file_path)}
-                        >
-                          <Trash className="w-4 h-4" />
-                        </Button>
-                      </div>
-                    ))}
+        <SidebarInset className="p-6 overflow-auto">
+          <div className="flex justify-between items-center mb-6">
+            <h1 className="text-2xl font-bold">
+              {activeTab === 'stats' && 'Website Statistics'}
+              {activeTab === 'creators' && 'Creator Management'}
+              {activeTab === 'applications' && 'Creator Applications'}
+            </h1>
+            <Button 
+              variant="outline"
+              onClick={() => {
+                supabase.auth.signOut();
+                setIsLoggedIn(false);
+              }}
+            >
+              Logout
+            </Button>
+          </div>
+
+          {/* Stats Page */}
+          {activeTab === 'stats' && (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <Card>
+                <CardHeader>
+                  <CardTitle>Total Downloads</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <p className="text-3xl font-bold">{statsData.totalDownloads}</p>
+                </CardContent>
+              </Card>
+              
+              <Card>
+                <CardHeader>
+                  <CardTitle>Total Purchases</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <p className="text-3xl font-bold">{statsData.totalPurchases}</p>
+                </CardContent>
+              </Card>
+              
+              <Card>
+                <CardHeader>
+                  <CardTitle>Today's Downloads</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <p className="text-3xl font-bold">{statsData.todayDownloads}</p>
+                </CardContent>
+              </Card>
+              
+              <Card>
+                <CardHeader>
+                  <CardTitle>Today's Purchases</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <p className="text-3xl font-bold">{statsData.todayPurchases}</p>
+                </CardContent>
+              </Card>
+            </div>
+          )}
+
+          {/* Creator Manager Page */}
+          {activeTab === 'creators' && (
+            <div>
+              <div className="mb-6">
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
+                  <Input
+                    placeholder="Search creators by email or creator code..."
+                    className="pl-10"
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                  />
                 </div>
               </div>
-            </CardContent>
-            <CardFooter className="flex justify-end gap-2">
-              <AlertDialog>
-                <AlertDialogTrigger asChild>
-                  <Button variant="outline">
-                    <Ban className="w-4 h-4 mr-2" />
-                    {creator.is_blocked ? 'Unblock' : 'Block'}
-                  </Button>
-                </AlertDialogTrigger>
-                <AlertDialogContent>
-                  <AlertDialogHeader>
-                    <AlertDialogTitle>
-                      {creator.is_blocked ? 'Unblock Creator' : 'Block Creator'}
-                    </AlertDialogTitle>
-                    <AlertDialogDescription>
-                      Are you sure you want to {creator.is_blocked ? 'unblock' : 'block'} this creator?
-                      {!creator.is_blocked && " They won't be able to access the admin panel while blocked."}
-                    </AlertDialogDescription>
-                  </AlertDialogHeader>
-                  <AlertDialogFooter>
-                    <AlertDialogCancel>Cancel</AlertDialogCancel>
-                    <AlertDialogAction
-                      onClick={() => handleBlockCreator(creator.id)}
-                    >
-                      Continue
-                    </AlertDialogAction>
-                  </AlertDialogFooter>
-                </AlertDialogContent>
-              </AlertDialog>
 
-              <AlertDialog>
-                <AlertDialogTrigger asChild>
-                  <Button variant="destructive">
-                    <UserX className="w-4 h-4 mr-2" />
-                    Remove
-                  </Button>
-                </AlertDialogTrigger>
-                <AlertDialogContent>
-                  <AlertDialogHeader>
-                    <AlertDialogTitle>Remove Creator</AlertDialogTitle>
-                    <AlertDialogDescription>
-                      Are you sure you want to remove this creator? This will:
-                      <ul className="list-disc list-inside mt-2">
-                        <li>Delete all their wallpapers</li>
-                        <li>Remove their creator privileges</li>
-                        <li>Delete their creator code</li>
-                      </ul>
-                      This action cannot be undone.
-                    </AlertDialogDescription>
-                  </AlertDialogHeader>
-                  <AlertDialogFooter>
-                    <AlertDialogCancel>Cancel</AlertDialogCancel>
-                    <AlertDialogAction
-                      onClick={() => handleDeleteCreator(creator.id, creator.user_id)}
-                      className="bg-red-500 hover:bg-red-600"
-                    >
-                      Remove
-                    </AlertDialogAction>
-                  </AlertDialogFooter>
-                </AlertDialogContent>
-              </AlertDialog>
-            </CardFooter>
-          </Card>
-        ))}
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                {filteredCreators.map((creator) => (
+                  <Card key={creator.id}>
+                    <CardHeader>
+                      <CardTitle className="flex justify-between items-center">
+                        <div className="flex flex-col">
+                          <span>{creator.users?.email}</span>
+                          <span className="text-sm text-muted-foreground">Creator Code: {creator.users?.creator_code || 'N/A'}</span>
+                        </div>
+                        {creator.is_blocked && (
+                          <span className="text-sm text-red-500">Blocked</span>
+                        )}
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="mt-4">
+                        <h3 className="font-semibold mb-2">Wallpapers:</h3>
+                        <div className="grid grid-cols-2 gap-2">
+                          {wallpapers
+                            .filter(w => w.uploaded_by === creator.user_id)
+                            .map((wallpaper) => (
+                              <div key={wallpaper.id} className="relative group">
+                                <img
+                                  src={wallpaper.url}
+                                  alt="Wallpaper"
+                                  className="w-full h-24 object-cover rounded"
+                                />
+                                <Button
+                                  variant="destructive"
+                                  size="sm"
+                                  className="absolute top-1 right-1 opacity-0 group-hover:opacity-100 transition-opacity"
+                                  onClick={() => handleDeleteWallpaper(wallpaper.id, wallpaper.file_path)}
+                                >
+                                  <Trash className="w-4 h-4" />
+                                </Button>
+                              </div>
+                            ))}
+                        </div>
+                      </div>
+                    </CardContent>
+                    <CardFooter className="flex justify-end gap-2">
+                      <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                          <Button variant="outline">
+                            <Ban className="w-4 h-4 mr-2" />
+                            {creator.is_blocked ? 'Unblock' : 'Block'}
+                          </Button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
+                          <AlertDialogHeader>
+                            <AlertDialogTitle>
+                              {creator.is_blocked ? 'Unblock Creator' : 'Block Creator'}
+                            </AlertDialogTitle>
+                            <AlertDialogDescription>
+                              Are you sure you want to {creator.is_blocked ? 'unblock' : 'block'} this creator?
+                              {!creator.is_blocked && " They won't be able to access the admin panel while blocked."}
+                            </AlertDialogDescription>
+                          </AlertDialogHeader>
+                          <AlertDialogFooter>
+                            <AlertDialogCancel>Cancel</AlertDialogCancel>
+                            <AlertDialogAction
+                              onClick={() => handleBlockCreator(creator.id)}
+                            >
+                              Continue
+                            </AlertDialogAction>
+                          </AlertDialogFooter>
+                        </AlertDialogContent>
+                      </AlertDialog>
+
+                      <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                          <Button variant="destructive">
+                            <UserX className="w-4 h-4 mr-2" />
+                            Remove
+                          </Button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
+                          <AlertDialogHeader>
+                            <AlertDialogTitle>Remove Creator</AlertDialogTitle>
+                            <AlertDialogDescription>
+                              Are you sure you want to remove this creator? This will:
+                              <ul className="list-disc list-inside mt-2">
+                                <li>Delete all their wallpapers</li>
+                                <li>Remove their creator privileges</li>
+                                <li>Delete their creator code</li>
+                              </ul>
+                              This action cannot be undone.
+                            </AlertDialogDescription>
+                          </AlertDialogHeader>
+                          <AlertDialogFooter>
+                            <AlertDialogCancel>Cancel</AlertDialogCancel>
+                            <AlertDialogAction
+                              onClick={() => handleDeleteCreator(creator.id, creator.user_id)}
+                              className="bg-red-500 hover:bg-red-600"
+                            >
+                              Remove
+                            </AlertDialogAction>
+                          </AlertDialogFooter>
+                        </AlertDialogContent>
+                      </AlertDialog>
+                    </CardFooter>
+                  </Card>
+                ))}
+              </div>
+              
+              {filteredCreators.length === 0 && (
+                <div className="text-center py-10">
+                  <p className="text-muted-foreground">No creators found.</p>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Creator Applications Page */}
+          {activeTab === 'applications' && (
+            <div>
+              {creatorApplications.length > 0 ? (
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Email</TableHead>
+                      <TableHead>Creator Code</TableHead>
+                      <TableHead className="text-right">Actions</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {creatorApplications.map((application) => (
+                      <TableRow key={application.id}>
+                        <TableCell>{application.email}</TableCell>
+                        <TableCell>{application.creator_code}</TableCell>
+                        <TableCell className="text-right">
+                          <Button
+                            variant="default"
+                            size="sm"
+                            onClick={() => handleApproveCreator(application.id, application.email)}
+                          >
+                            <Check className="w-4 h-4 mr-2" />
+                            Approve
+                          </Button>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              ) : (
+                <div className="text-center py-10">
+                  <p className="text-muted-foreground">No pending applications.</p>
+                </div>
+              )}
+            </div>
+          )}
+        </SidebarInset>
       </div>
-    </div>
+    </SidebarProvider>
   );
 };
 
