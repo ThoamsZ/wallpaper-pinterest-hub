@@ -28,7 +28,8 @@ const CreatorDetail = () => {
   const [deleteAlertOpen, setDeleteAlertOpen] = useState(false);
   const [wallpaperToDelete, setWallpaperToDelete] = useState(null);
   const [deleteError, setDeleteError] = useState(null);
-  const [refreshKey, setRefreshKey] = useState(0); // Add a refresh key to force re-render
+  const [refreshKey, setRefreshKey] = useState(0);
+  const [creatorUserId, setCreatorUserId] = useState(null);
 
   // Convert fetchCreatorWallpapers to useCallback to prevent unnecessary re-renders
   const fetchCreatorWallpapers = useCallback(async () => {
@@ -46,6 +47,9 @@ const CreatorDetail = () => {
         console.error("Error fetching creator data:", creatorError);
         throw creatorError;
       }
+
+      // Store the creator's user_id for the redirect link
+      setCreatorUserId(creatorData.user_id);
 
       console.log("Looking for wallpapers with user_id:", creatorData.user_id);
       
@@ -158,6 +162,24 @@ const CreatorDetail = () => {
     setRefreshKey(prevKey => prevKey + 1);
   };
 
+  // New function to handle redirection to the creator's admin panel
+  const navigateToCreatorAdminPanel = () => {
+    if (creatorUserId) {
+      // Redirect to the creator's admin panel
+      navigate('/admin-panel', { state: { userId: creatorUserId } });
+      toast({
+        title: "Redirecting",
+        description: "Navigating to creator's admin panel",
+      });
+    } else {
+      toast({
+        title: "Error",
+        description: "Creator information not available",
+        variant: "destructive",
+      });
+    }
+  };
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
@@ -173,9 +195,17 @@ const CreatorDetail = () => {
           Back to Creators
         </Button>
         <h1 className="text-2xl font-bold">Creator Wallpapers</h1>
-        <Button variant="secondary" onClick={handleRefresh} disabled={isLoading}>
-          Refresh
-        </Button>
+        <div className="flex space-x-2">
+          <Button 
+            variant="primary" 
+            onClick={navigateToCreatorAdminPanel}
+          >
+            Go to Creator Admin Panel
+          </Button>
+          <Button variant="secondary" onClick={handleRefresh} disabled={isLoading}>
+            Refresh
+          </Button>
+        </div>
       </div>
 
       {wallpapers.length > 0 ? (
