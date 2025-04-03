@@ -14,21 +14,33 @@ export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABL
 // Helper function for checking if a table exists
 export const checkTableExists = async (tableName: string): Promise<boolean> => {
   try {
-    // The query will succeed even if table doesn't exist, so we check the error message
+    // Try a simple query with limit 0 to see if the table exists
     const { error } = await supabase
       .from(tableName)
-      .select('*')
-      .limit(0);
+      .select('count', { count: 'exact', head: true });
     
-    // If error code is 42P01, the table doesn't exist
-    if (error && error.code === '42P01') {
+    // If there's an error with code 42P01, the table doesn't exist
+    if (error && (error.code === '42P01' || error.message.includes('relation "public.' + tableName + '" does not exist'))) {
       console.log(`Table ${tableName} does not exist`);
       return false;
     }
     
+    // If we get here, the table exists
     return true;
-  } catch (error) {
+  } catch (error: any) {
+    // Log the error but don't throw it
     console.error(`Error checking if table ${tableName} exists:`, error);
+    
+    // If the error message indicates the table doesn't exist, return false
+    if (error.message && (
+      error.message.includes('42P01') || 
+      error.message.includes('relation') || 
+      error.message.includes('does not exist')
+    )) {
+      return false;
+    }
+    
+    // For other errors, assume the table might exist
     return false;
   }
 };

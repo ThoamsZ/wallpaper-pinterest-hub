@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -51,6 +52,7 @@ const CreatorDetail = () => {
   const [collections, setCollections] = useState<any[]>([]);
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [deleteItemId, setDeleteItemId] = useState<string | null>(null);
 
   useEffect(() => {
     checkAdminManagerStatus();
@@ -136,6 +138,8 @@ const CreatorDetail = () => {
     if (isDeleting) return;
     
     setIsDeleting(true);
+    setDeleteItemId(wallpaperId);
+    
     try {
       console.log("Starting wallpaper deletion process for:", wallpaperId);
       
@@ -144,17 +148,26 @@ const CreatorDetail = () => {
         .from('wallpapers')
         .select('id')
         .eq('id', wallpaperId)
-        .single();
+        .maybeSingle();
       
       if (wallpaperCheckError) {
         console.error("Wallpaper check error:", wallpaperCheckError);
         if (wallpaperCheckError.code === 'PGRST116') {
           // If wallpaper doesn't exist, we're done
           toast({ title: "Wallpaper already deleted" });
-          setIsDeleting(false);
           setWallpapers(prev => prev.filter(w => w.id !== wallpaperId));
+          setIsDeleting(false);
+          setDeleteItemId(null);
           return;
         }
+      }
+      
+      if (!wallpaperCheck) {
+        toast({ title: "Wallpaper already deleted or doesn't exist" });
+        setWallpapers(prev => prev.filter(w => w.id !== wallpaperId));
+        setIsDeleting(false);
+        setDeleteItemId(null);
+        return;
       }
       
       // Check if wallpaper_likes table exists
@@ -168,7 +181,7 @@ const CreatorDetail = () => {
             .delete()
             .eq('wallpaper_id', wallpaperId);
           
-          if (likesError) {
+          if (likesError && likesError.code !== '42P01') {
             console.error("Error removing from wallpaper_likes:", likesError);
           } else {
             console.log("Removed from wallpaper_likes");
@@ -188,7 +201,7 @@ const CreatorDetail = () => {
           .delete()
           .eq('wallpaper_id', wallpaperId);
 
-        if (collectionWallpapersError) {
+        if (collectionWallpapersError && collectionWallpapersError.code !== '42P01') {
           console.error("Error removing from collection_wallpapers:", collectionWallpapersError);
         } else {
           console.log("Removed from collection_wallpapers");
@@ -209,7 +222,7 @@ const CreatorDetail = () => {
             .delete()
             .eq('wallpaper_id', wallpaperId);
           
-          if (vipWallpapersError) {
+          if (vipWallpapersError && vipWallpapersError.code !== '42P01') {
             console.error("Error removing from vip_wallpapers:", vipWallpapersError);
           } else {
             console.log("Removed from vip_wallpapers");
@@ -224,14 +237,29 @@ const CreatorDetail = () => {
 
       // Delete the file from storage
       try {
-        const { error: storageError } = await supabase.storage
+        // First, check if the file exists
+        const { data: fileData, error: fileCheckError } = await supabase.storage
           .from('wallpapers')
-          .remove([filePath]);
+          .list(filePath.split('/')[0], {
+            search: filePath.split('/')[1]
+          });
 
-        if (storageError) {
-          console.error("Error deleting from storage:", storageError);
+        if (fileCheckError) {
+          console.error("Error checking file existence:", fileCheckError);
+        }
+        
+        if (fileData && fileData.length > 0) {
+          const { error: storageError } = await supabase.storage
+            .from('wallpapers')
+            .remove([filePath]);
+
+          if (storageError) {
+            console.error("Error deleting from storage:", storageError);
+          } else {
+            console.log("Removed file from storage:", filePath);
+          }
         } else {
-          console.log("Removed file from storage:", filePath);
+          console.log("File doesn't exist in storage or already deleted:", filePath);
         }
       } catch (error) {
         console.error("Exception deleting from storage:", error);
@@ -253,7 +281,7 @@ const CreatorDetail = () => {
               read: false
             });
 
-          if (notificationError) {
+          if (notificationError && notificationError.code !== '42P01') {
             console.error("Error creating notification:", notificationError);
           } else {
             console.log("Created notification for creator");
@@ -304,6 +332,7 @@ const CreatorDetail = () => {
       });
     } finally {
       setIsDeleting(false);
+      setDeleteItemId(null);
     }
   };
 
@@ -311,6 +340,8 @@ const CreatorDetail = () => {
     if (isDeleting) return;
     
     setIsDeleting(true);
+    setDeleteItemId(collectionId);
+    
     try {
       console.log("Starting collection deletion process for:", collectionId);
       
@@ -319,17 +350,26 @@ const CreatorDetail = () => {
         .from('collections')
         .select('id')
         .eq('id', collectionId)
-        .single();
+        .maybeSingle();
       
       if (collectionCheckError) {
         console.error("Collection check error:", collectionCheckError);
         if (collectionCheckError.code === 'PGRST116') {
           // If collection doesn't exist, we're done
           toast({ title: "Collection already deleted" });
-          setIsDeleting(false);
           setCollections(prev => prev.filter(c => c.id !== collectionId));
+          setIsDeleting(false);
+          setDeleteItemId(null);
           return;
         }
+      }
+      
+      if (!collectionCheck) {
+        toast({ title: "Collection already deleted or doesn't exist" });
+        setCollections(prev => prev.filter(c => c.id !== collectionId));
+        setIsDeleting(false);
+        setDeleteItemId(null);
+        return;
       }
       
       // Remove from collection_wallpapers
@@ -339,7 +379,7 @@ const CreatorDetail = () => {
           .delete()
           .eq('collection_id', collectionId);
 
-        if (collectionWallpapersError) {
+        if (collectionWallpapersError && collectionWallpapersError.code !== '42P01') {
           console.error("Error removing from collection_wallpapers:", collectionWallpapersError);
         } else {
           console.log("Removed from collection_wallpapers");
@@ -360,7 +400,7 @@ const CreatorDetail = () => {
             .delete()
             .eq('collection_id', collectionId);
 
-          if (likesError) {
+          if (likesError && likesError.code !== '42P01') {
             console.error("Error removing from collection_likes:", likesError);
           } else {
             console.log("Removed from collection_likes");
@@ -407,6 +447,7 @@ const CreatorDetail = () => {
       });
     } finally {
       setIsDeleting(false);
+      setDeleteItemId(null);
     }
   };
 
@@ -508,9 +549,13 @@ const CreatorDetail = () => {
                       <TableCell className="text-right">
                         <AlertDialog>
                           <AlertDialogTrigger asChild>
-                            <Button variant="destructive" size="sm" disabled={isDeleting}>
+                            <Button 
+                              variant="destructive" 
+                              size="sm" 
+                              disabled={isDeleting && deleteItemId === wallpaper.id}
+                            >
                               <Trash className="w-4 h-4 mr-2" />
-                              {isDeleting ? "Deleting..." : "Delete"}
+                              {isDeleting && deleteItemId === wallpaper.id ? "Deleting..." : "Delete"}
                             </Button>
                           </AlertDialogTrigger>
                           <AlertDialogContent>
@@ -568,9 +613,13 @@ const CreatorDetail = () => {
                       <TableCell className="text-right">
                         <AlertDialog>
                           <AlertDialogTrigger asChild>
-                            <Button variant="destructive" size="sm" disabled={isDeleting}>
+                            <Button 
+                              variant="destructive" 
+                              size="sm" 
+                              disabled={isDeleting && deleteItemId === collection.id}
+                            >
                               <Trash className="w-4 h-4 mr-2" />
-                              {isDeleting ? "Deleting..." : "Delete"}
+                              {isDeleting && deleteItemId === collection.id ? "Deleting..." : "Delete"}
                             </Button>
                           </AlertDialogTrigger>
                           <AlertDialogContent>
