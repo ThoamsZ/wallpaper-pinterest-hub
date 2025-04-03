@@ -1,3 +1,4 @@
+
 import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
 import { createContext, useContext, useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
@@ -18,6 +19,7 @@ import Upload from "@/pages/Upload";
 import Subscription from "@/pages/Subscription";
 import Policy from "@/pages/Policy";
 import WallpaperPage from "@/pages/WallpaperPage";
+import WallpaperControl from "@/pages/WallpaperControl";
 import { Toaster } from "@/components/ui/sonner";
 
 import "./App.css";
@@ -126,6 +128,7 @@ function App() {
             <Route path="/subscription" element={<Subscription />} />
             <Route path="/policy" element={<Policy />} />
             <Route path="/wallpaper/:id" element={<WallpaperPage />} />
+            <Route path="/wallpaper-control" element={<WallpaperControl />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
           <Toaster />
