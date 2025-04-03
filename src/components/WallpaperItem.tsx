@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useRef, memo } from "react";
 import { useIsMobile } from "@/hooks/use-mobile";
 import type { Wallpaper } from "@/hooks/use-wallpapers";
@@ -6,6 +5,7 @@ import { useInView } from "react-intersection-observer";
 import { Button } from "@/components/ui/button";
 import { Link } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
+import { useNavigate } from "react-router-dom";
 
 interface WallpaperItemProps {
   wallpaper: Wallpaper;
@@ -21,6 +21,7 @@ const WallpaperItem = memo(({ wallpaper, onSelect }: WallpaperItemProps) => {
     threshold: 0,
     rootMargin: "50px",
   });
+  const navigate = useNavigate();
 
   // Disable F12 and other keyboard shortcuts
   useEffect(() => {
@@ -76,7 +77,7 @@ const WallpaperItem = memo(({ wallpaper, onSelect }: WallpaperItemProps) => {
       className="wallpaper-item relative cursor-pointer transform transition-transform duration-200 hover:z-10"
       onMouseEnter={() => !isMobile && setIsHovered(true)}
       onMouseLeave={() => !isMobile && setIsHovered(false)}
-      onClick={() => onSelect(wallpaper)}
+      onClick={() => navigate(`/wallpaper/${wallpaper.id}`)}
       onContextMenu={handleContextMenu}
     >
       <div className="relative group overflow-hidden rounded-lg">
@@ -122,4 +123,3 @@ const WallpaperItem = memo(({ wallpaper, onSelect }: WallpaperItemProps) => {
 WallpaperItem.displayName = 'WallpaperItem';
 
 export default WallpaperItem;
-

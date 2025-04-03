@@ -1,4 +1,3 @@
-
 import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
 import { createContext, useContext, useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
@@ -18,19 +17,17 @@ import NotFound from "@/pages/NotFound";
 import Upload from "@/pages/Upload";
 import Subscription from "@/pages/Subscription";
 import Policy from "@/pages/Policy";
+import WallpaperPage from "@/pages/WallpaperPage";
 import { Toaster } from "@/components/ui/sonner";
 
 import "./App.css";
 
-// Define AuthContext type
 interface AuthContextType {
   session: any | null;
 }
 
-// Create AuthContext
 const AuthContext = createContext<AuthContextType | null>(null);
 
-// Custom Hook for accessing AuthContext
 export const useAuth = () => {
   const context = useContext(AuthContext);
   if (!context) {
@@ -39,7 +36,6 @@ export const useAuth = () => {
   return context;
 };
 
-// AuthProvider component
 function AuthProvider({ children }: { children: React.ReactNode }) {
   const [session, setSession] = useState<any | null>(null);
   const [isInitializing, setIsInitializing] = useState(true);
@@ -47,12 +43,10 @@ function AuthProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     const initializeAuth = async () => {
       try {
-        // Check for existing session
         const { data, error } = await supabase.auth.getSession();
         
         if (error) {
           console.error("Session retrieval error:", error);
-          // Clear any invalid session data
           await supabase.auth.signOut();
         }
         
@@ -60,7 +54,6 @@ function AuthProvider({ children }: { children: React.ReactNode }) {
           console.log("Existing session found:", data.session.user.email);
           setSession(data.session);
         } else {
-          // If no session exists, try to sign in as guest
           console.log("No session found, attempting guest login");
           const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
             email: 'guest@wallpaperhub.com',
@@ -80,7 +73,6 @@ function AuthProvider({ children }: { children: React.ReactNode }) {
           }
         }
 
-        // Listen for auth state changes
         const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, newSession) => {
           console.log("Auth state changed:", event, newSession?.user?.email);
           setSession(newSession);
@@ -100,7 +92,6 @@ function AuthProvider({ children }: { children: React.ReactNode }) {
     initializeAuth();
   }, []);
 
-  // Show loading state while initializing
   if (isInitializing) {
     return (
       <div className="flex items-center justify-center min-h-screen">
@@ -116,7 +107,6 @@ function AuthProvider({ children }: { children: React.ReactNode }) {
   );
 }
 
-// App component
 function App() {
   return (
     <ThemeProvider attribute="class" defaultTheme="dark" enableSystem>
@@ -135,6 +125,7 @@ function App() {
             <Route path="/upload" element={<Upload />} />
             <Route path="/subscription" element={<Subscription />} />
             <Route path="/policy" element={<Policy />} />
+            <Route path="/wallpaper/:id" element={<WallpaperPage />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
           <Toaster />
