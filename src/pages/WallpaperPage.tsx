@@ -4,14 +4,14 @@ import { useWallpaperDetails } from "@/hooks/use-wallpaper-details";
 import { useWallpaperLikes } from "@/hooks/use-wallpaper-likes";
 import { useDownloadLimits } from "@/hooks/use-download-limits";
 import { Button } from "@/components/ui/button";
-import { Heart, Download, Link, ArrowLeft } from "lucide-react";
+import { Heart, Download, Link as LinkIcon, ArrowLeft, User } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import WallpaperGrid from "@/components/WallpaperGrid";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/App";
 import { useQueryClient } from "@tanstack/react-query";
@@ -25,6 +25,7 @@ const WallpaperPage = () => {
   const [isDownloading, setIsDownloading] = useState(false);
   const { likedWallpapers, handleLike } = useWallpaperLikes();
   const { downloadsRemaining, decrementDownloads } = useDownloadLimits();
+  const [creatorInfo, setCreatorInfo] = useState<{ creator_code: string | null } | null>(null);
   
   const { 
     wallpaper, 
@@ -35,6 +36,28 @@ const WallpaperPage = () => {
   } = useWallpaperDetails(id);
 
   const isLiked = wallpaper ? likedWallpapers.includes(wallpaper.id) : false;
+
+  // Fetch creator info when wallpaper data is available
+  useEffect(() => {
+    const fetchCreatorInfo = async () => {
+      if (!wallpaper?.uploaded_by) return;
+      
+      const { data, error } = await supabase
+        .from('users')
+        .select('creator_code')
+        .eq('id', wallpaper.uploaded_by)
+        .maybeSingle();
+      
+      if (error) {
+        console.error('Error fetching creator info:', error);
+        return;
+      }
+      
+      setCreatorInfo(data);
+    };
+    
+    fetchCreatorInfo();
+  }, [wallpaper]);
 
   // Handle back button navigation
   const handleBackNavigation = () => {
@@ -199,6 +222,21 @@ const WallpaperPage = () => {
 
               {/* Right Sidebar */}
               <div className="w-full md:w-64 space-y-6">
+                {/* Creator Info */}
+                {creatorInfo?.creator_code && (
+                  <div>
+                    <h2 className="text-lg font-medium mb-2">Uploaded By</h2>
+                    <Button
+                      variant="outline"
+                      className="flex items-center gap-2 w-full justify-start"
+                      onClick={() => navigate(`/creator/${creatorInfo.creator_code}`)}
+                    >
+                      <User className="h-4 w-4" />
+                      <span>{creatorInfo.creator_code}</span>
+                    </Button>
+                  </div>
+                )}
+
                 {/* Tags */}
                 <div>
                   <h2 className="text-lg font-medium mb-2">Tags</h2>
@@ -246,7 +284,7 @@ const WallpaperPage = () => {
                     className="w-full justify-start gap-2"
                     onClick={copyLinkToClipboard}
                   >
-                    <Link className="h-5 w-5" />
+                    <LinkIcon className="h-5 w-5" />
                     Share
                   </Button>
                 </div>
