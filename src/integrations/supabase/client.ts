@@ -14,15 +14,19 @@ export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABL
 // Helper function for checking if a table exists
 export const checkTableExists = async (tableName: string): Promise<boolean> => {
   try {
-    // Try to get a single row from the table with a limit 0
-    // If the table doesn't exist, this will throw an error
-    const { data, error } = await supabase
+    // The query will succeed even if table doesn't exist, so we check the error message
+    const { error } = await supabase
       .from(tableName)
       .select('*')
       .limit(0);
     
-    // If there's no error, the table exists
-    return !error;
+    // If error code is 42P01, the table doesn't exist
+    if (error && error.code === '42P01') {
+      console.log(`Table ${tableName} does not exist`);
+      return false;
+    }
+    
+    return true;
   } catch (error) {
     console.error(`Error checking if table ${tableName} exists:`, error);
     return false;
