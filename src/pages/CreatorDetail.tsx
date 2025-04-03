@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -148,9 +149,10 @@ const CreatorDetail = () => {
         .from('wallpapers')
         .select('id')
         .eq('id', wallpaperId)
-        .single();
+        .maybeSingle();
       
       if (wallpaperCheckError) {
+        console.error("Wallpaper check error:", wallpaperCheckError);
         if (wallpaperCheckError.code === 'PGRST116') {
           console.log("Wallpaper already deleted");
           setWallpapers(prev => prev.filter(w => w.id !== wallpaperId));
@@ -166,6 +168,21 @@ const CreatorDetail = () => {
           return;
         }
         throw wallpaperCheckError;
+      }
+      
+      if (!wallpaperExists) {
+        console.log("Wallpaper doesn't exist");
+        setWallpapers(prev => prev.filter(w => w.id !== wallpaperId));
+        if (selectedImage === wallpaperUrl) {
+          setSelectedImage(null);
+        }
+        toast({ 
+          title: "Info", 
+          description: "This wallpaper doesn't exist" 
+        });
+        setIsDeleting(false);
+        setDeleteItemId(null);
+        return;
       }
       
       // Step 2: Delete file from storage

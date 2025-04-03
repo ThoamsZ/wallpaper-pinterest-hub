@@ -33,6 +33,7 @@ export const AdminManagerAuth = ({ setIsLoggedIn }: AdminManagerAuthProps) => {
       }
 
       console.log("Sign in successful, checking admin status");
+      console.log("User ID:", signInData.session?.user.id);
 
       const { data: adminData, error: adminError } = await supabase
         .from('admin_users')
@@ -40,6 +41,8 @@ export const AdminManagerAuth = ({ setIsLoggedIn }: AdminManagerAuthProps) => {
         .eq('user_id', signInData.session?.user.id)
         .maybeSingle();
 
+      console.log("Admin data retrieved:", adminData);
+      
       if (adminError) {
         console.error("Admin check error:", adminError);
         throw adminError;
@@ -47,6 +50,7 @@ export const AdminManagerAuth = ({ setIsLoggedIn }: AdminManagerAuthProps) => {
 
       if (!adminData || adminData.admin_type !== 'admin_manager') {
         console.error("Access denied: Not an admin manager");
+        console.log("Admin type found:", adminData?.admin_type);
         await supabase.auth.signOut();
         throw new Error("Access denied. This page is only for admin managers.");
       }

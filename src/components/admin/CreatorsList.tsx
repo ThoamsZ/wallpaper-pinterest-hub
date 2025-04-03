@@ -137,7 +137,7 @@ export const CreatorsList = ({ navigate }: CreatorsListProps) => {
 
   const deleteWallpaper = async (wallpaperId: string, filePath: string) => {
     try {
-      console.log("Deleting wallpaper:", wallpaperId);
+      console.log("Starting wallpaper deletion process for:", wallpaperId);
       
       // Step 1: Verify wallpaper exists before deletion
       const { data: wallpaperExists, error: wallpaperCheckError } = await supabase
@@ -147,69 +147,100 @@ export const CreatorsList = ({ navigate }: CreatorsListProps) => {
         .single();
       
       if (wallpaperCheckError) {
+        console.error("Wallpaper check error:", wallpaperCheckError);
         if (wallpaperCheckError.code === 'PGRST116') {
           console.log("Wallpaper already deleted");
-          return;
+          return true;
         }
         throw wallpaperCheckError;
       }
       
-      if (!wallpaperExists) {
-        console.log("Wallpaper doesn't exist");
-        return;
-      }
-      
       // Step 2: Delete file from storage
       if (filePath) {
+        console.log("Deleting file from storage:", filePath);
         const deleted = await deleteFileFromStorage(filePath);
         console.log("Storage file deletion result:", deleted ? "Success" : "Failed");
       }
       
       // Step 3: Update user favorites
-      const { data: usersWithFavorite } = await supabase
+      console.log("Removing from user favorites...");
+      const { data: usersWithFavorite, error: favoritesError } = await supabase
         .from('users')
         .select('id, favor_image')
         .filter('favor_image', 'cs', `{${wallpaperId}}`);
       
-      if (usersWithFavorite && usersWithFavorite.length > 0) {
-        for (const user of usersWithFavorite) {
-          const updatedFavorites = (user.favor_image || []).filter(id => id !== wallpaperId);
-          
-          await supabase
-            .from('users')
-            .update({ favor_image: updatedFavorites })
-            .eq('id', user.id);
+      if (favoritesError) {
+        console.error("Error finding users with favorite:", favoritesError);
+      } else {
+        console.log(`Found ${usersWithFavorite?.length || 0} users with this wallpaper in favorites`);
+        
+        if (usersWithFavorite && usersWithFavorite.length > 0) {
+          for (const user of usersWithFavorite) {
+            const updatedFavorites = (user.favor_image || []).filter(id => id !== wallpaperId);
+            
+            const { error: updateError } = await supabase
+              .from('users')
+              .update({ favor_image: updatedFavorites })
+              .eq('id', user.id);
+            
+            if (updateError) {
+              console.error(`Error updating favorites for user ${user.id}:`, updateError);
+            } else {
+              console.log(`Updated favorites for user ${user.id}`);
+            }
+          }
         }
       }
       
       // Step 4: Remove from collections
-      await supabase
+      console.log("Removing from collections...");
+      const { error: collectionError } = await supabase
         .from('collection_wallpapers')
         .delete()
         .eq('wallpaper_id', wallpaperId);
       
+      if (collectionError) {
+        console.error("Error removing from collections:", collectionError);
+      } else {
+        console.log("Successfully removed from collections");
+      }
+      
       // Step 5: Check for VIP wallpapers table and remove if exists
+      console.log("Checking for VIP wallpapers table...");
       const vipTableExists = await checkTableExists('vip_wallpapers');
       
       if (vipTableExists) {
-        await supabase
+        console.log("VIP wallpapers table exists, removing wallpaper...");
+        const { error: vipError } = await supabase
           .from('vip_wallpapers')
           .delete()
           .eq('wallpaper_id', wallpaperId);
+        
+        if (vipError) {
+          console.error("Error removing from VIP wallpapers:", vipError);
+        } else {
+          console.log("Successfully removed from VIP wallpapers");
+        }
+      } else {
+        console.log("VIP wallpapers table doesn't exist, skipping");
       }
       
       // Step 6: Delete from wallpapers table
+      console.log("Deleting wallpaper from database...");
       const { error: deleteError } = await supabase
         .from('wallpapers')
         .delete()
         .eq('id', wallpaperId);
       
-      if (deleteError) throw deleteError;
+      if (deleteError) {
+        console.error("Error deleting wallpaper:", deleteError);
+        throw deleteError;
+      }
       
       console.log("Successfully deleted wallpaper");
       return true;
     } catch (error) {
-      console.error("Wallpaper deletion error:", error);
+      console.error("Full wallpaper deletion error:", error);
       return false;
     }
   };
@@ -233,13 +264,17 @@ export const CreatorsList = ({ navigate }: CreatorsListProps) => {
 
       console.log('Found wallpapers:', creatorWallpapers?.length || 0);
 
+      // Delete each wallpaper and all associated data
+      let successCount = 0;
       if (creatorWallpapers && creatorWallpapers.length > 0) {
         for (const wallpaper of creatorWallpapers) {
-          await deleteWallpaper(wallpaper.id, wallpaper.file_path);
+          const deleted = await deleteWallpaper(wallpaper.id, wallpaper.file_path);
+          if (deleted) successCount++;
         }
-        console.log('Deleted all wallpapers');
+        console.log(`Deleted ${successCount} of ${creatorWallpapers.length} wallpapers`);
       }
 
+      // Delete collections created by this user
       const { error: deleteCollectionsError } = await supabase
         .from('collections')
         .delete()
@@ -252,6 +287,7 @@ export const CreatorsList = ({ navigate }: CreatorsListProps) => {
 
       console.log('Deleted collections');
 
+      // Remove admin status
       const { error: adminError } = await supabase
         .from('admin_users')
         .delete()
@@ -264,6 +300,7 @@ export const CreatorsList = ({ navigate }: CreatorsListProps) => {
 
       console.log('Deleted admin status');
 
+      // Update user record, remove creator code
       const { error: userError } = await supabase
         .from('users')
         .update({ creator_code: null })
@@ -276,6 +313,7 @@ export const CreatorsList = ({ navigate }: CreatorsListProps) => {
 
       console.log('Updated user, removed creator code');
 
+      // Update UI
       setCreators(prev => prev.filter(creator => creator.id !== adminId));
       setWallpapers(prev => prev.filter(w => w.uploaded_by !== userId));
 
