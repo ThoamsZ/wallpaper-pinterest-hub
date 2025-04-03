@@ -141,9 +141,6 @@ const Upload = () => {
         const { data: { publicUrl } } = supabase.storage
           .from('wallpapers')
           .getPublicUrl(filePath);
-
-        // Store the original filename in the metadata
-        const originalFilename = file.name;
         
         const { error: dbError } = await supabase
           .from('wallpapers')
@@ -153,8 +150,8 @@ const Upload = () => {
             file_path: filePath,
             type: imageType,
             tags: tagArray,
-            uploaded_by: userId,
-            original_filename: originalFilename  // Store the original filename if needed
+            uploaded_by: userId
+            // Remove the original_filename field as it doesn't exist in the schema
           });
 
         if (dbError) {
