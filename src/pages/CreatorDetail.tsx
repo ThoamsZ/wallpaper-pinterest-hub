@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Button } from "@/components/ui/button";
@@ -200,10 +199,7 @@ const CreatorDetail = () => {
           description: "The wallpaper has been successfully deleted.",
         });
         
-        // Update local state to remove the deleted wallpaper
-        setWallpapers(prevWallpapers => {
-          return prevWallpapers.filter(w => w.id !== wallpaperId);
-        });
+        setWallpapers(prevWallpapers => prevWallpapers.filter(w => w.id !== wallpaperId));
       } else {
         toast({
           title: "Error",
@@ -215,7 +211,7 @@ const CreatorDetail = () => {
       console.error("Error in wallpaper deletion:", error);
       toast({
         title: "Error",
-        description: error?.message || "An unexpected error occurred during deletion.",
+        description: "An unexpected error occurred during deletion.",
         variant: "destructive",
       });
     }
