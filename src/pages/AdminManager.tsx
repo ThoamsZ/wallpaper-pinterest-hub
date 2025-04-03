@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -126,7 +125,6 @@ const AdminManager = () => {
 
   const fetchStatsData = async () => {
     try {
-      // Fetch total downloads
       const { data: downloadData, error: downloadError } = await supabase
         .from('wallpapers')
         .select('download_count')
@@ -136,7 +134,6 @@ const AdminManager = () => {
 
       const totalDownloads = downloadData.reduce((sum, item) => sum + (item.download_count || 0), 0);
 
-      // Fetch total purchases
       const { data: purchaseData, error: purchaseError } = await supabase
         .from('paypal_orders')
         .select('*')
@@ -144,19 +141,13 @@ const AdminManager = () => {
 
       if (purchaseError) throw purchaseError;
 
-      // Fetch today's downloads (placeholder - would need a downloads log table to be accurate)
-      // This is just calculating 5% of total as a placeholder
       const todayDownloads = Math.round(totalDownloads * 0.05);
 
-      // Fetch today's purchases
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
-      
       const { data: todayPurchaseData, error: todayPurchaseError } = await supabase
         .from('paypal_orders')
         .select('*')
         .eq('status', 'completed')
-        .gte('created_at', today.toISOString());
+        .gte('created_at', new Date().toISOString());
 
       if (todayPurchaseError) throw todayPurchaseError;
 
@@ -197,7 +188,6 @@ const AdminManager = () => {
 
       setCreators(formattedAdminUsers);
 
-      // Fetch wallpapers for each creator
       const wallpapersPromises = adminUsers.map((admin: any) =>
         supabase
           .from('wallpapers')
@@ -219,7 +209,6 @@ const AdminManager = () => {
 
   const fetchCreatorApplications = async () => {
     try {
-      // Get all users with creator_code but who are not yet in admin_users table
       const { data: userApplications, error: usersError } = await supabase
         .from('users')
         .select('id, email, creator_code')
@@ -234,7 +223,6 @@ const AdminManager = () => {
 
       const userIds = userApplications.map(user => user.id);
 
-      // Check which users are already admins
       const { data: existingAdmins, error: adminsError } = await supabase
         .from('admin_users')
         .select('user_id')
@@ -242,7 +230,6 @@ const AdminManager = () => {
 
       if (adminsError) throw adminsError;
 
-      // Filter out users who are already admins
       const existingAdminIds = existingAdmins?.map(admin => admin.user_id) || [];
       const pendingApplications = userApplications.filter(
         user => !existingAdminIds.includes(user.id)
@@ -303,14 +290,12 @@ const AdminManager = () => {
 
   const handleDeleteWallpaper = async (wallpaperId: string, filePath: string) => {
     try {
-      // Delete from storage
       const { error: storageError } = await supabase.storage
         .from('wallpapers')
         .remove([filePath]);
 
       if (storageError) throw storageError;
 
-      // Delete from database
       const { error: dbError } = await supabase
         .from('wallpapers')
         .delete()
@@ -366,7 +351,6 @@ const AdminManager = () => {
     try {
       console.log('Deleting creator:', { adminId, userId });
 
-      // First fetch all wallpapers by this creator
       const { data: creatorWallpapers, error: wallpapersError } = await supabase
         .from('wallpapers')
         .select('*')
@@ -379,11 +363,9 @@ const AdminManager = () => {
 
       console.log('Found wallpapers:', creatorWallpapers);
 
-      // Delete wallpapers from collections first
       if (creatorWallpapers && creatorWallpapers.length > 0) {
         const wallpaperIds = creatorWallpapers.map(w => w.id);
         
-        // Delete from collection_wallpapers
         const { error: collectionWallpapersError } = await supabase
           .from('collection_wallpapers')
           .delete()
@@ -396,7 +378,6 @@ const AdminManager = () => {
 
         console.log('Deleted wallpapers from collections');
 
-        // Delete files from storage
         const filePaths = creatorWallpapers.map(w => w.file_path);
         const { error: storageError } = await supabase.storage
           .from('wallpapers')
@@ -409,7 +390,6 @@ const AdminManager = () => {
 
         console.log('Deleted files from storage');
 
-        // Delete wallpapers from database
         const { error: deleteWallpapersError } = await supabase
           .from('wallpapers')
           .delete()
@@ -423,7 +403,6 @@ const AdminManager = () => {
         console.log('Deleted wallpapers from database');
       }
 
-      // Delete collections created by this user
       const { error: deleteCollectionsError } = await supabase
         .from('collections')
         .delete()
@@ -436,7 +415,6 @@ const AdminManager = () => {
 
       console.log('Deleted collections');
 
-      // Remove admin status
       const { error: adminError } = await supabase
         .from('admin_users')
         .delete()
@@ -449,7 +427,6 @@ const AdminManager = () => {
 
       console.log('Deleted admin status');
 
-      // Update user to remove creator code
       const { error: userError } = await supabase
         .from('users')
         .update({ creator_code: null })
@@ -481,7 +458,6 @@ const AdminManager = () => {
 
   const handleApproveCreator = async (userId: string, email: string) => {
     try {
-      // Add user to admin_users table
       const { error: adminError } = await supabase
         .from('admin_users')
         .insert({
@@ -492,7 +468,6 @@ const AdminManager = () => {
 
       if (adminError) throw adminError;
 
-      // Remove from applications list
       setCreatorApplications(prev => prev.filter(app => app.id !== userId));
 
       toast({
@@ -500,7 +475,6 @@ const AdminManager = () => {
         description: `Creator ${email} approved successfully`,
       });
       
-      // Refresh applications list
       fetchCreatorApplications();
     } catch (error: any) {
       toast({
@@ -625,7 +599,6 @@ const AdminManager = () => {
             </Button>
           </div>
 
-          {/* Stats Page */}
           {activeTab === 'stats' && (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <Card>
@@ -666,7 +639,6 @@ const AdminManager = () => {
             </div>
           )}
 
-          {/* Creator Manager Page */}
           {activeTab === 'creators' && (
             <div>
               <div className="mb-6">
@@ -698,26 +670,10 @@ const AdminManager = () => {
                     <CardContent>
                       <div className="mt-4">
                         <h3 className="font-semibold mb-2">Wallpapers:</h3>
-                        <div className="grid grid-cols-2 gap-2">
-                          {wallpapers
-                            .filter(w => w.uploaded_by === creator.user_id)
-                            .map((wallpaper) => (
-                              <div key={wallpaper.id} className="relative group">
-                                <img
-                                  src={wallpaper.url}
-                                  alt="Wallpaper"
-                                  className="w-full h-24 object-cover rounded"
-                                />
-                                <Button
-                                  variant="destructive"
-                                  size="sm"
-                                  className="absolute top-1 right-1 opacity-0 group-hover:opacity-100 transition-opacity"
-                                  onClick={() => handleDeleteWallpaper(wallpaper.id, wallpaper.file_path)}
-                                >
-                                  <Trash className="w-4 h-4" />
-                                </Button>
-                              </div>
-                            ))}
+                        <div className="p-4 border rounded-md bg-muted/30">
+                          <p className="text-muted-foreground">
+                            {wallpapers.filter(w => w.uploaded_by === creator.user_id).length} wallpapers uploaded
+                          </p>
                         </div>
                       </div>
                     </CardContent>
@@ -794,7 +750,6 @@ const AdminManager = () => {
             </div>
           )}
 
-          {/* Creator Applications Page */}
           {activeTab === 'applications' && (
             <div>
               {creatorApplications.length > 0 ? (
