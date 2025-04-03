@@ -170,12 +170,10 @@ const CreatorDetail = () => {
         return;
       }
       
-      // Check if wallpaper_likes table exists
-      const wallpaperLikesExists = await checkTableExists('wallpaper_likes');
-      
-      // Remove from wallpaper_likes if the table exists
-      if (wallpaperLikesExists) {
-        try {
+      // Handle wallpaper_likes table
+      try {
+        const wallpaperLikesExists = await checkTableExists('wallpaper_likes');
+        if (wallpaperLikesExists) {
           const { error: likesError } = await supabase
             .from('wallpaper_likes')
             .delete()
@@ -186,15 +184,15 @@ const CreatorDetail = () => {
           } else {
             console.log("Removed from wallpaper_likes");
           }
-        } catch (error) {
-          console.error("Exception removing from wallpaper_likes:", error);
-          // Continue execution even if this fails
+        } else {
+          console.log("wallpaper_likes table doesn't exist, skipping");
         }
-      } else {
-        console.log("wallpaper_likes table doesn't exist, skipping");
+      } catch (error) {
+        console.error("Exception handling wallpaper_likes:", error);
+        // Continue execution
       }
 
-      // Remove from collection_wallpapers
+      // Handle collection_wallpapers
       try {
         const { error: collectionWallpapersError } = await supabase
           .from('collection_wallpapers')
@@ -207,16 +205,14 @@ const CreatorDetail = () => {
           console.log("Removed from collection_wallpapers");
         }
       } catch (error) {
-        console.error("Exception removing from collection_wallpapers:", error);
-        // Continue execution even if this fails
+        console.error("Exception handling collection_wallpapers:", error);
+        // Continue execution
       }
 
-      // Check if vip_wallpapers table exists
-      const vipWallpapersExists = await checkTableExists('vip_wallpapers');
-      
-      // Remove from vip_wallpapers if the table exists
-      if (vipWallpapersExists) {
-        try {
+      // Handle vip_wallpapers table
+      try {
+        const vipWallpapersExists = await checkTableExists('vip_wallpapers');
+        if (vipWallpapersExists) {
           const { error: vipWallpapersError } = await supabase
             .from('vip_wallpapers')
             .delete()
@@ -227,28 +223,29 @@ const CreatorDetail = () => {
           } else {
             console.log("Removed from vip_wallpapers");
           }
-        } catch (error) {
-          console.error("Exception removing from vip_wallpapers:", error);
-          // Continue execution even if this fails
+        } else {
+          console.log("vip_wallpapers table doesn't exist, skipping");
         }
-      } else {
-        console.log("vip_wallpapers table doesn't exist, skipping");
+      } catch (error) {
+        console.error("Exception handling vip_wallpapers:", error);
+        // Continue execution
       }
 
       // Delete the file from storage
       try {
-        // First, check if the file exists
-        const { data: fileData, error: fileCheckError } = await supabase.storage
+        // Check if the file exists by listing files with the given path
+        const { data: fileList, error: listError } = await supabase.storage
           .from('wallpapers')
           .list(filePath.split('/')[0], {
             search: filePath.split('/')[1]
           });
 
-        if (fileCheckError) {
-          console.error("Error checking file existence:", fileCheckError);
+        if (listError) {
+          console.error("Error listing files:", listError);
         }
         
-        if (fileData && fileData.length > 0) {
+        // If we found the file, try to delete it
+        if (fileList && fileList.length > 0) {
           const { error: storageError } = await supabase.storage
             .from('wallpapers')
             .remove([filePath]);
@@ -262,16 +259,14 @@ const CreatorDetail = () => {
           console.log("File doesn't exist in storage or already deleted:", filePath);
         }
       } catch (error) {
-        console.error("Exception deleting from storage:", error);
-        // Continue execution even if this fails
+        console.error("Exception handling storage deletion:", error);
+        // Continue execution
       }
 
-      // Check if notifications table exists
-      const notificationsExists = await checkTableExists('notifications');
-      
-      // Create a notification for the creator if they exist and the table exists
-      if (creator && creator.user_id && notificationsExists) {
-        try {
+      // Create notification if applicable
+      try {
+        const notificationsExists = await checkTableExists('notifications');
+        if (creator && creator.user_id && notificationsExists) {
           const { error: notificationError } = await supabase
             .from('notifications')
             .insert({
@@ -286,15 +281,15 @@ const CreatorDetail = () => {
           } else {
             console.log("Created notification for creator");
           }
-        } catch (error) {
-          console.error("Exception creating notification:", error);
-          // Continue execution even if this fails
+        } else {
+          console.log("Skipping notification - creator info or notifications table missing");
         }
-      } else {
-        console.log("Skipping notification creation - creator info or notifications table missing");
+      } catch (error) {
+        console.error("Exception creating notification:", error);
+        // Continue execution
       }
 
-      // Finally delete from wallpapers table
+      // Finally, delete the wallpaper from the database
       try {
         const { error: dbError } = await supabase
           .from('wallpapers')
@@ -302,27 +297,26 @@ const CreatorDetail = () => {
           .eq('id', wallpaperId);
 
         if (dbError) {
-          console.error("Error deleting wallpaper:", dbError);
+          console.error("Error deleting wallpaper from database:", dbError);
           throw dbError;
         } else {
           console.log("Successfully removed wallpaper from database");
         }
+
+        // Update UI
+        if (selectedImage === wallpaperUrl) {
+          setSelectedImage(null);
+        }
+        setWallpapers(prev => prev.filter(w => w.id !== wallpaperId));
+        
+        toast({
+          title: "Success",
+          description: "Wallpaper completely removed from the system",
+        });
       } catch (error) {
-        console.error("Exception deleting wallpaper:", error);
+        console.error("Exception deleting wallpaper from database:", error);
         throw error;
       }
-
-      // Update UI
-      if (selectedImage === wallpaperUrl) {
-        setSelectedImage(null);
-      }
-
-      setWallpapers(prev => prev.filter(w => w.id !== wallpaperId));
-      
-      toast({
-        title: "Success",
-        description: "Wallpaper completely removed from the system",
-      });
     } catch (error: any) {
       console.error("Full deletion error:", error);
       toast({
@@ -333,6 +327,16 @@ const CreatorDetail = () => {
     } finally {
       setIsDeleting(false);
       setDeleteItemId(null);
+      
+      // Refresh the data to ensure UI is in sync with the database
+      if (creator && creator.user_id) {
+        const { data: refreshedWallpapers } = await supabase
+          .from('wallpapers')
+          .select('*')
+          .eq('uploaded_by', creator.user_id);
+          
+        setWallpapers(refreshedWallpapers || []);
+      }
     }
   };
 
@@ -386,15 +390,15 @@ const CreatorDetail = () => {
         }
       } catch (error) {
         console.error("Exception removing from collection_wallpapers:", error);
-        // Continue execution even if this fails
+        // Continue execution
       }
 
       // Check if collection_likes table exists
-      const collectionLikesExists = await checkTableExists('collection_likes');
-      
-      // Remove from collection_likes if the table exists
-      if (collectionLikesExists) {
-        try {
+      try {
+        const collectionLikesExists = await checkTableExists('collection_likes');
+        
+        // Remove from collection_likes if the table exists
+        if (collectionLikesExists) {
           const { error: likesError } = await supabase
             .from('collection_likes')
             .delete()
@@ -405,12 +409,12 @@ const CreatorDetail = () => {
           } else {
             console.log("Removed from collection_likes");
           }
-        } catch (error) {
-          console.error("Exception removing from collection_likes:", error);
-          // Continue execution even if this fails
+        } else {
+          console.log("collection_likes table doesn't exist, skipping");
         }
-      } else {
-        console.log("collection_likes table doesn't exist, skipping");
+      } catch (error) {
+        console.error("Exception removing from collection_likes:", error);
+        // Continue execution
       }
 
       // Finally delete from collections table
@@ -448,6 +452,16 @@ const CreatorDetail = () => {
     } finally {
       setIsDeleting(false);
       setDeleteItemId(null);
+      
+      // Refresh the data to ensure UI is in sync with the database
+      if (creator && creator.user_id) {
+        const { data: refreshedCollections } = await supabase
+          .from('collections')
+          .select('*')
+          .eq('created_by', creator.user_id);
+          
+        setCollections(refreshedCollections || []);
+      }
     }
   };
 

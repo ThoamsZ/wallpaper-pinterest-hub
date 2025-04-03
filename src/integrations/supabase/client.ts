@@ -14,22 +14,30 @@ export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABL
 // Helper function for checking if a table exists
 export const checkTableExists = async (tableName: string): Promise<boolean> => {
   try {
-    // Try a simple query with limit 0 to see if the table exists
-    const { error } = await supabase
+    // Use a more direct approach to check table existence
+    const { data, error } = await supabase
       .from(tableName)
-      .select('count', { count: 'exact', head: true });
+      .select('*')
+      .limit(1);
     
-    // If there's an error with code 42P01, the table doesn't exist
-    if (error && (error.code === '42P01' || error.message.includes('relation "public.' + tableName + '" does not exist'))) {
-      console.log(`Table ${tableName} does not exist`);
+    // If we get a "relation does not exist" error, the table doesn't exist
+    if (error) {
+      if (error.code === '42P01' || 
+          error.message.includes('relation') || 
+          error.message.includes('does not exist')) {
+        console.log(`Table ${tableName} does not exist`);
+        return false;
+      }
+      // Any other error means we couldn't check, default to false to be safe
+      console.error(`Error checking if table ${tableName} exists:`, error);
       return false;
     }
     
-    // If we get here, the table exists
+    // If we get here with no error, the table exists
     return true;
   } catch (error: any) {
     // Log the error but don't throw it
-    console.error(`Error checking if table ${tableName} exists:`, error);
+    console.error(`Exception checking if table ${tableName} exists:`, error);
     
     // If the error message indicates the table doesn't exist, return false
     if (error.message && (
@@ -40,7 +48,7 @@ export const checkTableExists = async (tableName: string): Promise<boolean> => {
       return false;
     }
     
-    // For other errors, assume the table might exist
+    // For other errors, assume the table doesn't exist to be safe
     return false;
   }
 };
