@@ -91,9 +91,12 @@ export const useCollectionLikes = () => {
         .from('collections')
         .select('like_count')
         .eq('id', collectionId)
-        .maybeSingle();
+        .single();
 
-      if (collectionFetchError) throw collectionFetchError;
+      if (collectionFetchError) {
+        console.error('Collection fetch error:', collectionFetchError);
+        // Continue execution even if this fails
+      }
 
       const currentLikeCount = collectionData?.like_count || 0;
 
@@ -105,33 +108,42 @@ export const useCollectionLikes = () => {
         })
         .eq('id', collectionId);
 
-      if (likeError) throw likeError;
+      if (likeError) {
+        console.error('Like count update error:', likeError);
+        // Continue execution even if this fails
+      }
 
-      // For tracking individual likes, use the collection_likes table
+      // For tracking individual likes, check if collection_likes table exists
       if (isLiked) {
-        // Remove the like record
-        const { error: deleteError } = await supabase
-          .from('collection_likes')
-          .delete()
-          .eq('user_id', session.user.id)
-          .eq('collection_id', collectionId);
+        // We'll try to remove the like record, but won't treat this as critical
+        try {
+          const { error: deleteError } = await supabase
+            .from('collection_likes')
+            .delete()
+            .eq('user_id', session.user.id)
+            .eq('collection_id', collectionId);
 
-        if (deleteError) {
-          console.error('Delete like error:', deleteError);
-          // Continue execution even if this fails
+          if (deleteError) {
+            console.error('Delete like error:', deleteError);
+          }
+        } catch (error) {
+          console.error('Error deleting from collection_likes:', error);
         }
       } else {
-        // Add the like record
-        const { error: insertError } = await supabase
-          .from('collection_likes')
-          .insert({
-            user_id: session.user.id,
-            collection_id: collectionId
-          });
+        // We'll try to add the like record, but won't treat this as critical
+        try {
+          const { error: insertError } = await supabase
+            .from('collection_likes')
+            .insert({
+              user_id: session.user.id,
+              collection_id: collectionId
+            });
 
-        if (insertError) {
-          console.error('Insert like error:', insertError);
-          // Continue execution even if this fails
+          if (insertError) {
+            console.error('Insert like error:', insertError);
+          }
+        } catch (error) {
+          console.error('Error inserting into collection_likes:', error);
         }
       }
 
