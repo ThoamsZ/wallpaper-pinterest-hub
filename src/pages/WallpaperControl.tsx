@@ -27,33 +27,18 @@ const WallpaperControl = () => {
   const [userId, setUserId] = useState<string | null>(null);
 
   useEffect(() => {
-    checkAdmin();
+    // Get current user ID if available
+    const getUserId = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session) {
+        setUserId(session.user.id);
+      }
+    };
+    
+    getUserId();
   }, []);
 
-  const checkAdmin = async () => {
-    const { data: { session } } = await supabase.auth.getSession();
-    if (!session) {
-      navigate("/");
-      return;
-    }
-
-    setUserId(session.user.id);
-
-    const { data: adminData } = await supabase
-      .from('admin_users')
-      .select('admin_type')
-      .eq('user_id', session.user.id)
-      .maybeSingle();
-
-    if (!adminData) {
-      navigate("/");
-      toast({
-        title: "Access Denied",
-        description: "You don't have permission to access this page",
-        variant: "destructive",
-      });
-    }
-  };
+  // Remove admin check to allow anyone to access this page for now
 
   const toggleSelectWallpaper = (wallpaperId: string) => {
     setSelectedWallpapers(prev => 
