@@ -86,78 +86,65 @@ export const useCollectionLikes = () => {
 
       if (updateError) throw updateError;
 
-      // Update the collection likes count
+      // Get the current like count for the collection
       const { data: collectionData, error: collectionFetchError } = await supabase
         .from('collections')
         .select('like_count')
         .eq('id', collectionId)
         .single();
 
-      if (collectionFetchError) {
-        console.error('Collection fetch error:', collectionFetchError);
-        // Continue execution even if this fails
-      }
+      if (collectionFetchError) throw collectionFetchError;
 
+      // Current like count (default to 0 if null)
       const currentLikeCount = collectionData?.like_count || 0;
+      
+      // Calculate new like count
+      const newLikeCount = isLiked 
+        ? Math.max(0, currentLikeCount - 1) // Prevent negative counts
+        : currentLikeCount + 1;
 
-      // Update the like count
-      const { error: likeError } = await supabase
+      // Update the like count in the collections table
+      const { error: likeCountError } = await supabase
         .from('collections')
-        .update({
-          like_count: isLiked ? Math.max(0, currentLikeCount - 1) : currentLikeCount + 1
-        })
+        .update({ like_count: newLikeCount })
         .eq('id', collectionId);
 
-      if (likeError) {
-        console.error('Like count update error:', likeError);
-        // Continue execution even if this fails
-      }
+      if (likeCountError) throw likeCountError;
 
-      // For tracking individual likes, check if collection_likes table exists
+      // For tracking individual likes in collection_likes table
       if (isLiked) {
-        // We'll try to remove the like record, but won't treat this as critical
-        try {
-          const { error: deleteError } = await supabase
-            .from('collection_likes')
-            .delete()
-            .eq('user_id', session.user.id)
-            .eq('collection_id', collectionId);
+        // Remove like record
+        const { error: deleteError } = await supabase
+          .from('collection_likes')
+          .delete()
+          .eq('user_id', session.user.id)
+          .eq('collection_id', collectionId);
 
-          if (deleteError) {
-            console.error('Delete like error:', deleteError);
-          }
-        } catch (error) {
-          console.error('Error deleting from collection_likes:', error);
-        }
+        if (deleteError) console.error('Delete like error:', deleteError);
       } else {
-        // We'll try to add the like record, but won't treat this as critical
-        try {
-          const { error: insertError } = await supabase
-            .from('collection_likes')
-            .insert({
-              user_id: session.user.id,
-              collection_id: collectionId
-            });
+        // Add like record
+        const { error: insertError } = await supabase
+          .from('collection_likes')
+          .insert({
+            user_id: session.user.id,
+            collection_id: collectionId
+          });
 
-          if (insertError) {
-            console.error('Insert like error:', insertError);
-          }
-        } catch (error) {
-          console.error('Error inserting into collection_likes:', error);
-        }
+        if (insertError) console.error('Insert like error:', insertError);
       }
 
+      // Update local state
       setLikedCollections(newFavorites);
       
       toast({
         title: isLiked ? "Removed from favorites" : "Added to favorites",
         description: isLiked ? "Collection removed from your collections" : "Collection added to your collections",
       });
-    } catch (error) {
+    } catch (error: any) {
       console.error('Like error:', error);
       toast({
         title: "Action failed",
-        description: "There was an error updating your favorites",
+        description: "There was an error updating your favorites: " + error.message,
         variant: "destructive",
       });
     }
