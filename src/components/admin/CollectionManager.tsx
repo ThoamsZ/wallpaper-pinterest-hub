@@ -69,7 +69,6 @@ export const CollectionManager = () => {
   const [selectedWallpapers, setSelectedWallpapers] = useState<string[]>([]);
   const [editingCollection, setEditingCollection] = useState<EditingCollection | null>(null);
 
-  // Check admin status
   const { data: adminStatus, isError: isAdminError } = useQuery({
     queryKey: ['admin-status'],
     queryFn: async () => {
@@ -94,7 +93,6 @@ export const CollectionManager = () => {
     retry: false,
   });
 
-  // Handle admin check error
   useEffect(() => {
     if (isAdminError) {
       toast({
@@ -106,7 +104,6 @@ export const CollectionManager = () => {
     }
   }, [isAdminError, navigate]);
 
-  // Query collections
   const { data: collections = [], refetch: refetchCollections } = useQuery({
     queryKey: ['collections'],
     queryFn: async () => {
@@ -124,7 +121,6 @@ export const CollectionManager = () => {
     enabled: !!adminStatus,
   });
 
-  // Update the collection wallpapers query
   const { data: collectionWallpapers = [], refetch: refetchCollectionWallpapers } = useQuery({
     queryKey: ['collection_wallpapers', selectedCollection],
     enabled: !!selectedCollection && !!adminStatus,
@@ -240,7 +236,7 @@ export const CollectionManager = () => {
       .map(cw => ({
         id: cw.id,
         url: cw.url,
-        type: cw.type || 'unknown', // Add default value
+        type: cw.type || 'unknown',
         file_path: cw.file_path,
         download_count: cw.download_count || 0,
         like_count: cw.like_count || 0
@@ -282,7 +278,6 @@ export const CollectionManager = () => {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) throw new Error("Not authenticated");
 
-      // Get all wallpapers to delete
       const { data: wallpapersToDelete, error: fetchError } = await supabase
         .from('wallpapers')
         .select('*')
@@ -293,7 +288,6 @@ export const CollectionManager = () => {
 
       if (!wallpapersToDelete) return;
 
-      // First delete from storage
       for (const wallpaper of wallpapersToDelete) {
         console.log("Deleting from storage:", wallpaper.file_path);
         const { error: storageError } = await supabase.storage
@@ -306,7 +300,6 @@ export const CollectionManager = () => {
         }
       }
 
-      // Delete from collection_wallpapers
       const { error: collectionError } = await supabase
         .from('collection_wallpapers')
         .delete()
@@ -317,7 +310,6 @@ export const CollectionManager = () => {
         throw collectionError;
       }
 
-      // Then delete from wallpapers table
       const { error: dbError } = await supabase
         .from('wallpapers')
         .delete()
@@ -350,7 +342,6 @@ export const CollectionManager = () => {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) throw new Error("Not authenticated");
 
-      // Verify the collection belongs to the current admin
       const { data: collectionData, error: collectionError } = await supabase
         .from('collections')
         .select('id')
@@ -362,7 +353,6 @@ export const CollectionManager = () => {
         throw new Error("Collection not found or unauthorized");
       }
 
-      // Verify the wallpaper belongs to the current admin
       const { data: wallpaperData, error: wallpaperError } = await supabase
         .from('wallpapers')
         .select('id')
@@ -425,14 +415,12 @@ export const CollectionManager = () => {
 
   const deleteWallpaper = async (wallpaper: Wallpaper) => {
     try {
-      // First delete from storage
       const { error: storageError } = await supabase.storage
         .from('wallpapers')
         .remove([wallpaper.file_path]);
 
       if (storageError) throw storageError;
 
-      // Then delete from database
       const { error: dbError } = await supabase
         .from('wallpapers')
         .delete()
@@ -615,7 +603,7 @@ export const CollectionManager = () => {
         </CardFooter>
       </Card>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         {collections?.map((collection: Collection) => (
           <Card key={collection.id} className="cursor-pointer hover:shadow-lg transition-shadow">
             <CardHeader>
@@ -722,7 +710,7 @@ export const CollectionManager = () => {
                   />
                 ))}
               </div>
-              <div className="flex justify-between items-center">
+              <div className="flex flex-col sm:flex-row gap-3 justify-between items-center">
                 <Button
                   variant="outline"
                   onClick={() => {
