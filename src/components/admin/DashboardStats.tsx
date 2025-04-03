@@ -9,7 +9,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 
-export const DashboardStats = () => {
+const DashboardStats = () => {
   const [statsData, setStatsData] = useState({
     totalDownloads: 0,
     totalPurchases: 0,
@@ -117,3 +117,5 @@ export const DashboardStats = () => {
     </div>
   );
 };
+
+export default DashboardStats;
