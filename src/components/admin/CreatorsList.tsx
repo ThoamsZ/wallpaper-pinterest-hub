@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { NavigateFunction } from "react-router-dom";
 import { toast } from "@/hooks/use-toast";
@@ -24,6 +23,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
+import { deleteWallpaper } from "@/utils/wallpaper-utils";
 
 interface CreatorsListProps {
   navigate: NavigateFunction;
@@ -135,135 +135,40 @@ export const CreatorsList = ({ navigate }: CreatorsListProps) => {
     }
   };
 
-  const deleteWallpaper = async (wallpaperId: string, filePath: string) => {
+  const handleWallpaperDelete = async (wallpaperId: string) => {
+    if (!confirm("Are you sure you want to delete this wallpaper? This action cannot be undone.")) {
+      return;
+    }
+    
+    setIsLoading(true);
+    
     try {
-      console.log("Starting wallpaper deletion process for:", wallpaperId);
+      const success = await deleteWallpaper(wallpaperId);
       
-      // Step 1: Verify wallpaper exists before deletion
-      const { data: wallpaperExists, error: wallpaperCheckError } = await supabase
-        .from('wallpapers')
-        .select('id')
-        .eq('id', wallpaperId)
-        .single();
-      
-      if (wallpaperCheckError) {
-        console.error("Wallpaper check error:", wallpaperCheckError);
-        if (wallpaperCheckError.code === 'PGRST116') {
-          console.log("Wallpaper already deleted");
-          return true;
-        }
-        throw wallpaperCheckError;
-      }
-      
-      // Step 2: Delete file from storage
-      if (filePath && filePath.trim() !== '') {
-        console.log("Deleting file from storage:", filePath);
-        try {
-          const deleted = await deleteFileFromStorage(filePath);
-          console.log("Storage file deletion result:", deleted ? "Success" : "Failed");
-        } catch (storageError) {
-          console.error("Error deleting from storage:", storageError);
-          // Continue with database deletions even if storage deletion fails
-        }
+      if (success) {
+        toast({
+          title: "Wallpaper Deleted",
+          description: "The wallpaper has been successfully deleted.",
+        });
+        
+        // Refresh data after deletion
+        fetchCreators();
       } else {
-        console.log("No file path provided or empty path, skipping storage deletion");
+        toast({
+          title: "Deletion Failed",
+          description: "Failed to delete the wallpaper. Please try again.",
+          variant: "destructive",
+        });
       }
-      
-      // Step 3: Update user favorites
-      console.log("Removing from user favorites...");
-      try {
-        const { data: usersWithFavorite, error: favoritesError } = await supabase
-          .from('users')
-          .select('id, favor_image')
-          .filter('favor_image', 'cs', `{${wallpaperId}}`);
-        
-        if (favoritesError) {
-          console.error("Error finding users with favorite:", favoritesError);
-        } else {
-          console.log(`Found ${usersWithFavorite?.length || 0} users with this wallpaper in favorites`);
-          
-          if (usersWithFavorite && usersWithFavorite.length > 0) {
-            for (const user of usersWithFavorite) {
-              const updatedFavorites = (user.favor_image || []).filter((id: string) => id !== wallpaperId);
-              
-              const { error: updateError } = await supabase
-                .from('users')
-                .update({ favor_image: updatedFavorites })
-                .eq('id', user.id);
-              
-              if (updateError) {
-                console.error(`Error updating favorites for user ${user.id}:`, updateError);
-              } else {
-                console.log(`Updated favorites for user ${user.id}`);
-              }
-            }
-          }
-        }
-      } catch (favoritesError) {
-        console.error("Exception in favorites removal:", favoritesError);
-        // Continue with other deletions
-      }
-      
-      // Step 4: Remove from collections
-      console.log("Removing from collections...");
-      try {
-        const { error: collectionError } = await supabase
-          .from('collection_wallpapers')
-          .delete()
-          .eq('wallpaper_id', wallpaperId);
-        
-        if (collectionError) {
-          console.error("Error removing from collections:", collectionError);
-        } else {
-          console.log("Successfully removed from collections");
-        }
-      } catch (collectionError) {
-        console.error("Exception in collection removal:", collectionError);
-        // Continue with other deletions
-      }
-      
-      // Step 5: Check for VIP wallpapers table and remove if exists
-      console.log("Checking for VIP wallpapers table...");
-      try {
-        const vipTableExists = await checkTableExists('vip_wallpapers');
-        
-        if (vipTableExists) {
-          console.log("VIP wallpapers table exists, removing wallpaper...");
-          const { error: vipError } = await supabase
-            .from('vip_wallpapers')
-            .delete()
-            .eq('wallpaper_id', wallpaperId);
-          
-          if (vipError) {
-            console.error("Error removing from VIP wallpapers:", vipError);
-          } else {
-            console.log("Successfully removed from VIP wallpapers");
-          }
-        } else {
-          console.log("VIP wallpapers table doesn't exist, skipping");
-        }
-      } catch (vipError) {
-        console.error("Exception in VIP wallpaper removal:", vipError);
-        // Continue with other deletions
-      }
-      
-      // Step 6: Delete from wallpapers table
-      console.log("Deleting wallpaper from database...");
-      const { error: deleteError } = await supabase
-        .from('wallpapers')
-        .delete()
-        .eq('id', wallpaperId);
-      
-      if (deleteError) {
-        console.error("Error deleting wallpaper:", deleteError);
-        throw deleteError;
-      }
-      
-      console.log("Successfully deleted wallpaper");
-      return true;
     } catch (error) {
-      console.error("Full wallpaper deletion error:", error);
-      return false;
+      console.error("Error in wallpaper deletion:", error);
+      toast({
+        title: "Error",
+        description: "An unexpected error occurred during deletion.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
     }
   };
 
