@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { NavigateFunction } from "react-router-dom";
 import { toast } from "@/hooks/use-toast";
@@ -143,6 +144,8 @@ export const CreatorsList = ({ navigate }: CreatorsListProps) => {
     setIsLoading(true);
     
     try {
+      console.log("Starting wallpaper deletion for:", wallpaperId);
+      
       const success = await deleteWallpaper(wallpaperId);
       
       if (success) {

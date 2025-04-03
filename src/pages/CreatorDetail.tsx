@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Button } from "@/components/ui/button";
@@ -49,10 +50,16 @@ const CreatorDetail = () => {
   const fetchCreatorDetails = async () => {
     setIsLoading(true);
     try {
-      // Fetch creator details
+      // Fetch creator details from admin_users table
       const { data: creatorData, error: creatorError } = await supabase
-        .from('creators')
-        .select('*')
+        .from('admin_users')
+        .select(`
+          *,
+          profile:users(
+            email,
+            creator_code
+          )
+        `)
         .eq('id', creatorId)
         .single();
 
@@ -60,21 +67,30 @@ const CreatorDetail = () => {
         throw creatorError;
       }
 
-      setCreator(creatorData);
-      setIsBlocked(creatorData?.is_blocked || false);
+      // Format the creator data
+      const formattedCreator = {
+        ...creatorData,
+        username: creatorData.profile?.creator_code || 'No creator code',
+        email: creatorData.profile?.email || creatorData.email
+      };
 
-      // Fetch wallpapers by creator
+      setCreator(formattedCreator);
+      setIsBlocked(formattedCreator?.is_blocked || false);
+      setNewEmail(formattedCreator.email || '');
+
+      // Fetch wallpapers by creator's user_id
       const { data: wallpapersData, error: wallpapersError } = await supabase
         .from('wallpapers')
         .select('*')
-        .eq('creator_id', creatorId);
+        .eq('uploaded_by', creatorData.user_id);
 
       if (wallpapersError) {
         throw wallpapersError;
       }
 
       setWallpapers(wallpapersData || []);
-    } catch (error: any) {
+    } catch (error) {
+      console.error("Error fetching creator details:", error);
       toast({
         title: "Error",
         description: error.message || "Failed to fetch creator details",
@@ -89,7 +105,7 @@ const CreatorDetail = () => {
     setIsLoading(true);
     try {
       const { error } = await supabase
-        .from('creators')
+        .from('admin_users')
         .update({ is_blocked: !isBlocked })
         .eq('id', creatorId);
 
@@ -103,7 +119,8 @@ const CreatorDetail = () => {
         title: "Success",
         description: `Creator ${isBlocked ? 'unblocked' : 'blocked'} successfully`,
       });
-    } catch (error: any) {
+    } catch (error) {
+      console.error("Error updating creator status:", error);
       toast({
         title: "Error",
         description: error.message || "Failed to update creator status",
@@ -117,8 +134,9 @@ const CreatorDetail = () => {
   const handleChangeEmail = async () => {
     setIsLoading(true);
     try {
+      // Update the email in admin_users table
       const { error } = await supabase
-        .from('creators')
+        .from('admin_users')
         .update({ email: newEmail })
         .eq('id', creatorId);
 
@@ -131,7 +149,8 @@ const CreatorDetail = () => {
         title: "Success",
         description: "Creator email updated successfully",
       });
-    } catch (error: any) {
+    } catch (error) {
+      console.error("Error updating creator email:", error);
       toast({
         title: "Error",
         description: error.message || "Failed to update creator email",
@@ -142,14 +161,12 @@ const CreatorDetail = () => {
     }
   };
 
-  const handleWallpaperDelete = async (wallpaperId: string) => {
-    if (!confirm("Are you sure you want to delete this wallpaper? This action cannot be undone.")) {
-      return;
-    }
-    
+  const handleWallpaperDelete = async (wallpaperId) => {
     setIsLoading(true);
     
     try {
+      console.log("Starting wallpaper deletion for:", wallpaperId);
+      
       const success = await deleteWallpaper(wallpaperId);
       
       if (success) {
@@ -218,7 +235,7 @@ const CreatorDetail = () => {
         <CardContent>
           <div className="grid gap-4">
             <div>
-              <Label>Username</Label>
+              <Label>Username / Creator Code</Label>
               <p className="font-semibold">{creator.username}</p>
             </div>
             <div>
@@ -227,7 +244,7 @@ const CreatorDetail = () => {
                 <Input
                   id="email"
                   type="email"
-                  value={newEmail || creator.email}
+                  value={newEmail}
                   onChange={(e) => setNewEmail(e.target.value)}
                   placeholder="Enter new email"
                   disabled={isLoading}
@@ -277,7 +294,7 @@ const CreatorDetail = () => {
             <TableHeader>
               <TableRow>
                 <TableHead>ID</TableHead>
-                <TableHead>Name</TableHead>
+                <TableHead>Type</TableHead>
                 <TableHead>Actions</TableHead>
               </TableRow>
             </TableHeader>
@@ -285,7 +302,7 @@ const CreatorDetail = () => {
               {wallpapers.map((wallpaper) => (
                 <TableRow key={wallpaper.id}>
                   <TableCell>{wallpaper.id}</TableCell>
-                  <TableCell>{wallpaper.name || 'Untitled'}</TableCell>
+                  <TableCell>{wallpaper.type || 'Unknown'}</TableCell>
                   <TableCell>
                     <AlertDialog>
                       <AlertDialogTrigger asChild>
