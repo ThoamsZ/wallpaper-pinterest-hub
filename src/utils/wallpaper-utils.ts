@@ -32,38 +32,41 @@ export const deleteWallpaper = async (wallpaperId: string): Promise<boolean> => 
     console.log(`Found wallpaper with path: ${wallpaper.file_path}`);
     
     // 2. Execute all related data deletions in parallel
-    // These operations don't depend on each other and can run concurrently for better performance
+    // First, directly remove from users favorites (not using RPC)
     console.log("Removing wallpaper from all user favorites");
-    const favoritesPromise = supabase.rpc('remove_wallpaper_from_favorites', { 
-      wallpaper_id: wallpaperId
-    });
+    const { error: favoritesError } = await supabase
+      .from('users')
+      .update({ 
+        favor_image: supabase.sql`array_remove(favor_image, ${wallpaperId}::uuid)` 
+      })
+      .filter('favor_image', 'cs', `{${wallpaperId}}`);
+    
+    if (favoritesError) {
+      console.error("Error removing from favorites directly:", favoritesError);
+      // Continue with deletion despite error
+    }
 
     console.log("Removing wallpaper from all collections");
-    const collectionsPromise = supabase
+    const { error: collectionsError } = await supabase
       .from('collection_wallpapers')
       .delete()
       .eq('wallpaper_id', wallpaperId);
+    
+    if (collectionsError) {
+      console.error("Error removing from collections:", collectionsError);
+      // Continue with deletion despite error
+    }
 
     console.log("Removing wallpaper from VIP wallpapers if present");
-    const vipWallpapersPromise = supabase
+    const { error: vipWallpapersError } = await supabase
       .from('vip_wallpapers')
       .delete()
       .eq('wallpaper_id', wallpaperId);
     
-    // Wait for all cleanup operations to complete
-    const [favoritesResult, collectionsResult, vipWallpapersResult] = await Promise.all([
-      favoritesPromise,
-      collectionsPromise,
-      vipWallpapersPromise
-    ]);
-    
-    // Log any errors from cleanup operations, but continue with the deletion
-    if (favoritesResult.error) {
-      console.error("Error removing from favorites:", favoritesResult.error);
-      // Don't throw, continue with deletion
+    if (vipWallpapersError) {
+      console.error("Error removing from VIP wallpapers:", vipWallpapersError);
+      // Continue with deletion despite error
     }
-    if (collectionsResult.error) console.error("Error removing from collections:", collectionsResult.error);
-    if (vipWallpapersResult.error) console.error("Error removing from VIP wallpapers:", vipWallpapersResult.error);
     
     // 3. Delete the wallpaper from storage
     if (wallpaper.file_path) {

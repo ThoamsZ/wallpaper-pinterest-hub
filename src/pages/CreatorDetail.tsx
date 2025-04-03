@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Button } from "@/components/ui/button";
@@ -53,7 +52,6 @@ const CreatorDetail = () => {
     try {
       console.log("Fetching creator details for ID:", creatorId);
       
-      // Fetch creator details from admin_users table
       const { data: creatorData, error: creatorError } = await supabase
         .from('admin_users')
         .select(`
@@ -73,7 +71,6 @@ const CreatorDetail = () => {
 
       console.log("Creator data received:", creatorData);
 
-      // Format the creator data
       const formattedCreator = {
         ...creatorData,
         username: creatorData.profile?.creator_code || 'No creator code',
@@ -86,7 +83,6 @@ const CreatorDetail = () => {
 
       console.log("Looking for wallpapers with user_id:", creatorData.user_id);
       
-      // Fetch wallpapers by creator's user_id
       const { data: wallpapersData, error: wallpapersError } = await supabase
         .from('wallpapers')
         .select('*')
@@ -149,7 +145,6 @@ const CreatorDetail = () => {
     try {
       console.log("Updating email for creator:", creatorId);
       
-      // Update the email in admin_users table
       const { error } = await supabase
         .from('admin_users')
         .update({ email: newEmail })
@@ -178,12 +173,21 @@ const CreatorDetail = () => {
   };
 
   const handleWallpaperDelete = async (wallpaperId) => {
+    if (!wallpaperId) {
+      console.error("No wallpaper ID provided for deletion");
+      toast({
+        title: "Error",
+        description: "Invalid wallpaper ID.",
+        variant: "destructive",
+      });
+      return;
+    }
+    
     setIsLoading(true);
     
     try {
       console.log("Starting wallpaper deletion for:", wallpaperId);
       
-      // Show a loading toast
       toast({
         title: "Deleting...",
         description: "Please wait while we delete this wallpaper.",
@@ -197,8 +201,7 @@ const CreatorDetail = () => {
           description: "The wallpaper has been successfully deleted.",
         });
         
-        // Update the wallpapers list by filtering out the deleted one
-        setWallpapers(wallpapers.filter(w => w.id !== wallpaperId));
+        setWallpapers(prevWallpapers => prevWallpapers.filter(w => w.id !== wallpaperId));
       } else {
         toast({
           title: "Deletion Failed",
@@ -210,7 +213,7 @@ const CreatorDetail = () => {
       console.error("Error in wallpaper deletion:", error);
       toast({
         title: "Error",
-        description: "An unexpected error occurred during deletion.",
+        description: error.message || "An unexpected error occurred during deletion.",
         variant: "destructive",
       });
     } finally {
