@@ -20,6 +20,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { AspectRatio } from "@/components/ui/aspect-ratio";
 import { Ban, Check, UserX } from "lucide-react";
 import { deleteWallpaper } from "@/utils/wallpaper-utils";
 import {
@@ -311,6 +312,7 @@ const CreatorDetail = () => {
           <Table>
             <TableHeader>
               <TableRow>
+                <TableHead>Preview</TableHead>
                 <TableHead>ID</TableHead>
                 <TableHead>Type</TableHead>
                 <TableHead>Actions</TableHead>
@@ -319,6 +321,20 @@ const CreatorDetail = () => {
             <TableBody>
               {wallpapers.map((wallpaper) => (
                 <TableRow key={wallpaper.id}>
+                  <TableCell className="w-24">
+                    <div className="w-20 h-20 rounded overflow-hidden">
+                      <AspectRatio ratio={3/4}>
+                        <img 
+                          src={wallpaper.compressed_url} 
+                          alt={`Wallpaper ${wallpaper.id}`}
+                          className="w-full h-full object-cover"
+                          onError={(e) => {
+                            e.currentTarget.src = "/placeholder.svg";
+                          }}
+                        />
+                      </AspectRatio>
+                    </div>
+                  </TableCell>
                   <TableCell>{wallpaper.id}</TableCell>
                   <TableCell>{wallpaper.type || 'Unknown'}</TableCell>
                   <TableCell>
