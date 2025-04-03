@@ -138,7 +138,6 @@ const CollectionPage = () => {
               <Heart 
                 className={likedCollections.includes(collection.id) ? "fill-red-500 text-red-500" : ""}
               />
-              <span>{collection.like_count || 0}</span>
             </Button>
             <Button
               variant="outline"
