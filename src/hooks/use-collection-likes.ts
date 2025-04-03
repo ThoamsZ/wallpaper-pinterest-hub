@@ -107,18 +107,21 @@ export const useCollectionLikes = () => {
 
       if (likeError) throw likeError;
 
-      // For tracking likes individually in the collection_likes table
+      // For tracking individual likes, use the collection_likes table
       if (isLiked) {
-        // Remove the like
+        // Remove the like record
         const { error: deleteError } = await supabase
           .from('collection_likes')
           .delete()
           .eq('user_id', session.user.id)
           .eq('collection_id', collectionId);
 
-        if (deleteError) throw deleteError;
+        if (deleteError) {
+          console.error('Delete like error:', deleteError);
+          // Continue execution even if this fails
+        }
       } else {
-        // Add the like
+        // Add the like record
         const { error: insertError } = await supabase
           .from('collection_likes')
           .insert({
@@ -126,7 +129,10 @@ export const useCollectionLikes = () => {
             collection_id: collectionId
           });
 
-        if (insertError) throw insertError;
+        if (insertError) {
+          console.error('Insert like error:', insertError);
+          // Continue execution even if this fails
+        }
       }
 
       setLikedCollections(newFavorites);

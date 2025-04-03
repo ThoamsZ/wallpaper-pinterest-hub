@@ -11,6 +11,11 @@ import { useCollectionLikes } from "@/hooks/use-collection-likes";
 import type { Database } from "@/integrations/supabase/types";
 
 type Wallpaper = Database['public']['Tables']['wallpapers']['Row'];
+type Collection = Database['public']['Tables']['collections']['Row'] & {
+  collection_wallpapers: { 
+    wallpapers: Wallpaper
+  }[]
+};
 
 const Collections = () => {
   const navigate = useNavigate();
@@ -110,7 +115,7 @@ const Collections = () => {
         throw error;
       }
       
-      return data || [];
+      return data as Collection[] || [];
     },
     enabled: !isAuthChecking && !!currentUser?.favor_collections?.length,
   });
