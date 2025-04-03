@@ -581,15 +581,17 @@ export const CollectionManager = () => {
                     </div>
                   </div>
                 </CardContent>
-                <CardFooter className="flex justify-between">
+                <CardFooter className="flex flex-col gap-3">
                   <Button
                     variant="outline"
+                    className="w-full"
                     onClick={() => removeFromCollection(selectedCollection, wallpaper.id)}
                   >
                     Remove from Collection
                   </Button>
                   <Button
                     variant="destructive"
+                    className="w-full"
                     onClick={() => deleteWallpaper(wallpaper)}
                   >
                     <Trash className="w-4 h-4 mr-2" />
