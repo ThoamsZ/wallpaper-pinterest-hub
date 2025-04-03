@@ -31,7 +31,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useQuery } from "@tanstack/react-query";
-import { Image, Trash, Download, Heart, Edit, X, Check } from "lucide-react";
+import { Image, Trash, Download, Heart, Edit, X, Check, Share } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 
 interface Collection {
@@ -39,6 +39,7 @@ interface Collection {
   name: string;
   description: string | null;
   created_at: string;
+  like_count: number;
 }
 
 interface Wallpaper {
@@ -473,6 +474,28 @@ export const CollectionManager = () => {
     }
   };
 
+  const handleShare = async (collectionId: string, collectionName: string, description?: string | null) => {
+    try {
+      const shareUrl = `${window.location.origin}/collection/${collectionId}`;
+      
+      if (navigator.share) {
+        await navigator.share({
+          title: `Check out this collection: ${collectionName}`,
+          text: description || `A wallpaper collection: ${collectionName}`,
+          url: shareUrl,
+        });
+      } else {
+        await navigator.clipboard.writeText(shareUrl);
+        toast({
+          title: "Link copied!",
+          description: "Collection link copied to clipboard",
+        });
+      }
+    } catch (error) {
+      console.error('Share error:', error);
+    }
+  };
+
   if (isViewingCollection && selectedCollection) {
     const collectionData = collections?.find(c => c.id === selectedCollection);
     if (!collectionData) return null;
@@ -641,46 +664,56 @@ export const CollectionManager = () => {
                       </Button>
                     </>
                   ) : (
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => setEditingCollection({
-                        id: collection.id,
-                        name: collection.name,
-                        description: collection.description
-                      })}
-                      className="h-8 w-8"
-                    >
-                      <Edit className="h-4 w-4" />
-                    </Button>
-                  )}
-                  <AlertDialog>
-                    <AlertDialogTrigger asChild>
-                      <Button variant="ghost" size="icon" className="h-8 w-8">
-                        <Trash className="h-4 w-4" />
+                    <>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => handleShare(collection.id, collection.name, collection.description)}
+                        className="h-8 w-8"
+                      >
+                        <Share className="h-4 w-4" />
                       </Button>
-                    </AlertDialogTrigger>
-                    <AlertDialogContent>
-                      <AlertDialogHeader>
-                        <AlertDialogTitle>Delete Collection</AlertDialogTitle>
-                        <AlertDialogDescription>
-                          Are you sure you want to delete this collection? This action cannot be undone.
-                        </AlertDialogDescription>
-                      </AlertDialogHeader>
-                      <AlertDialogFooter>
-                        <AlertDialogCancel>Cancel</AlertDialogCancel>
-                        <AlertDialogAction
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleDelete(collection.id);
-                          }}
-                          className="bg-red-500 hover:bg-red-600"
-                        >
-                          Delete
-                        </AlertDialogAction>
-                      </AlertDialogFooter>
-                    </AlertDialogContent>
-                  </AlertDialog>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => setEditingCollection({
+                          id: collection.id,
+                          name: collection.name,
+                          description: collection.description
+                        })}
+                        className="h-8 w-8"
+                      >
+                        <Edit className="h-4 w-4" />
+                      </Button>
+                      <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                          <Button variant="ghost" size="icon" className="h-8 w-8">
+                            <Trash className="h-4 w-4" />
+                          </Button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
+                          <AlertDialogHeader>
+                            <AlertDialogTitle>Delete Collection</AlertDialogTitle>
+                            <AlertDialogDescription>
+                              Are you sure you want to delete this collection? This action cannot be undone.
+                            </AlertDialogDescription>
+                          </AlertDialogHeader>
+                          <AlertDialogFooter>
+                            <AlertDialogCancel>Cancel</AlertDialogCancel>
+                            <AlertDialogAction
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleDelete(collection.id);
+                              }}
+                              className="bg-red-500 hover:bg-red-600"
+                            >
+                              Delete
+                            </AlertDialogAction>
+                          </AlertDialogFooter>
+                        </AlertDialogContent>
+                      </AlertDialog>
+                    </>
+                  )}
                 </div>
               </CardTitle>
             </CardHeader>
@@ -709,6 +742,15 @@ export const CollectionManager = () => {
                     className="w-full h-24 object-cover rounded-md"
                   />
                 ))}
+              </div>
+              <div className="flex items-center justify-between mb-4">
+                <div className="text-sm text-muted-foreground">
+                  Created: {new Date(collection.created_at).toLocaleDateString()}
+                </div>
+                <div className="flex items-center gap-1 text-sm">
+                  <Heart className="h-4 w-4" />
+                  <span>{collection.like_count || 0} likes</span>
+                </div>
               </div>
               <div className="flex flex-col sm:flex-row gap-3 justify-between items-center">
                 <Button

@@ -44,6 +44,35 @@ export type Database = {
           },
         ]
       }
+      collection_likes: {
+        Row: {
+          collection_id: string
+          created_at: string
+          id: string
+          user_id: string
+        }
+        Insert: {
+          collection_id: string
+          created_at?: string
+          id?: string
+          user_id: string
+        }
+        Update: {
+          collection_id?: string
+          created_at?: string
+          id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "collection_likes_collection_id_fkey"
+            columns: ["collection_id"]
+            isOneToOne: false
+            referencedRelation: "collections"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       collection_wallpapers: {
         Row: {
           added_at: string
@@ -83,6 +112,7 @@ export type Database = {
           created_by: string
           description: string | null
           id: string
+          like_count: number
           name: string
         }
         Insert: {
@@ -90,6 +120,7 @@ export type Database = {
           created_by: string
           description?: string | null
           id?: string
+          like_count?: number
           name: string
         }
         Update: {
@@ -97,6 +128,7 @@ export type Database = {
           created_by?: string
           description?: string | null
           id?: string
+          like_count?: number
           name?: string
         }
         Relationships: []

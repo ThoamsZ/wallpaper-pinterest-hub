@@ -1,3 +1,4 @@
+
 import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
 import { createContext, useContext, useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
@@ -9,6 +10,7 @@ import Auth from "@/pages/Auth";
 import AdminLogin from "@/pages/AdminLogin";
 import AdminRegister from "@/pages/AdminRegister";
 import Collections from "@/pages/Collections";
+import CollectionPage from "@/pages/CollectionPage";
 import Likes from "@/pages/Likes";
 import CreatorProfile from "@/pages/CreatorProfile";
 import AdminPanel from "@/pages/AdminPanel";
@@ -118,6 +120,7 @@ function App() {
             <Route path="/admin" element={<AdminLogin />} />
             <Route path="/admin/register" element={<AdminRegister />} />
             <Route path="/collections" element={<Collections />} />
+            <Route path="/collection/:id" element={<CollectionPage />} />
             <Route path="/likes" element={<Likes />} />
             <Route path="/creator/:creatorCode" element={<CreatorProfile />} />
             <Route path="/admin-panel" element={<AdminPanel />} />

@@ -1,13 +1,13 @@
-
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import Header from "@/components/Header";
 import { Button } from "@/components/ui/button";
-import { Heart } from "lucide-react";
+import { Heart, Share } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import WallpaperGrid from "@/components/WallpaperGrid";
+import { useCollectionLikes } from "@/hooks/use-collection-likes";
 import type { Database } from "@/integrations/supabase/types";
 
 type Wallpaper = Database['public']['Tables']['wallpapers']['Row'];
@@ -15,6 +15,7 @@ type Wallpaper = Database['public']['Tables']['wallpapers']['Row'];
 const Collections = () => {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const { likedCollections, handleCollectionLike } = useCollectionLikes();
   const [selectedCollection, setSelectedCollection] = useState<string | null>(null);
   const [isAuthChecking, setIsAuthChecking] = useState(true);
 
@@ -26,7 +27,6 @@ const Collections = () => {
           navigate('/auth');
           return;
         }
-        // Check if user is guest
         if (session.user.email === 'guest@wallpaperhub.com') {
           toast({
             title: "Guest account",
@@ -115,51 +115,6 @@ const Collections = () => {
     enabled: !isAuthChecking && !!currentUser?.favor_collections?.length,
   });
 
-  const handleCollectionLike = async (collectionId: string) => {
-    try {
-      const { data: { session } } = await supabase.auth.getSession();
-      
-      if (!session) {
-        toast({
-          title: "Authentication required",
-          description: "Please login to like collections",
-          variant: "destructive",
-        });
-        navigate('/auth');
-        return;
-      }
-
-      const currentFavorites = currentUser?.favor_collections || [];
-      const isLiked = currentFavorites.includes(collectionId);
-      const newFavorites = isLiked
-        ? currentFavorites.filter(id => id !== collectionId)
-        : [...currentFavorites, collectionId];
-
-      const { error: updateError } = await supabase
-        .from('users')
-        .update({ favor_collections: newFavorites })
-        .eq('id', session.user.id);
-
-      if (updateError) throw updateError;
-
-      // Invalidate both current-user and liked-collections queries
-      await queryClient.invalidateQueries({ queryKey: ['current-user'] });
-      await queryClient.invalidateQueries({ queryKey: ['liked-collections'] });
-
-      toast({
-        title: isLiked ? "Collection removed from likes" : "Collection liked",
-        description: isLiked ? "Collection removed from your Collections" : "Collection added to your Collections",
-      });
-    } catch (error: any) {
-      console.error('Collection like error:', error);
-      toast({
-        title: "Action failed",
-        description: "There was an error updating your Collections",
-        variant: "destructive",
-      });
-    }
-  };
-
   const getCollectionPreviewImages = (collection: any) => {
     return collection.collection_wallpapers
       .map((cw: any) => cw.wallpapers?.compressed_url)
@@ -171,6 +126,28 @@ const Collections = () => {
     return collection.collection_wallpapers
       .map((cw: any) => cw.wallpapers)
       .filter(Boolean);
+  };
+
+  const handleShare = async (collectionId: string, collectionName: string, description?: string | null) => {
+    try {
+      const shareUrl = `${window.location.origin}/collection/${collectionId}`;
+      
+      if (navigator.share) {
+        await navigator.share({
+          title: `Check out this collection: ${collectionName}`,
+          text: description || `A wallpaper collection: ${collectionName}`,
+          url: shareUrl,
+        });
+      } else {
+        await navigator.clipboard.writeText(shareUrl);
+        toast({
+          title: "Link copied!",
+          description: "Collection link copied to clipboard",
+        });
+      }
+    } catch (error) {
+      console.error('Share error:', error);
+    }
   };
 
   const selectedCollectionData = collections.find(c => c.id === selectedCollection);
@@ -223,25 +200,38 @@ const Collections = () => {
                 <div
                   key={collection.id}
                   className="p-6 rounded-lg border bg-card text-card-foreground shadow-sm hover:shadow-md transition-shadow cursor-pointer relative"
-                  onClick={() => setSelectedCollection(collection.id)}
+                  onClick={() => navigate(`/collection/${collection.id}`)}
                 >
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="absolute top-2 right-2 z-10"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleCollectionLike(collection.id);
-                    }}
-                  >
-                    <Heart 
-                      className={`h-5 w-5 ${
-                        currentUser?.favor_collections?.includes(collection.id)
-                          ? "fill-red-500 text-red-500"
-                          : ""
-                      }`}
-                    />
-                  </Button>
+                  <div className="absolute top-2 right-2 z-10 flex gap-2">
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-8 w-8 bg-black/20 backdrop-blur-sm hover:bg-black/30"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleShare(collection.id, collection.name, collection.description);
+                      }}
+                    >
+                      <Share className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-8 w-8 bg-black/20 backdrop-blur-sm hover:bg-black/30"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleCollectionLike(collection.id);
+                      }}
+                    >
+                      <Heart 
+                        className={`h-4 w-4 ${
+                          likedCollections.includes(collection.id)
+                            ? "fill-red-500 text-red-500"
+                            : ""
+                        }`}
+                      />
+                    </Button>
+                  </div>
                   <h3 className="text-lg font-semibold mb-2">{collection.name}</h3>
                   {collection.description && (
                     <p className="text-muted-foreground mb-4">{collection.description}</p>
@@ -256,9 +246,15 @@ const Collections = () => {
                       />
                     ))}
                   </div>
-                  <p className="text-sm text-muted-foreground">
-                    Created: {new Date(collection.created_at).toLocaleDateString()}
-                  </p>
+                  <div className="flex justify-between items-center">
+                    <p className="text-sm text-muted-foreground">
+                      Created: {new Date(collection.created_at).toLocaleDateString()}
+                    </p>
+                    <div className="flex items-center gap-1 text-sm text-muted-foreground">
+                      <Heart className="h-3 w-3" />
+                      <span>{collection.like_count || 0}</span>
+                    </div>
+                  </div>
                   <p className="text-sm text-muted-foreground mt-2">
                     Wallpapers: {collection.collection_wallpapers.length}
                   </p>
