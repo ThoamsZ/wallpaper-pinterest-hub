@@ -72,21 +72,18 @@ const CollectionPage = () => {
     try {
       const shareUrl = `${window.location.origin}/collection/${id}`;
       
-      if (navigator.share) {
-        await navigator.share({
-          title: `Check out this collection: ${collection.name}`,
-          text: collection.description || `A wallpaper collection: ${collection.name}`,
-          url: shareUrl,
-        });
-      } else {
-        await navigator.clipboard.writeText(shareUrl);
-        toast({
-          title: "Link copied!",
-          description: "Collection link copied to clipboard",
-        });
-      }
+      await navigator.clipboard.writeText(shareUrl);
+      toast({
+        title: "Link copied!",
+        description: "Collection link copied to clipboard",
+      });
     } catch (error) {
       console.error('Share error:', error);
+      toast({
+        title: "Copy failed",
+        description: "Could not copy to clipboard",
+        variant: "destructive"
+      });
     }
   };
 
