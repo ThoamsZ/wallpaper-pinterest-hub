@@ -11,17 +11,26 @@ export const useWallpaperLikes = () => {
 
   useEffect(() => {
     const fetchLikedWallpapers = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (session && session.user.email !== 'guest@wallpaperhub.com') {
-        const { data: userData } = await supabase
-          .from('users')
-          .select('favor_image')
-          .eq('id', session.user.id)
-          .maybeSingle();
-        
-        if (userData?.favor_image) {
-          setLikedWallpapers(userData.favor_image);
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (session && session.user.email !== 'guest@wallpaperhub.com') {
+          const { data: userData, error } = await supabase
+            .from('users')
+            .select('favor_image')
+            .eq('id', session.user.id)
+            .maybeSingle();
+          
+          if (error) {
+            console.error("Error fetching liked wallpapers:", error);
+            return;
+          }
+          
+          if (userData?.favor_image) {
+            setLikedWallpapers(userData.favor_image);
+          }
         }
+      } catch (error) {
+        console.error("Exception fetching liked wallpapers:", error);
       }
     };
 
@@ -67,7 +76,7 @@ export const useWallpaperLikes = () => {
         return;
       }
 
-      // First, check if the wallpaper exists
+      // First, check if the wallpaper exists with a direct query
       const { data: wallpaperExists, error: wallpaperCheckError } = await supabase
         .from('wallpapers')
         .select('id')
@@ -89,12 +98,12 @@ export const useWallpaperLikes = () => {
         return;
       }
 
-      // Get user's current favorites
+      // Get user's current favorites with a direct query
       const { data: userData, error: userError } = await supabase
         .from('users')
         .select('favor_image')
         .eq('id', session.user.id)
-        .maybeSingle();
+        .single();
 
       if (userError) {
         console.error("Error getting user data:", userError);
@@ -111,7 +120,7 @@ export const useWallpaperLikes = () => {
       console.log("Is liked:", isLiked);
       console.log("New favorites:", newFavorites);
 
-      // Update user's favorites
+      // Update user's favorites with a direct update
       const { error: updateError } = await supabase
         .from('users')
         .update({ favor_image: newFavorites })
@@ -122,7 +131,7 @@ export const useWallpaperLikes = () => {
         throw updateError;
       }
 
-      // Get current like count
+      // Get current like count with a direct query
       const { data: wallpaperData, error: wallpaperFetchError } = await supabase
         .from('wallpapers')
         .select('like_count')
@@ -140,7 +149,7 @@ export const useWallpaperLikes = () => {
       console.log("Current like count:", currentLikeCount);
       console.log("New like count:", newLikeCount);
 
-      // Update wallpaper like count
+      // Update wallpaper like count with a direct update
       const { error: likeError } = await supabase
         .from('wallpapers')
         .update({

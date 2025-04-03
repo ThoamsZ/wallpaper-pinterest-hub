@@ -66,6 +66,8 @@ const AdminPanel = () => {
   const [selectedWallpapers, setSelectedWallpapers] = useState<string[]>([]);
   const [creatorCode, setCreatorCode] = useState<string>("");
   const [currentCreatorCode, setCurrentCreatorCode] = useState<string>("");
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [deleteItemId, setDeleteItemId] = useState<string | null>(null);
 
   const { data: adminData, isError: isAdminError } = useQuery({
     queryKey: ['admin-status'],
@@ -159,30 +161,114 @@ const AdminPanel = () => {
 
   const handleDelete = async (id: string, filePath: string) => {
     try {
+      setIsDeleting(true);
+      setDeleteItemId(id);
+      
+      console.log(`Starting deletion of wallpaper ${id} with filePath ${filePath}`);
+      
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) throw new Error("Not authenticated");
-
-      const { error: storageError } = await supabase.storage
+      
+      const { data: wallpaperCheck, error: checkError } = await supabase
         .from('wallpapers')
-        .remove([filePath]);
+        .select('id')
+        .eq('id', id)
+        .maybeSingle();
+        
+      if (checkError) {
+        console.error("Error checking wallpaper existence:", checkError);
+        throw checkError;
+      }
+      
+      if (!wallpaperCheck) {
+        toast({
+          title: "Notice",
+          description: "Wallpaper already deleted or doesn't exist",
+        });
+        return;
+      }
 
-      if (storageError) throw storageError;
+      if (filePath) {
+        try {
+          const pathParts = filePath.split('/');
+          const bucket = pathParts[0];
+          const path = pathParts.slice(1).join('/');
+          
+          console.log(`Deleting from storage bucket ${bucket}, path ${path}`);
+          
+          const { error: storageError } = await supabase.storage
+            .from(bucket)
+            .remove([path]);
+
+          if (storageError) {
+            console.error("Storage deletion error:", storageError);
+            // Continue anyway
+          } else {
+            console.log("Successfully deleted file from storage");
+          }
+        } catch (storageError) {
+          console.error("Exception during storage deletion:", storageError);
+          // Continue with database deletion
+        }
+      }
+
+      try {
+        const { error: collectionError } = await supabase
+          .from('collection_wallpapers')
+          .delete()
+          .eq('wallpaper_id', id);
+
+        if (collectionError) {
+          console.error("Error removing from collections:", collectionError);
+        } else {
+          console.log("Removed from collection_wallpapers");
+        }
+      } catch (collectionError) {
+        console.error("Exception removing from collections:", collectionError);
+      }
+      
+      try {
+        const { data: usersWithFavorite, error: usersFavorError } = await supabase
+          .from('users')
+          .select('id, favor_image')
+          .contains('favor_image', [id]);
+        
+        if (usersFavorError) {
+          console.error("Error finding users with this wallpaper in favorites:", usersFavorError);
+        } else if (usersWithFavorite && usersWithFavorite.length > 0) {
+          console.log(`Updating favorites for ${usersWithFavorite.length} users`);
+          
+          for (const user of usersWithFavorite) {
+            const updatedFavorites = (user.favor_image || []).filter(favId => favId !== id);
+            
+            const { error: updateError } = await supabase
+              .from('users')
+              .update({ favor_image: updatedFavorites })
+              .eq('id', user.id);
+            
+            if (updateError) {
+              console.error("Error updating user favorites:", updateError);
+            } else {
+              console.log(`Updated favorites for user ${user.id}`);
+            }
+          }
+        }
+      } catch (favoritesError) {
+        console.error("Exception updating favorites:", favoritesError);
+      }
 
       const { error: dbError } = await supabase
         .from('wallpapers')
         .delete()
-        .eq('id', id)
-        .eq('uploaded_by', session.user.id);
+        .eq('id', id);
 
-      if (dbError) throw dbError;
+      if (dbError) {
+        console.error("Database deletion error:", dbError);
+        throw dbError;
+      }
 
-      const { error: collectionError } = await supabase
-        .from('collection_wallpapers')
-        .delete()
-        .eq('wallpaper_id', id);
-
-      if (collectionError) throw collectionError;
-
+      console.log("Successfully deleted wallpaper from database");
+      
       await refetchWallpapers();
       
       toast({
@@ -190,44 +276,129 @@ const AdminPanel = () => {
         description: "Wallpaper deleted successfully",
       });
     } catch (error: any) {
+      console.error("Delete error:", error);
       toast({
         title: "Error",
         description: error.message || "Failed to delete wallpaper",
         variant: "destructive",
       });
+    } finally {
+      setIsDeleting(false);
+      setDeleteItemId(null);
     }
   };
 
   const handleDeleteMultiple = async () => {
     try {
+      setIsDeleting(true);
+      
+      console.log("Starting deletion of multiple wallpapers:", selectedWallpapers);
+      
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) throw new Error("Not authenticated");
 
-      const wallpapersToDelete = wallpapers.filter(w => selectedWallpapers.includes(w.id));
+      const { data: wallpapersToDelete, error: fetchError } = await supabase
+        .from('wallpapers')
+        .select('id, file_path')
+        .in('id', selectedWallpapers);
+
+      if (fetchError) {
+        console.error("Error fetching wallpapers to delete:", fetchError);
+        throw fetchError;
+      }
+
+      if (!wallpapersToDelete || wallpapersToDelete.length === 0) {
+        toast({
+          title: "Notice",
+          description: "No wallpapers found to delete",
+        });
+        return;
+      }
+
+      console.log(`Found ${wallpapersToDelete.length} wallpapers to delete`);
 
       for (const wallpaper of wallpapersToDelete) {
-        const { error: storageError } = await supabase.storage
-          .from('wallpapers')
-          .remove([wallpaper.file_path]);
+        if (wallpaper.file_path) {
+          try {
+            const pathParts = wallpaper.file_path.split('/');
+            const bucket = pathParts[0];
+            const path = pathParts.slice(1).join('/');
+            
+            console.log(`Deleting from storage bucket ${bucket}, path ${path}`);
+            
+            const { error: storageError } = await supabase.storage
+              .from(bucket)
+              .remove([path]);
 
-        if (storageError) throw storageError;
+            if (storageError) {
+              console.error(`Storage deletion error for ${wallpaper.id}:`, storageError);
+            } else {
+              console.log(`Deleted file for ${wallpaper.id} from storage`);
+            }
+          } catch (storageError) {
+            console.error(`Storage exception for ${wallpaper.id}:`, storageError);
+          }
+        }
+      }
+
+      try {
+        const { error: collectionError } = await supabase
+          .from('collection_wallpapers')
+          .delete()
+          .in('wallpaper_id', selectedWallpapers);
+
+        if (collectionError) {
+          console.error("Error removing from collection_wallpapers:", collectionError);
+        } else {
+          console.log("Removed from collection_wallpapers");
+        }
+      } catch (collectionError) {
+        console.error("Exception removing from collections:", collectionError);
+      }
+      
+      try {
+        const { data: usersWithFavorites, error: usersFavorError } = await supabase
+          .from('users')
+          .select('id, favor_image')
+          .filter('favor_image', 'cs', `{${selectedWallpapers.join(',')}}`);
+        
+        if (usersFavorError) {
+          console.error("Error finding users with favorites:", usersFavorError);
+        } else if (usersWithFavorites && usersWithFavorites.length > 0) {
+          console.log(`Updating favorites for ${usersWithFavorites.length} users`);
+          
+          for (const user of usersWithFavorites) {
+            const updatedFavorites = (user.favor_image || [])
+              .filter(id => !selectedWallpapers.includes(id));
+            
+            const { error: updateError } = await supabase
+              .from('users')
+              .update({ favor_image: updatedFavorites })
+              .eq('id', user.id);
+            
+            if (updateError) {
+              console.error(`Error updating favorites for user ${user.id}:`, updateError);
+            } else {
+              console.log(`Updated favorites for user ${user.id}`);
+            }
+          }
+        }
+      } catch (favoritesError) {
+        console.error("Exception updating favorites:", favoritesError);
       }
 
       const { error: dbError } = await supabase
         .from('wallpapers')
         .delete()
-        .in('id', selectedWallpapers)
-        .eq('uploaded_by', session.user.id);
+        .in('id', selectedWallpapers);
 
-      if (dbError) throw dbError;
+      if (dbError) {
+        console.error("Database deletion error:", dbError);
+        throw dbError;
+      }
 
-      const { error: collectionError } = await supabase
-        .from('collection_wallpapers')
-        .delete()
-        .in('wallpaper_id', selectedWallpapers);
-
-      if (collectionError) throw collectionError;
-
+      console.log("Successfully deleted multiple wallpapers from database");
+      
       toast({
         title: "Success",
         description: `${selectedWallpapers.length} wallpapers deleted successfully`,
@@ -236,11 +407,14 @@ const AdminPanel = () => {
       setSelectedWallpapers([]);
       await refetchWallpapers();
     } catch (error: any) {
+      console.error("Delete multiple error:", error);
       toast({
         title: "Error",
         description: error.message || "Failed to delete wallpapers",
         variant: "destructive",
       });
+    } finally {
+      setIsDeleting(false);
     }
   };
 

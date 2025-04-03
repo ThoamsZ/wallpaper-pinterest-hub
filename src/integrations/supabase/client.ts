@@ -14,48 +14,50 @@ export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABL
 // Helper function for checking if a table exists
 export const checkTableExists = async (tableName: string): Promise<boolean> => {
   try {
-    // Use the information_schema to check if the table exists
-    // This is more reliable than trying to query the table directly
-    const { data, error } = await supabase
+    console.log(`Checking if table ${tableName} exists...`);
+    
+    // Try a direct approach first - checking the information_schema
+    const { data: schemaData, error: schemaError } = await supabase
       .from('information_schema.tables')
       .select('table_name')
       .eq('table_schema', 'public')
       .eq('table_name', tableName)
       .maybeSingle();
     
-    if (error) {
-      console.error(`Error checking if table ${tableName} exists using information_schema:`, error);
+    if (schemaError) {
+      console.error(`Error checking schema for table ${tableName}:`, schemaError);
       
-      // Fallback to the original method if information_schema query fails
+      // Fallback method: Try to select from the table directly
       try {
-        const { error: fallbackError } = await supabase
+        const { error: queryError } = await supabase
           .from(tableName)
           .select('*')
           .limit(1);
         
-        if (fallbackError) {
-          if (fallbackError.code === '42P01' || 
-              fallbackError.message.includes('relation') || 
-              fallbackError.message.includes('does not exist')) {
-            console.log(`Table ${tableName} does not exist (fallback check)`);
+        if (queryError) {
+          if (queryError.code === '42P01' || 
+              queryError.message.includes('relation') || 
+              queryError.message.includes('does not exist')) {
+            console.log(`Table ${tableName} does not exist (determined by query)`);
             return false;
           }
-          console.error(`Fallback error checking if table ${tableName} exists:`, fallbackError);
-          return false;
+          console.error(`Query error checking if table ${tableName} exists:`, queryError);
         }
         
+        // If we got here with no error, the table exists
+        console.log(`Table ${tableName} exists (determined by query)`);
         return true;
-      } catch (fallbackException: any) {
-        console.error(`Fallback exception checking if table ${tableName} exists:`, fallbackException);
+      } catch (fallbackError) {
+        console.error(`Exception when querying table ${tableName}:`, fallbackError);
         return false;
       }
     }
     
-    // If we get data from the information_schema query, the table exists
-    return data !== null;
-  } catch (error: any) {
-    // Log the error but don't throw it
-    console.error(`Exception checking if table ${tableName} exists:`, error);
+    const tableExists = !!schemaData;
+    console.log(`Table ${tableName} ${tableExists ? 'exists' : 'does not exist'} (determined by schema check)`);
+    return tableExists;
+  } catch (error) {
+    console.error(`General exception checking if table ${tableName} exists:`, error);
     return false;
   }
 };
