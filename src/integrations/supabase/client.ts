@@ -45,3 +45,34 @@ export const checkTableExists = async (tableName: string): Promise<boolean> => {
     return false;
   }
 };
+
+// Helper function to delete a file from storage
+export const deleteFileFromStorage = async (filePath: string): Promise<boolean> => {
+  try {
+    if (!filePath || !filePath.includes('/')) {
+      console.error("Invalid file path format:", filePath);
+      return false;
+    }
+    
+    const pathParts = filePath.split('/');
+    const bucketName = pathParts[0];
+    const storagePath = pathParts.slice(1).join('/');
+    
+    console.log(`Deleting file from storage bucket: ${bucketName}, path: ${storagePath}`);
+    
+    const { error: storageError } = await supabase.storage
+      .from(bucketName)
+      .remove([storagePath]);
+    
+    if (storageError) {
+      console.error("Storage error:", storageError);
+      return false;
+    }
+    
+    console.log("Successfully deleted file from storage");
+    return true;
+  } catch (error) {
+    console.error("Error deleting file from storage:", error);
+    return false;
+  }
+};
