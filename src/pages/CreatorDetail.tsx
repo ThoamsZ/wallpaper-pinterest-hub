@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Button } from "@/components/ui/button";
@@ -71,13 +70,13 @@ const CreatorDetail = () => {
         id: creatorInfo.user_id,
         email: creatorInfo.profile?.email,
         adminId: creatorInfo.id,
-        fullAccess: true  // Add flag to grant deletion privileges
+        fullAccess: true  // Ensure this flag is set to true
       }));
       
       // Redirect to the creator's admin panel
       navigate('/admin-panel', { state: { 
         viewingCreator: creatorInfo.user_id,
-        fullAccess: true  // Add flag to grant deletion privileges
+        fullAccess: true  // Ensure this flag is set to true
       }});
       toast({
         title: "Redirecting",

@@ -7,10 +7,11 @@ import { toast } from "@/hooks/use-toast";
  * 
  * @param wallpaperId - The ID of the wallpaper to delete
  * @param filePath - Optional file path, if already known
+ * @param forceDelete - Optional flag to bypass user verification checks for admin operations
  * @returns Promise<boolean> - True if deletion was successful, false otherwise
  */
-export const deleteWallpaper = async (wallpaperId: string, filePath?: string): Promise<boolean> => {
-  console.log(`Starting deletion process for wallpaper ${wallpaperId}`);
+export const deleteWallpaper = async (wallpaperId: string, filePath?: string, forceDelete: boolean = false): Promise<boolean> => {
+  console.log(`Starting deletion process for wallpaper ${wallpaperId}, forceDelete: ${forceDelete}`);
   
   try {
     // 1. Get wallpaper data first (we need the file path if not provided)
@@ -99,10 +100,15 @@ export const deleteWallpaper = async (wallpaperId: string, filePath?: string): P
     
     // 4. Finally, delete the wallpaper record itself
     console.log("Deleting wallpaper record from database");
+    const deleteOptions = forceDelete ? 
+      { headers: { 'x-force-delete': 'true' } } : 
+      undefined;
+      
     const { error: deletionError } = await supabase
       .from('wallpapers')
       .delete()
-      .eq('id', wallpaperId);
+      .eq('id', wallpaperId)
+      .options(deleteOptions || {});
     
     if (deletionError) {
       console.error("Error deleting wallpaper record:", deletionError);

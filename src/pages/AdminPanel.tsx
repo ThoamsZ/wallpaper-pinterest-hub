@@ -254,6 +254,7 @@ const AdminPanel = () => {
       setDeleteItemId(id);
       
       console.log(`Starting deletion of wallpaper ${id} with filePath ${filePath}`);
+      console.log(`Has full access: ${hasFullAccess}`);
       
       const { data: { session } } = await supabase.auth.getSession();
       if (!session && !viewingCreator) throw new Error("Not authenticated");
@@ -277,93 +278,22 @@ const AdminPanel = () => {
         return;
       }
 
-      if (filePath) {
-        try {
-          const pathParts = filePath.split('/');
-          const bucket = pathParts[0];
-          const path = pathParts.slice(1).join('/');
-          
-          console.log(`Deleting from storage bucket ${bucket}, path ${path}`);
-          
-          const { error: storageError } = await supabase.storage
-            .from(bucket)
-            .remove([path]);
-
-          if (storageError) {
-            console.error("Storage deletion error:", storageError);
-            // Continue anyway
-          } else {
-            console.log("Successfully deleted file from storage");
-          }
-        } catch (storageError) {
-          console.error("Exception during storage deletion:", storageError);
-          // Continue with database deletion
-        }
-      }
-
-      try {
-        const { error: collectionError } = await supabase
-          .from('collection_wallpapers')
-          .delete()
-          .eq('wallpaper_id', id);
-
-        if (collectionError) {
-          console.error("Error removing from collections:", collectionError);
-        } else {
-          console.log("Removed from collection_wallpapers");
-        }
-      } catch (collectionError) {
-        console.error("Exception removing from collections:", collectionError);
-      }
+      const success = await deleteWallpaper(id, filePath, hasFullAccess);
       
-      try {
-        const { data: usersWithFavorite, error: usersFavorError } = await supabase
-          .from('users')
-          .select('id, favor_image')
-          .contains('favor_image', [id]);
+      if (success) {
+        toast({
+          title: "Success",
+          description: "Wallpaper deleted successfully",
+        });
         
-        if (usersFavorError) {
-          console.error("Error finding users with this wallpaper in favorites:", usersFavorError);
-        } else if (usersWithFavorite && usersWithFavorite.length > 0) {
-          console.log(`Updating favorites for ${usersWithFavorite.length} users`);
-          
-          for (const user of usersWithFavorite) {
-            const updatedFavorites = (user.favor_image || []).filter(favId => favId !== id);
-            
-            const { error: updateError } = await supabase
-              .from('users')
-              .update({ favor_image: updatedFavorites })
-              .eq('id', user.id);
-            
-            if (updateError) {
-              console.error("Error updating user favorites:", updateError);
-            } else {
-              console.log(`Updated favorites for user ${user.id}`);
-            }
-          }
-        }
-      } catch (favoritesError) {
-        console.error("Exception updating favorites:", favoritesError);
+        await refetchWallpapers();
+      } else {
+        toast({
+          title: "Error",
+          description: "Failed to delete wallpaper",
+          variant: "destructive",
+        });
       }
-
-      const { error: dbError } = await supabase
-        .from('wallpapers')
-        .delete()
-        .eq('id', id);
-
-      if (dbError) {
-        console.error("Database deletion error:", dbError);
-        throw dbError;
-      }
-
-      console.log("Successfully deleted wallpaper from database");
-      
-      await refetchWallpapers();
-      
-      toast({
-        title: "Success",
-        description: "Wallpaper deleted successfully",
-      });
     } catch (error: any) {
       console.error("Delete error:", error);
       toast({
@@ -382,6 +312,7 @@ const AdminPanel = () => {
       setIsDeleting(true);
       
       console.log("Starting deletion of multiple wallpapers:", selectedWallpapers);
+      console.log(`Has full access: ${hasFullAccess}`);
       
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) throw new Error("Not authenticated");
@@ -406,91 +337,21 @@ const AdminPanel = () => {
 
       console.log(`Found ${wallpapersToDelete.length} wallpapers to delete`);
 
+      let successCount = 0;
       for (const wallpaper of wallpapersToDelete) {
-        if (wallpaper.file_path) {
-          try {
-            const pathParts = wallpaper.file_path.split('/');
-            const bucket = pathParts[0];
-            const path = pathParts.slice(1).join('/');
-            
-            console.log(`Deleting from storage bucket ${bucket}, path ${path}`);
-            
-            const { error: storageError } = await supabase.storage
-              .from(bucket)
-              .remove([path]);
-
-            if (storageError) {
-              console.error(`Storage deletion error for ${wallpaper.id}:`, storageError);
-            } else {
-              console.log(`Deleted file for ${wallpaper.id} from storage`);
-            }
-          } catch (storageError) {
-            console.error(`Storage exception for ${wallpaper.id}:`, storageError);
-          }
+        try {
+          const deleted = await deleteWallpaper(wallpaper.id, wallpaper.file_path, hasFullAccess);
+          if (deleted) successCount++;
+        } catch (error) {
+          console.error(`Error deleting wallpaper ${wallpaper.id}:`, error);
         }
       }
 
-      try {
-        const { error: collectionError } = await supabase
-          .from('collection_wallpapers')
-          .delete()
-          .in('wallpaper_id', selectedWallpapers);
-
-        if (collectionError) {
-          console.error("Error removing from collection_wallpapers:", collectionError);
-        } else {
-          console.log("Removed from collection_wallpapers");
-        }
-      } catch (collectionError) {
-        console.error("Exception removing from collections:", collectionError);
-      }
-      
-      try {
-        const { data: usersWithFavorites, error: usersFavorError } = await supabase
-          .from('users')
-          .select('id, favor_image')
-          .filter('favor_image', 'cs', `{${selectedWallpapers.join(',')}}`);
-        
-        if (usersFavorError) {
-          console.error("Error finding users with favorites:", usersFavorError);
-        } else if (usersWithFavorites && usersWithFavorites.length > 0) {
-          console.log(`Updating favorites for ${usersWithFavorites.length} users`);
-          
-          for (const user of usersWithFavorites) {
-            const updatedFavorites = (user.favor_image || [])
-              .filter(id => !selectedWallpapers.includes(id));
-            
-            const { error: updateError } = await supabase
-              .from('users')
-              .update({ favor_image: updatedFavorites })
-              .eq('id', user.id);
-            
-            if (updateError) {
-              console.error(`Error updating favorites for user ${user.id}:`, updateError);
-            } else {
-              console.log(`Updated favorites for user ${user.id}`);
-            }
-          }
-        }
-      } catch (favoritesError) {
-        console.error("Exception updating favorites:", favoritesError);
-      }
-
-      const { error: dbError } = await supabase
-        .from('wallpapers')
-        .delete()
-        .in('id', selectedWallpapers);
-
-      if (dbError) {
-        console.error("Database deletion error:", dbError);
-        throw dbError;
-      }
-
-      console.log("Successfully deleted multiple wallpapers from database");
+      console.log(`Successfully deleted ${successCount} of ${wallpapersToDelete.length} wallpapers`);
       
       toast({
         title: "Success",
-        description: `${selectedWallpapers.length} wallpapers deleted successfully`,
+        description: `${successCount} wallpapers deleted successfully`,
       });
       
       setSelectedWallpapers([]);
