@@ -1,5 +1,4 @@
 
-import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Wallpaper } from "@/hooks/use-wallpapers";
 import { useQuery } from "@tanstack/react-query";
@@ -21,12 +20,13 @@ export const useWallpaperDetails = (wallpaperId: string | undefined) => {
   const fetchSimilarWallpapers = async (tags: string[]) => {
     if (!tags || tags.length === 0) return [];
     
+    // Limit to 8 similar wallpapers for better performance
     const { data, error } = await supabase
       .from('wallpapers')
       .select('*')
       .contains('tags', tags)
       .neq('id', wallpaperId)
-      .limit(10);
+      .limit(8);
     
     if (error) throw error;
     return data as Wallpaper[];

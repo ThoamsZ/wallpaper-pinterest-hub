@@ -1,16 +1,16 @@
-
 import { useParams, useNavigate } from "react-router-dom";
 import { useWallpaperDetails } from "@/hooks/use-wallpaper-details";
 import { useWallpaperLikes } from "@/hooks/use-wallpaper-likes";
 import { useDownloadLimits } from "@/hooks/use-download-limits";
 import { Button } from "@/components/ui/button";
 import { Heart, Download, Link, ArrowLeft } from "lucide-react";
+import { Card, CardContent } from "@/components/ui/card";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import WallpaperGrid from "@/components/WallpaperGrid";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/App";
 
@@ -31,17 +31,6 @@ const WallpaperPage = () => {
   } = useWallpaperDetails(id);
 
   const isLiked = wallpaper ? likedWallpapers.includes(wallpaper.id) : false;
-
-  useEffect(() => {
-    if (error) {
-      toast({
-        title: "Error",
-        description: "Could not load the wallpaper. It may have been removed.",
-        variant: "destructive",
-      });
-      navigate("/", { replace: true });
-    }
-  }, [error, navigate]);
 
   // Prevent context menu and dragging
   const handleContextMenu = (e: React.MouseEvent) => {
@@ -158,40 +147,42 @@ const WallpaperPage = () => {
   return (
     <div className="min-h-screen bg-background flex flex-col">
       <Header isDisabled={false} />
-      <main className="container mx-auto px-4 sm:px-6 lg:px-8 flex-grow">
+      <main className="container mx-auto px-4 sm:px-6 lg:px-8 flex-grow py-6">
         {isLoading ? (
-          <div className="w-full flex justify-center py-20">
+          <div className="w-full flex justify-center py-10">
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
           </div>
         ) : wallpaper ? (
-          <div className="py-8">
+          <>
             <Button 
               variant="ghost" 
-              className="mb-6 flex items-center gap-2" 
+              className="mb-4 flex items-center gap-2" 
               onClick={() => navigate(-1)}
             >
               <ArrowLeft className="h-4 w-4" /> Back
             </Button>
 
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-              {/* Wallpaper Image */}
-              <div className="relative rounded-lg overflow-hidden bg-gray-800">
-                <img
-                  src={wallpaper.url}
-                  alt={`Wallpaper ${wallpaper.id}`}
-                  className="w-full h-auto object-contain"
-                  onContextMenu={handleContextMenu}
-                  onDragStart={handleDragStart}
-                  style={{ userSelect: 'none', WebkitUserSelect: 'none' }}
-                />
+            <div className="flex flex-col md:flex-row gap-8 justify-center items-start">
+              {/* Center Wallpaper */}
+              <div className="flex-1 flex justify-center">
+                <Card className="overflow-hidden bg-gray-800 max-w-md w-full">
+                  <CardContent className="p-0">
+                    <img
+                      src={wallpaper.url}
+                      alt={`Wallpaper ${wallpaper.id}`}
+                      className="w-full h-auto object-contain max-h-[70vh]"
+                      onContextMenu={handleContextMenu}
+                      onDragStart={handleDragStart}
+                      style={{ userSelect: 'none', WebkitUserSelect: 'none' }}
+                    />
+                  </CardContent>
+                </Card>
               </div>
 
-              {/* Wallpaper Info */}
-              <div className="flex flex-col">
-                <h1 className="text-2xl font-bold mb-4">Wallpaper</h1>
-                
+              {/* Right Sidebar */}
+              <div className="w-full md:w-64 space-y-6">
                 {/* Tags */}
-                <div className="mb-6">
+                <div>
                   <h2 className="text-lg font-medium mb-2">Tags</h2>
                   <div className="flex flex-wrap gap-2">
                     {wallpaper.tags && wallpaper.tags.length > 0 ? (
@@ -211,27 +202,11 @@ const WallpaperPage = () => {
                   </div>
                 </div>
 
-                {/* Stats */}
-                <div className="mb-6">
-                  <h2 className="text-lg font-medium mb-2">Stats</h2>
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="bg-secondary/30 p-3 rounded-lg">
-                      <span className="text-muted-foreground">Downloads</span>
-                      <p className="text-lg font-medium">{wallpaper.download_count || 0}</p>
-                    </div>
-                    <div className="bg-secondary/30 p-3 rounded-lg">
-                      <span className="text-muted-foreground">Likes</span>
-                      <p className="text-lg font-medium">{wallpaper.like_count || 0}</p>
-                    </div>
-                  </div>
-                </div>
-
                 {/* Actions */}
-                <div className="mt-auto flex gap-4">
+                <div className="flex flex-col gap-3">
                   <Button
                     variant="secondary"
-                    size="lg"
-                    className={`rounded-full flex items-center gap-2 ${
+                    className={`w-full justify-start gap-2 ${
                       isLiked ? 'bg-red-500/20 hover:bg-red-500/30' : ''
                     }`}
                     onClick={() => handleLike(wallpaper.id)}
@@ -241,8 +216,7 @@ const WallpaperPage = () => {
                   </Button>
                   <Button
                     variant="default"
-                    size="lg"
-                    className="rounded-full flex items-center gap-2"
+                    className="w-full justify-start gap-2"
                     onClick={handleDownload}
                     disabled={isDownloading || (downloadsRemaining !== null && downloadsRemaining <= 0)}
                   >
@@ -251,8 +225,7 @@ const WallpaperPage = () => {
                   </Button>
                   <Button
                     variant="secondary"
-                    size="lg"
-                    className="rounded-full flex items-center gap-2"
+                    className="w-full justify-start gap-2"
                     onClick={copyLinkToClipboard}
                   >
                     <Link className="h-5 w-5" />
@@ -263,21 +236,21 @@ const WallpaperPage = () => {
             </div>
 
             {/* Similar Wallpapers */}
-            <div className="mt-16">
+            <div className="mt-12">
               <h2 className="text-2xl font-bold mb-6">Similar Wallpapers</h2>
               {isSimilarLoading ? (
-                <div className="w-full flex justify-center py-10">
+                <div className="w-full flex justify-center py-6">
                   <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
                 </div>
               ) : similarWallpapers && similarWallpapers.length > 0 ? (
                 <WallpaperGrid wallpapers={similarWallpapers} />
               ) : (
-                <p className="text-muted-foreground text-center py-10">No similar wallpapers found</p>
+                <p className="text-muted-foreground text-center py-6">No similar wallpapers found</p>
               )}
             </div>
-          </div>
+          </>
         ) : (
-          <div className="text-center py-20">
+          <div className="text-center py-10">
             <h2 className="text-2xl font-bold mb-4">Wallpaper not found</h2>
             <p className="text-muted-foreground mb-6">The wallpaper you're looking for doesn't exist or has been removed.</p>
             <Button onClick={() => navigate("/")}>Go Home</Button>

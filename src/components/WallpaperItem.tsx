@@ -1,4 +1,5 @@
-import { useState, useEffect, useRef, memo } from "react";
+
+import { useState, useEffect, memo } from "react";
 import { useIsMobile } from "@/hooks/use-mobile";
 import type { Wallpaper } from "@/hooks/use-wallpapers";
 import { useInView } from "react-intersection-observer";
@@ -70,6 +71,11 @@ const WallpaperItem = memo(({ wallpaper, onSelect }: WallpaperItemProps) => {
       });
   };
 
+  // Handle click on wallpaper item
+  const handleWallpaperClick = () => {
+    navigate(`/wallpaper/${wallpaper.id}`);
+  };
+
   return (
     <div
       ref={elementRef}
@@ -77,7 +83,7 @@ const WallpaperItem = memo(({ wallpaper, onSelect }: WallpaperItemProps) => {
       className="wallpaper-item relative cursor-pointer transform transition-transform duration-200 hover:z-10"
       onMouseEnter={() => !isMobile && setIsHovered(true)}
       onMouseLeave={() => !isMobile && setIsHovered(false)}
-      onClick={() => navigate(`/wallpaper/${wallpaper.id}`)}
+      onClick={handleWallpaperClick}
       onContextMenu={handleContextMenu}
     >
       <div className="relative group overflow-hidden rounded-lg">
