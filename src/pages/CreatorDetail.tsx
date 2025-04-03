@@ -4,42 +4,36 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { Button } from "@/components/ui/button";
 import { toast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
-import { AspectRatio } from "@/components/ui/aspect-ratio";
-import { deleteWallpaper } from "@/utils/wallpaper-utils";
 import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
-import { Card, CardContent } from "@/components/ui/card";
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+  CardDescription,
+} from "@/components/ui/card";
 
 const CreatorDetail = () => {
   const { creatorId } = useParams();
   const navigate = useNavigate();
-  const [wallpapers, setWallpapers] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [isDeleting, setIsDeleting] = useState(false);
-  const [currentDeletingId, setCurrentDeletingId] = useState(null);
-  const [deleteAlertOpen, setDeleteAlertOpen] = useState(false);
-  const [wallpaperToDelete, setWallpaperToDelete] = useState(null);
-  const [deleteError, setDeleteError] = useState(null);
-  const [refreshKey, setRefreshKey] = useState(0);
+  const [creatorInfo, setCreatorInfo] = useState(null);
   const [creatorUserId, setCreatorUserId] = useState(null);
 
-  // Convert fetchCreatorWallpapers to useCallback to prevent unnecessary re-renders
-  const fetchCreatorWallpapers = useCallback(async () => {
+  // Fetch creator details
+  const fetchCreatorDetails = useCallback(async () => {
     setIsLoading(true);
     try {
       console.log("Fetching creator details for ID:", creatorId);
       
       const { data: creatorData, error: creatorError } = await supabase
         .from('admin_users')
-        .select('user_id')
+        .select(`
+          *,
+          profile:users!inner(
+            email,
+            creator_code
+          )
+        `)
         .eq('id', creatorId)
         .single();
 
@@ -48,29 +42,11 @@ const CreatorDetail = () => {
         throw creatorError;
       }
 
+      console.log("Creator data:", creatorData);
+      
       // Store the creator's user_id for the redirect link
       setCreatorUserId(creatorData.user_id);
-
-      console.log("Looking for wallpapers with user_id:", creatorData.user_id);
-      
-      const { data: wallpapersData, error: wallpapersError } = await supabase
-        .from('wallpapers')
-        .select('*')
-        .eq('uploaded_by', creatorData.user_id);
-
-      if (wallpapersError) {
-        console.error("Error fetching wallpapers:", wallpapersError);
-        throw wallpapersError;
-      }
-
-      console.log("Wallpapers found:", wallpapersData?.length || 0);
-      
-      // Debug log to see what wallpapers we're getting
-      if (wallpapersData) {
-        console.log("Wallpaper IDs:", wallpapersData.map(w => w.id));
-      }
-      
-      setWallpapers(wallpapersData || []);
+      setCreatorInfo(creatorData);
     } catch (error) {
       console.error("Error fetching creator details:", error);
       toast({
@@ -83,86 +59,12 @@ const CreatorDetail = () => {
     }
   }, [creatorId]);
 
-  // Use effect to fetch wallpapers on mount and when refreshKey changes
+  // Use effect to fetch creator details on mount
   useEffect(() => {
-    fetchCreatorWallpapers();
-  }, [fetchCreatorWallpapers, refreshKey]);
+    fetchCreatorDetails();
+  }, [fetchCreatorDetails]);
 
-  const prepareWallpaperDelete = (wallpaper) => {
-    console.log("Preparing to delete wallpaper:", wallpaper.id);
-    setWallpaperToDelete(wallpaper);
-    setDeleteAlertOpen(true);
-    setDeleteError(null);
-  };
-
-  const handleWallpaperDelete = async () => {
-    if (!wallpaperToDelete || !wallpaperToDelete.id) {
-      console.error("No wallpaper ID provided for deletion");
-      toast({
-        title: "Error",
-        description: "Invalid wallpaper ID.",
-        variant: "destructive",
-      });
-      return;
-    }
-    
-    const wallpaperId = wallpaperToDelete.id;
-    console.log("Starting deletion process for wallpaper ID:", wallpaperId);
-    
-    setIsDeleting(true);
-    setCurrentDeletingId(wallpaperId);
-    setDeleteError(null);
-    
-    try {
-      toast({
-        title: "Deleting...",
-        description: "Please wait while we delete this wallpaper.",
-      });
-      
-      // Perform the deletion
-      await deleteWallpaper(wallpaperId);
-      console.log("Deletion successful for wallpaper:", wallpaperId);
-      
-      // Update local state to remove the deleted wallpaper
-      console.log("Updating UI state - Before:", wallpapers.length, "wallpapers");
-      setWallpapers(prevWallpapers => {
-        const filteredWallpapers = prevWallpapers.filter(w => w.id !== wallpaperId);
-        console.log("Updating UI state - After:", filteredWallpapers.length, "wallpapers");
-        return filteredWallpapers;
-      });
-      
-      // Directly refetch to ensure we have the latest data
-      console.log("Triggering refresh after deletion");
-      setRefreshKey(prevKey => prevKey + 1);
-      
-      toast({
-        title: "Wallpaper Deleted",
-        description: "The wallpaper has been successfully deleted.",
-      });
-      
-      setDeleteAlertOpen(false);
-    } catch (error) {
-      console.error("Error in wallpaper deletion:", error);
-      setDeleteError(error.message || "An unexpected error occurred during deletion");
-      toast({
-        title: "Deletion Failed",
-        description: error.message || "An unexpected error occurred during deletion.",
-        variant: "destructive",
-      });
-    } finally {
-      setIsDeleting(false);
-      setCurrentDeletingId(null);
-      setWallpaperToDelete(null);
-    }
-  };
-
-  // Function to manually refresh the wallpapers list
-  const handleRefresh = () => {
-    console.log("Manual refresh triggered");
-    setRefreshKey(prevKey => prevKey + 1);
-  };
-
-  // New function to handle redirection to the creator's admin panel
+  // Function to handle redirection to the creator's admin panel
   const navigateToCreatorAdminPanel = () => {
     if (creatorUserId) {
       // Redirect to the creator's admin panel
@@ -175,6 +77,43 @@ const CreatorDetail = () => {
       toast({
         title: "Error",
         description: "Creator information not available",
+        variant: "destructive",
+      });
+    }
+  };
+
+  // Function to toggle creator blocked status
+  const toggleBlockStatus = async () => {
+    try {
+      if (!creatorInfo) return;
+      
+      const newBlockStatus = !creatorInfo.is_blocked;
+      
+      const { error } = await supabase
+        .from('admin_users')
+        .update({ is_blocked: newBlockStatus })
+        .eq('id', creatorId);
+
+      if (error) {
+        console.error("Error updating block status:", error);
+        throw error;
+      }
+
+      // Update local state
+      setCreatorInfo(prev => ({
+        ...prev,
+        is_blocked: newBlockStatus
+      }));
+
+      toast({
+        title: "Success",
+        description: `Creator ${newBlockStatus ? 'blocked' : 'unblocked'} successfully`,
+      });
+    } catch (error) {
+      console.error("Error toggling block status:", error);
+      toast({
+        title: "Error",
+        description: error.message || "Failed to update creator status",
         variant: "destructive",
       });
     }
@@ -194,87 +133,69 @@ const CreatorDetail = () => {
         <Button variant="outline" onClick={() => navigate(-1)}>
           Back to Creators
         </Button>
-        <h1 className="text-2xl font-bold">Creator Wallpapers</h1>
-        <div className="flex space-x-2">
-          <Button 
-            variant="primary" 
-            onClick={navigateToCreatorAdminPanel}
-          >
-            Go to Creator Admin Panel
-          </Button>
-          <Button variant="secondary" onClick={handleRefresh} disabled={isLoading}>
-            Refresh
-          </Button>
-        </div>
+        <h1 className="text-2xl font-bold">Creator Details</h1>
+        <Button 
+          variant="primary" 
+          onClick={navigateToCreatorAdminPanel}
+        >
+          Go to Creator Admin Panel
+        </Button>
       </div>
 
-      {wallpapers.length > 0 ? (
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-          {wallpapers.map((wallpaper) => (
-            <Card key={wallpaper.id} className="overflow-hidden">
-              <div className="relative">
-                <AspectRatio ratio={3/4}>
-                  <img 
-                    src={wallpaper.compressed_url} 
-                    alt={`Wallpaper ${wallpaper.id}`}
-                    className="w-full h-full object-cover"
-                    onError={(e) => {
-                      e.currentTarget.src = "/placeholder.svg";
-                    }}
-                  />
-                </AspectRatio>
+      {creatorInfo ? (
+        <Card className="w-full max-w-3xl mx-auto">
+          <CardHeader>
+            <CardTitle className="flex justify-between">
+              <div>Creator Information</div>
+              {creatorInfo.is_blocked && (
+                <span className="text-sm font-normal text-red-500 bg-red-100 px-2 py-1 rounded">Blocked</span>
+              )}
+            </CardTitle>
+            <CardDescription>
+              Details about this creator
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-1">
+                <p className="text-sm font-medium text-muted-foreground">Email</p>
+                <p className="font-semibold">{creatorInfo.profile?.email || 'No email available'}</p>
               </div>
-              <CardContent className="p-3">
-                <div className="flex flex-col space-y-1">
-                  <div className="text-xs text-muted-foreground truncate">
-                    ID: {wallpaper.id.substring(0, 8)}...
-                  </div>
-                  <Button 
-                    variant="destructive" 
-                    size="sm" 
-                    className="w-full"
-                    onClick={() => prepareWallpaperDelete(wallpaper)}
-                    disabled={isDeleting && currentDeletingId === wallpaper.id}
-                  >
-                    {isDeleting && currentDeletingId === wallpaper.id ? 'Deleting...' : 'Delete'}
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
+              <div className="space-y-1">
+                <p className="text-sm font-medium text-muted-foreground">Creator Code</p>
+                <p className="font-semibold">{creatorInfo.profile?.creator_code || 'No creator code'}</p>
+              </div>
+              <div className="space-y-1">
+                <p className="text-sm font-medium text-muted-foreground">Admin Type</p>
+                <p className="font-semibold">{creatorInfo.admin_type || 'Not specified'}</p>
+              </div>
+              <div className="space-y-1">
+                <p className="text-sm font-medium text-muted-foreground">Created At</p>
+                <p className="font-semibold">
+                  {creatorInfo.created_at 
+                    ? new Date(creatorInfo.created_at).toLocaleString() 
+                    : 'Unknown'}
+                </p>
+              </div>
+            </div>
+            
+            <div className="pt-4 flex justify-end space-x-2">
+              <Button 
+                variant={creatorInfo.is_blocked ? "outline" : "destructive"} 
+                onClick={toggleBlockStatus}
+              >
+                {creatorInfo.is_blocked ? 'Unblock Creator' : 'Block Creator'}
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
       ) : (
         <Card>
           <CardContent className="py-6">
-            <p className="text-center text-muted-foreground">No wallpapers found for this creator.</p>
+            <p className="text-center text-muted-foreground">Creator information not available.</p>
           </CardContent>
         </Card>
       )}
-
-      <AlertDialog open={deleteAlertOpen} onOpenChange={setDeleteAlertOpen}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
-            <AlertDialogDescription>
-              This action cannot be undone. This will permanently delete this wallpaper from our servers.
-              {deleteError && (
-                <div className="mt-2 p-2 bg-destructive/10 text-destructive rounded">
-                  Error: {deleteError}
-                </div>
-              )}
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel disabled={isDeleting}>Cancel</AlertDialogCancel>
-            <AlertDialogAction 
-              onClick={handleWallpaperDelete}
-              disabled={isDeleting}
-            >
-              {isDeleting ? 'Deleting...' : 'Delete'}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
     </div>
   );
 };
