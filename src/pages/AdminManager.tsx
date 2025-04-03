@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -655,7 +656,11 @@ const AdminManager = () => {
 
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 {filteredCreators.map((creator) => (
-                  <Card key={creator.id}>
+                  <Card 
+                    key={creator.id} 
+                    className="cursor-pointer hover:border-primary transition-colors"
+                    onClick={() => navigate(`/admin-manager/creator/${creator.id}`)}
+                  >
                     <CardHeader>
                       <CardTitle className="flex justify-between items-center">
                         <div className="flex flex-col">
@@ -680,12 +685,15 @@ const AdminManager = () => {
                     <CardFooter className="flex justify-end gap-2">
                       <AlertDialog>
                         <AlertDialogTrigger asChild>
-                          <Button variant="outline">
+                          <Button 
+                            variant="outline" 
+                            onClick={(e) => e.stopPropagation()} // Prevent card click event
+                          >
                             <Ban className="w-4 h-4 mr-2" />
                             {creator.is_blocked ? 'Unblock' : 'Block'}
                           </Button>
                         </AlertDialogTrigger>
-                        <AlertDialogContent>
+                        <AlertDialogContent onClick={(e) => e.stopPropagation()}>
                           <AlertDialogHeader>
                             <AlertDialogTitle>
                               {creator.is_blocked ? 'Unblock Creator' : 'Block Creator'}
@@ -708,12 +716,15 @@ const AdminManager = () => {
 
                       <AlertDialog>
                         <AlertDialogTrigger asChild>
-                          <Button variant="destructive">
+                          <Button 
+                            variant="destructive"
+                            onClick={(e) => e.stopPropagation()} // Prevent card click event
+                          >
                             <UserX className="w-4 h-4 mr-2" />
                             Remove
                           </Button>
                         </AlertDialogTrigger>
-                        <AlertDialogContent>
+                        <AlertDialogContent onClick={(e) => e.stopPropagation()}>
                           <AlertDialogHeader>
                             <AlertDialogTitle>Remove Creator</AlertDialogTitle>
                             <AlertDialogDescription>

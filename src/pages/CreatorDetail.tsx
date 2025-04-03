@@ -1,0 +1,387 @@
+
+import { useState, useEffect } from "react";
+import { useNavigate, useParams } from "react-router-dom";
+import { Button } from "@/components/ui/button";
+import { toast } from "@/hooks/use-toast";
+import { supabase } from "@/integrations/supabase/client";
+import {
+  Card,
+  CardContent,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
+import {
+  Trash,
+  ArrowLeft,
+} from "lucide-react";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+
+const CreatorDetail = () => {
+  const navigate = useNavigate();
+  const { creatorId } = useParams();
+  const [isLoading, setIsLoading] = useState(true);
+  const [creator, setCreator] = useState<any>(null);
+  const [wallpapers, setWallpapers] = useState<any[]>([]);
+  const [collections, setCollections] = useState<any[]>([]);
+
+  useEffect(() => {
+    checkAdminManagerStatus();
+    if (creatorId) {
+      fetchCreatorDetails(creatorId);
+    }
+  }, [creatorId]);
+
+  const checkAdminManagerStatus = async () => {
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        navigate('/admin-panel');
+        return;
+      }
+
+      const { data: adminData, error: adminError } = await supabase
+        .from('admin_users')
+        .select()
+        .eq('user_id', session.user.id)
+        .eq('admin_type', 'admin_manager')
+        .maybeSingle();
+
+      if (adminError || !adminData) {
+        console.error('Admin check error:', adminError);
+        navigate('/admin-panel');
+        return;
+      }
+    } catch (error) {
+      console.error('Error checking admin manager status:', error);
+      navigate('/admin-panel');
+    }
+  };
+
+  const fetchCreatorDetails = async (id: string) => {
+    setIsLoading(true);
+    try {
+      // Fetch the creator details
+      const { data: adminData, error: adminError } = await supabase
+        .from('admin_users')
+        .select(`
+          *,
+          profile:users!inner(
+            email,
+            creator_code
+          )
+        `)
+        .eq('id', id)
+        .single();
+
+      if (adminError) throw adminError;
+      
+      setCreator(adminData);
+
+      // Fetch wallpapers uploaded by the creator
+      const { data: wallpaperData, error: wallpaperError } = await supabase
+        .from('wallpapers')
+        .select('*')
+        .eq('uploaded_by', adminData.user_id);
+
+      if (wallpaperError) throw wallpaperError;
+      
+      setWallpapers(wallpaperData || []);
+
+      // Fetch collections created by the creator
+      const { data: collectionData, error: collectionError } = await supabase
+        .from('collections')
+        .select('*')
+        .eq('created_by', adminData.user_id);
+
+      if (collectionError) throw collectionError;
+      
+      setCollections(collectionData || []);
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to fetch creator details",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleDeleteWallpaper = async (wallpaperId: string, filePath: string) => {
+    try {
+      // Remove from collection_wallpapers
+      const { error: collectionWallpapersError } = await supabase
+        .from('collection_wallpapers')
+        .delete()
+        .eq('wallpaper_id', wallpaperId);
+
+      if (collectionWallpapersError) throw collectionWallpapersError;
+
+      // Delete from storage
+      const { error: storageError } = await supabase.storage
+        .from('wallpapers')
+        .remove([filePath]);
+
+      if (storageError) throw storageError;
+
+      // Delete from wallpapers table
+      const { error: dbError } = await supabase
+        .from('wallpapers')
+        .delete()
+        .eq('id', wallpaperId);
+
+      if (dbError) throw dbError;
+
+      setWallpapers(prev => prev.filter(w => w.id !== wallpaperId));
+      
+      toast({
+        title: "Success",
+        description: "Wallpaper deleted successfully",
+      });
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to delete wallpaper",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleDeleteCollection = async (collectionId: string) => {
+    try {
+      // Remove all wallpapers from this collection
+      const { error: collectionWallpapersError } = await supabase
+        .from('collection_wallpapers')
+        .delete()
+        .eq('collection_id', collectionId);
+
+      if (collectionWallpapersError) throw collectionWallpapersError;
+
+      // Delete collection likes
+      const { error: likesError } = await supabase
+        .from('collection_likes')
+        .delete()
+        .eq('collection_id', collectionId);
+
+      if (likesError) throw likesError;
+
+      // Delete the collection
+      const { error: collectionError } = await supabase
+        .from('collections')
+        .delete()
+        .eq('id', collectionId);
+
+      if (collectionError) throw collectionError;
+
+      setCollections(prev => prev.filter(c => c.id !== collectionId));
+      
+      toast({
+        title: "Success",
+        description: "Collection deleted successfully",
+      });
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to delete collection",
+        variant: "destructive",
+      });
+    }
+  };
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+      </div>
+    );
+  }
+
+  if (!creator) {
+    return (
+      <div className="container mx-auto p-6">
+        <Button 
+          variant="outline" 
+          onClick={() => navigate('/admin-manager')}
+          className="mb-6"
+        >
+          <ArrowLeft className="w-4 h-4 mr-2" />
+          Back to Admin Manager
+        </Button>
+        <div className="text-center py-10">
+          <p className="text-muted-foreground">Creator not found.</p>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="container mx-auto p-6">
+      <Button 
+        variant="outline" 
+        onClick={() => navigate('/admin-manager')}
+        className="mb-6"
+      >
+        <ArrowLeft className="w-4 h-4 mr-2" />
+        Back to Admin Manager
+      </Button>
+      
+      <div className="mb-6">
+        <h1 className="text-2xl font-bold">Creator Details</h1>
+        <p className="text-muted-foreground">
+          {creator.profile?.email} 
+          {creator.profile?.creator_code && ` (${creator.profile.creator_code})`}
+        </p>
+        {creator.is_blocked && (
+          <p className="text-sm text-red-500 mt-1">This creator is currently blocked</p>
+        )}
+      </div>
+
+      <Tabs defaultValue="wallpapers" className="w-full">
+        <TabsList className="mb-4">
+          <TabsTrigger value="wallpapers">Wallpapers ({wallpapers.length})</TabsTrigger>
+          <TabsTrigger value="collections">Collections ({collections.length})</TabsTrigger>
+        </TabsList>
+        
+        <TabsContent value="wallpapers">
+          {wallpapers.length > 0 ? (
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>File Name</TableHead>
+                    <TableHead>Type</TableHead>
+                    <TableHead>Downloads</TableHead>
+                    <TableHead>Likes</TableHead>
+                    <TableHead className="text-right">Actions</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {wallpapers.map((wallpaper) => (
+                    <TableRow key={wallpaper.id}>
+                      <TableCell className="font-medium">{wallpaper.file_path.split('/').pop()}</TableCell>
+                      <TableCell>{wallpaper.type}</TableCell>
+                      <TableCell>{wallpaper.download_count || 0}</TableCell>
+                      <TableCell>{wallpaper.like_count || 0}</TableCell>
+                      <TableCell className="text-right">
+                        <AlertDialog>
+                          <AlertDialogTrigger asChild>
+                            <Button variant="destructive" size="sm">
+                              <Trash className="w-4 h-4 mr-2" />
+                              Delete
+                            </Button>
+                          </AlertDialogTrigger>
+                          <AlertDialogContent>
+                            <AlertDialogHeader>
+                              <AlertDialogTitle>Delete Wallpaper</AlertDialogTitle>
+                              <AlertDialogDescription>
+                                Are you sure you want to delete this wallpaper? This action cannot be undone.
+                              </AlertDialogDescription>
+                            </AlertDialogHeader>
+                            <AlertDialogFooter>
+                              <AlertDialogCancel>Cancel</AlertDialogCancel>
+                              <AlertDialogAction
+                                onClick={() => handleDeleteWallpaper(wallpaper.id, wallpaper.file_path)}
+                                className="bg-red-500 hover:bg-red-600"
+                              >
+                                Delete
+                              </AlertDialogAction>
+                            </AlertDialogFooter>
+                          </AlertDialogContent>
+                        </AlertDialog>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          ) : (
+            <div className="text-center py-10">
+              <p className="text-muted-foreground">No wallpapers found.</p>
+            </div>
+          )}
+        </TabsContent>
+        
+        <TabsContent value="collections">
+          {collections.length > 0 ? (
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Name</TableHead>
+                    <TableHead>Description</TableHead>
+                    <TableHead>Likes</TableHead>
+                    <TableHead>Created At</TableHead>
+                    <TableHead className="text-right">Actions</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {collections.map((collection) => (
+                    <TableRow key={collection.id}>
+                      <TableCell className="font-medium">{collection.name}</TableCell>
+                      <TableCell>{collection.description || '-'}</TableCell>
+                      <TableCell>{collection.like_count || 0}</TableCell>
+                      <TableCell>{new Date(collection.created_at).toLocaleDateString()}</TableCell>
+                      <TableCell className="text-right">
+                        <AlertDialog>
+                          <AlertDialogTrigger asChild>
+                            <Button variant="destructive" size="sm">
+                              <Trash className="w-4 h-4 mr-2" />
+                              Delete
+                            </Button>
+                          </AlertDialogTrigger>
+                          <AlertDialogContent>
+                            <AlertDialogHeader>
+                              <AlertDialogTitle>Delete Collection</AlertDialogTitle>
+                              <AlertDialogDescription>
+                                Are you sure you want to delete this collection? This action cannot be undone.
+                              </AlertDialogDescription>
+                            </AlertDialogHeader>
+                            <AlertDialogFooter>
+                              <AlertDialogCancel>Cancel</AlertDialogCancel>
+                              <AlertDialogAction
+                                onClick={() => handleDeleteCollection(collection.id)}
+                                className="bg-red-500 hover:bg-red-600"
+                              >
+                                Delete
+                              </AlertDialogAction>
+                            </AlertDialogFooter>
+                          </AlertDialogContent>
+                        </AlertDialog>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          ) : (
+            <div className="text-center py-10">
+              <p className="text-muted-foreground">No collections found.</p>
+            </div>
+          )}
+        </TabsContent>
+      </Tabs>
+    </div>
+  );
+};
+
+export default CreatorDetail;
