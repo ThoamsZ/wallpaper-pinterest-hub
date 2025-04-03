@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -141,11 +140,8 @@ const CreatorDetail = () => {
     setDeleteItemId(wallpaperId);
     
     try {
-      console.log("-----------------------------------------------------");
-      console.log("STARTING WALLPAPER DELETION PROCESS");
-      console.log("Wallpaper ID:", wallpaperId);
+      console.log("Starting wallpaper deletion for:", wallpaperId);
       console.log("File path:", filePath);
-      console.log("Wallpaper URL:", wallpaperUrl);
       
       // Step 1: Verify wallpaper exists before deletion
       const { data: wallpaperExists, error: wallpaperCheckError } = await supabase
@@ -155,11 +151,15 @@ const CreatorDetail = () => {
         .single();
       
       if (wallpaperCheckError) {
-        console.error("Error verifying wallpaper existence:", wallpaperCheckError);
         if (wallpaperCheckError.code === 'PGRST116') {
+          console.log("Wallpaper already deleted");
+          setWallpapers(prev => prev.filter(w => w.id !== wallpaperId));
+          if (selectedImage === wallpaperUrl) {
+            setSelectedImage(null);
+          }
           toast({ 
-            title: "Wallpaper not found", 
-            description: "This wallpaper has already been deleted" 
+            title: "Info", 
+            description: "This wallpaper was already deleted" 
           });
           setIsDeleting(false);
           setDeleteItemId(null);
@@ -168,21 +168,9 @@ const CreatorDetail = () => {
         throw wallpaperCheckError;
       }
       
-      if (!wallpaperExists) {
-        console.log("Wallpaper doesn't exist, nothing to delete");
-        toast({
-          title: "Wallpaper not found",
-          description: "This wallpaper has already been deleted"
-        });
-        setIsDeleting(false);
-        setDeleteItemId(null);
-        return;
-      }
-      
-      console.log("Wallpaper found, proceeding with deletion");
-      
       // Step 2: Delete file from storage
       if (filePath) {
+        console.log("Attempting to delete from storage:", filePath);
         const deleted = await deleteFileFromStorage(filePath);
         console.log("Storage file deletion result:", deleted ? "Success" : "Failed");
       }
@@ -288,8 +276,6 @@ const CreatorDetail = () => {
       }
       
       console.log("Successfully deleted wallpaper from database");
-      console.log("DELETION PROCESS COMPLETED SUCCESSFULLY");
-      console.log("-----------------------------------------------------");
       
       // Update UI
       setWallpapers(prev => prev.filter(w => w.id !== wallpaperId));
@@ -302,19 +288,6 @@ const CreatorDetail = () => {
         title: "Success",
         description: "Wallpaper successfully deleted",
       });
-      
-      // Refresh data
-      if (creator && creator.user_id) {
-        console.log("Refreshing wallpaper data...");
-        const { data: refreshedData } = await supabase
-          .from('wallpapers')
-          .select('*')
-          .eq('uploaded_by', creator.user_id);
-          
-        if (refreshedData) {
-          setWallpapers(refreshedData);
-        }
-      }
     } catch (error: any) {
       console.error("Full deletion error:", error);
       toast({

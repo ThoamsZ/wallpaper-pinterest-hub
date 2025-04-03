@@ -20,12 +20,19 @@ export const AdminManagerAuth = ({ setIsLoggedIn }: AdminManagerAuthProps) => {
     setIsLoading(true);
 
     try {
+      console.log("Attempting to sign in with email:", email);
+      
       const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
         email,
         password,
       });
 
-      if (signInError) throw signInError;
+      if (signInError) {
+        console.error("Sign in error:", signInError);
+        throw signInError;
+      }
+
+      console.log("Sign in successful, checking admin status");
 
       const { data: adminData, error: adminError } = await supabase
         .from('admin_users')
@@ -33,19 +40,25 @@ export const AdminManagerAuth = ({ setIsLoggedIn }: AdminManagerAuthProps) => {
         .eq('user_id', signInData.session?.user.id)
         .maybeSingle();
 
-      if (adminError) throw adminError;
+      if (adminError) {
+        console.error("Admin check error:", adminError);
+        throw adminError;
+      }
 
       if (!adminData || adminData.admin_type !== 'admin_manager') {
+        console.error("Access denied: Not an admin manager");
         await supabase.auth.signOut();
         throw new Error("Access denied. This page is only for admin managers.");
       }
 
+      console.log("Admin manager access confirmed");
       setIsLoggedIn(true);
       toast({
         title: "Success",
         description: "Logged in successfully",
       });
     } catch (error: any) {
+      console.error("Login error:", error);
       toast({
         title: "Error",
         description: error.message || "Failed to log in",

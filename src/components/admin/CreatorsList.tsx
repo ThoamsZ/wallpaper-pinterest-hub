@@ -34,6 +34,8 @@ export const CreatorsList = ({ navigate }: CreatorsListProps) => {
   const [wallpapers, setWallpapers] = useState<any[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [isLoading, setIsLoading] = useState(true);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [deleteItemId, setDeleteItemId] = useState<string | null>(null);
 
   useEffect(() => {
     fetchCreators();
@@ -42,6 +44,7 @@ export const CreatorsList = ({ navigate }: CreatorsListProps) => {
   const fetchCreators = async () => {
     setIsLoading(true);
     try {
+      console.log("Fetching creators...");
       const { data: adminUsers, error: adminsError } = await supabase
         .from('admin_users')
         .select(`
@@ -53,8 +56,13 @@ export const CreatorsList = ({ navigate }: CreatorsListProps) => {
         `)
         .eq('admin_type', 'admin');
 
-      if (adminsError) throw adminsError;
+      if (adminsError) {
+        console.error("Error fetching admins:", adminsError);
+        throw adminsError;
+      }
 
+      console.log("Fetched creators:", adminUsers?.length || 0);
+      
       const formattedAdminUsers = adminUsers?.map(admin => ({
         ...admin,
         users: admin.profile
@@ -62,6 +70,7 @@ export const CreatorsList = ({ navigate }: CreatorsListProps) => {
 
       setCreators(formattedAdminUsers);
 
+      console.log("Fetching all wallpapers for creators...");
       const wallpapersPromises = adminUsers.map((admin: any) =>
         supabase
           .from('wallpapers')
@@ -71,8 +80,10 @@ export const CreatorsList = ({ navigate }: CreatorsListProps) => {
 
       const wallpapersResults = await Promise.all(wallpapersPromises);
       const allWallpapers = wallpapersResults.flatMap(result => result.data || []);
+      console.log("Total wallpapers fetched:", allWallpapers.length);
       setWallpapers(allWallpapers);
     } catch (error: any) {
+      console.error("Error in fetchCreators:", error);
       toast({
         title: "Error",
         description: error.message || "Failed to fetch creators",
@@ -85,105 +96,40 @@ export const CreatorsList = ({ navigate }: CreatorsListProps) => {
 
   const handleBlockCreator = async (adminId: string) => {
     try {
+      console.log("Toggling block status for creator:", adminId);
+      
+      // Get the current creator to check if they're blocked
+      const creator = creators.find(c => c.id === adminId);
+      const newBlockStatus = !(creator?.is_blocked || false);
+      
       const { error } = await supabase
         .from('admin_users')
-        .update({ is_blocked: true })
+        .update({ is_blocked: newBlockStatus })
         .eq('id', adminId);
 
-      if (error) throw error;
+      if (error) {
+        console.error("Error blocking/unblocking creator:", error);
+        throw error;
+      }
 
+      // Update UI
       setCreators(prev =>
         prev.map(creator =>
           creator.id === adminId
-            ? { ...creator, is_blocked: true }
+            ? { ...creator, is_blocked: newBlockStatus }
             : creator
         )
       );
 
       toast({
         title: "Success",
-        description: "Creator blocked successfully",
+        description: `Creator ${newBlockStatus ? 'blocked' : 'unblocked'} successfully`,
       });
     } catch (error: any) {
+      console.error("Error in handleBlockCreator:", error);
       toast({
         title: "Error",
-        description: error.message || "Failed to block creator",
-        variant: "destructive",
-      });
-    }
-  };
-
-  const handleDeleteCreator = async (adminId: string, userId: string) => {
-    try {
-      console.log('Deleting creator:', { adminId, userId });
-
-      const { data: creatorWallpapers, error: wallpapersError } = await supabase
-        .from('wallpapers')
-        .select('*')
-        .eq('uploaded_by', userId);
-
-      if (wallpapersError) {
-        console.error('Error fetching wallpapers:', wallpapersError);
-        throw wallpapersError;
-      }
-
-      console.log('Found wallpapers:', creatorWallpapers);
-
-      if (creatorWallpapers && creatorWallpapers.length > 0) {
-        for (const wallpaper of creatorWallpapers) {
-          await deleteWallpaper(wallpaper.id, wallpaper.file_path);
-        }
-        console.log('Deleted all wallpapers');
-      }
-
-      const { error: deleteCollectionsError } = await supabase
-        .from('collections')
-        .delete()
-        .eq('created_by', userId);
-
-      if (deleteCollectionsError) {
-        console.error('Error deleting collections:', deleteCollectionsError);
-        throw deleteCollectionsError;
-      }
-
-      console.log('Deleted collections');
-
-      const { error: adminError } = await supabase
-        .from('admin_users')
-        .delete()
-        .eq('id', adminId);
-
-      if (adminError) {
-        console.error('Error deleting admin status:', adminError);
-        throw adminError;
-      }
-
-      console.log('Deleted admin status');
-
-      const { error: userError } = await supabase
-        .from('users')
-        .update({ creator_code: null })
-        .eq('id', userId);
-
-      if (userError) {
-        console.error('Error updating user:', userError);
-        throw userError;
-      }
-
-      console.log('Updated user, removed creator code');
-
-      setCreators(prev => prev.filter(creator => creator.id !== adminId));
-      setWallpapers(prev => prev.filter(w => w.uploaded_by !== userId));
-
-      toast({
-        title: "Success",
-        description: "Creator and all their data removed successfully",
-      });
-    } catch (error: any) {
-      console.error('Full error:', error);
-      toast({
-        title: "Error",
-        description: error.message || "Failed to delete creator",
+        description: error.message || "Failed to update creator status",
         variant: "destructive",
       });
     }
@@ -265,6 +211,89 @@ export const CreatorsList = ({ navigate }: CreatorsListProps) => {
     } catch (error) {
       console.error("Wallpaper deletion error:", error);
       return false;
+    }
+  };
+
+  const handleDeleteCreator = async (adminId: string, userId: string) => {
+    setIsDeleting(true);
+    setDeleteItemId(adminId);
+    
+    try {
+      console.log('Deleting creator:', { adminId, userId });
+
+      const { data: creatorWallpapers, error: wallpapersError } = await supabase
+        .from('wallpapers')
+        .select('*')
+        .eq('uploaded_by', userId);
+
+      if (wallpapersError) {
+        console.error('Error fetching wallpapers:', wallpapersError);
+        throw wallpapersError;
+      }
+
+      console.log('Found wallpapers:', creatorWallpapers?.length || 0);
+
+      if (creatorWallpapers && creatorWallpapers.length > 0) {
+        for (const wallpaper of creatorWallpapers) {
+          await deleteWallpaper(wallpaper.id, wallpaper.file_path);
+        }
+        console.log('Deleted all wallpapers');
+      }
+
+      const { error: deleteCollectionsError } = await supabase
+        .from('collections')
+        .delete()
+        .eq('created_by', userId);
+
+      if (deleteCollectionsError) {
+        console.error('Error deleting collections:', deleteCollectionsError);
+        throw deleteCollectionsError;
+      }
+
+      console.log('Deleted collections');
+
+      const { error: adminError } = await supabase
+        .from('admin_users')
+        .delete()
+        .eq('id', adminId);
+
+      if (adminError) {
+        console.error('Error deleting admin status:', adminError);
+        throw adminError;
+      }
+
+      console.log('Deleted admin status');
+
+      const { error: userError } = await supabase
+        .from('users')
+        .update({ creator_code: null })
+        .eq('id', userId);
+
+      if (userError) {
+        console.error('Error updating user:', userError);
+        throw userError;
+      }
+
+      console.log('Updated user, removed creator code');
+
+      setCreators(prev => prev.filter(creator => creator.id !== adminId));
+      setWallpapers(prev => prev.filter(w => w.uploaded_by !== userId));
+
+      toast({
+        title: "Success",
+        description: "Creator and all their data removed successfully",
+      });
+    } catch (error: any) {
+      console.error('Full error:', error);
+      toast({
+        title: "Error",
+        description: error.message || "Failed to delete creator",
+        variant: "destructive",
+      });
+    } finally {
+      setIsDeleting(false);
+      setDeleteItemId(null);
+      fetchCreators(); // Refresh the data
     }
   };
 
@@ -362,9 +391,10 @@ export const CreatorsList = ({ navigate }: CreatorsListProps) => {
                   <Button 
                     variant="destructive"
                     onClick={(e) => e.stopPropagation()} // Prevent card click event
+                    disabled={isDeleting && deleteItemId === creator.id}
                   >
                     <UserX className="w-4 h-4 mr-2" />
-                    Remove
+                    {isDeleting && deleteItemId === creator.id ? "Removing..." : "Remove"}
                   </Button>
                 </AlertDialogTrigger>
                 <AlertDialogContent onClick={(e) => e.stopPropagation()}>
@@ -385,6 +415,7 @@ export const CreatorsList = ({ navigate }: CreatorsListProps) => {
                     <AlertDialogAction
                       onClick={() => handleDeleteCreator(creator.id, creator.user_id)}
                       className="bg-red-500 hover:bg-red-600"
+                      disabled={isDeleting}
                     >
                       Remove
                     </AlertDialogAction>
