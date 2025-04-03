@@ -32,18 +32,34 @@ export const deleteWallpaper = async (wallpaperId: string): Promise<boolean> => 
     console.log(`Found wallpaper with path: ${wallpaper.file_path}`);
     
     // 2. Execute all related data deletions in parallel
-    // First, directly remove from users favorites (not using RPC)
+    // First, remove from users favorites (using array_remove directly)
     console.log("Removing wallpaper from all user favorites");
     const { error: favoritesError } = await supabase
       .from('users')
       .update({ 
-        favor_image: supabase.sql`array_remove(favor_image, ${wallpaperId}::uuid)` 
+        favor_image: supabase.rpc('remove_wallpaper_from_favorites', { wallpaper_id: wallpaperId })
       })
       .filter('favor_image', 'cs', `{${wallpaperId}}`);
     
     if (favoritesError) {
-      console.error("Error removing from favorites directly:", favoritesError);
+      console.error("Error removing from favorites:", favoritesError);
       // Continue with deletion despite error
+      
+      // Fallback to direct update if RPC fails
+      try {
+        const { error: directUpdateError } = await supabase
+          .from('users')
+          .update({ 
+            favor_image: supabase.raw(`array_remove(favor_image, '${wallpaperId}'::uuid)`) 
+          })
+          .filter('favor_image', 'cs', `{${wallpaperId}}`);
+        
+        if (directUpdateError) {
+          console.error("Error with direct update of favorites:", directUpdateError);
+        }
+      } catch (fallbackError) {
+        console.error("Error with fallback favorites update:", fallbackError);
+      }
     }
 
     console.log("Removing wallpaper from all collections");
