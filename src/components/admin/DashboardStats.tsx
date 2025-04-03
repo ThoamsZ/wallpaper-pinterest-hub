@@ -118,4 +118,5 @@ export const DashboardStats = () => {
   );
 };
 
+// Export as default as well to maintain compatibility with both import styles
 export default DashboardStats;
