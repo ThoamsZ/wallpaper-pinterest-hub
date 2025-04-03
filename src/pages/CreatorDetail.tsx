@@ -23,8 +23,15 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import {
+  Dialog,
+  DialogContent,
+  DialogTitle,
+  DialogClose,
+} from "@/components/ui/dialog";
+import {
   Trash,
   ArrowLeft,
+  X,
 } from "lucide-react";
 import {
   Table,
@@ -43,6 +50,7 @@ const CreatorDetail = () => {
   const [creator, setCreator] = useState<any>(null);
   const [wallpapers, setWallpapers] = useState<any[]>([]);
   const [collections, setCollections] = useState<any[]>([]);
+  const [selectedImage, setSelectedImage] = useState<string | null>(null);
 
   useEffect(() => {
     checkAdminManagerStatus();
@@ -208,6 +216,15 @@ const CreatorDetail = () => {
     }
   };
 
+  // Handle image preview
+  const openImagePreview = (url: string) => {
+    setSelectedImage(url);
+  };
+
+  const closeImagePreview = () => {
+    setSelectedImage(null);
+  };
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
@@ -268,6 +285,7 @@ const CreatorDetail = () => {
               <Table>
                 <TableHeader>
                   <TableRow>
+                    <TableHead>Preview</TableHead>
                     <TableHead>File Name</TableHead>
                     <TableHead>Type</TableHead>
                     <TableHead>Downloads</TableHead>
@@ -278,6 +296,18 @@ const CreatorDetail = () => {
                 <TableBody>
                   {wallpapers.map((wallpaper) => (
                     <TableRow key={wallpaper.id}>
+                      <TableCell className="font-medium">
+                        <div 
+                          className="w-16 h-16 cursor-pointer rounded overflow-hidden bg-gray-100 dark:bg-gray-800"
+                          onClick={() => openImagePreview(wallpaper.url)}
+                        >
+                          <img 
+                            src={wallpaper.compressed_url || wallpaper.url} 
+                            alt="Wallpaper preview" 
+                            className="w-full h-full object-cover"
+                          />
+                        </div>
+                      </TableCell>
                       <TableCell className="font-medium">{wallpaper.file_path.split('/').pop()}</TableCell>
                       <TableCell>{wallpaper.type}</TableCell>
                       <TableCell>{wallpaper.download_count || 0}</TableCell>
@@ -380,6 +410,27 @@ const CreatorDetail = () => {
           )}
         </TabsContent>
       </Tabs>
+
+      {/* Image Preview Modal */}
+      <Dialog open={!!selectedImage} onOpenChange={() => selectedImage && closeImagePreview()}>
+        <DialogContent className="max-w-[90vw] max-h-[90vh] p-0 overflow-hidden">
+          <DialogTitle className="sr-only">Image Preview</DialogTitle>
+          <div className="relative w-full h-full flex items-center justify-center">
+            <DialogClose className="absolute top-4 right-4 z-10">
+              <Button variant="secondary" size="icon" className="rounded-full bg-black/50 hover:bg-black/70 border-0">
+                <X className="h-5 w-5 text-white" />
+              </Button>
+            </DialogClose>
+            {selectedImage && (
+              <img 
+                src={selectedImage} 
+                alt="Wallpaper preview" 
+                className="max-w-full max-h-[80vh] object-contain"
+              />
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
