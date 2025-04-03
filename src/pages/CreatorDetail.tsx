@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -133,6 +134,15 @@ const CreatorDetail = () => {
 
   const handleDeleteWallpaper = async (wallpaperId: string, filePath: string, wallpaperUrl: string) => {
     try {
+      // First, remove from wallpaper likes if any
+      const { error: likesError } = await supabase
+        .from('wallpaper_likes')
+        .delete()
+        .eq('wallpaper_id', wallpaperId);
+
+      if (likesError) console.error("Error removing from wallpaper_likes:", likesError);
+
+      // Remove from collection_wallpapers
       const { error: collectionWallpapersError } = await supabase
         .from('collection_wallpapers')
         .delete()
@@ -140,12 +150,38 @@ const CreatorDetail = () => {
 
       if (collectionWallpapersError) throw collectionWallpapersError;
 
+      // Remove from vip_wallpapers if present
+      const { error: vipWallpapersError } = await supabase
+        .from('vip_wallpapers')
+        .delete()
+        .eq('wallpaper_id', wallpaperId);
+
+      if (vipWallpapersError) console.error("Error removing from vip_wallpapers:", vipWallpapersError);
+
+      // Delete from storage
       const { error: storageError } = await supabase.storage
         .from('wallpapers')
         .remove([filePath]);
 
       if (storageError) throw storageError;
 
+      // Get creator information for notification
+      if (creator && creator.user_id) {
+        // Create a notification in the database for the creator
+        const { error: notificationError } = await supabase
+          .from('notifications')
+          .insert({
+            user_id: creator.user_id,
+            message: `Your wallpaper "${filePath.split('/').pop()}" has been removed by an admin.`,
+            type: 'wallpaper_deleted',
+            read: false
+          })
+          .select();
+
+        if (notificationError) console.error("Error creating notification:", notificationError);
+      }
+
+      // Delete from wallpapers table
       const { error: dbError } = await supabase
         .from('wallpapers')
         .delete()
@@ -161,7 +197,7 @@ const CreatorDetail = () => {
       
       toast({
         title: "Success",
-        description: "Wallpaper deleted successfully",
+        description: "Wallpaper completely removed from the system and creator notified",
       });
     } catch (error: any) {
       toast({
