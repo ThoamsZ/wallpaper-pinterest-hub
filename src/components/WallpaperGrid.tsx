@@ -30,6 +30,14 @@ const WallpaperGrid = ({ wallpapers: propWallpapers, tag }: WallpaperGridProps) 
     rootMargin: "400px", // Load more content before reaching the bottom
   });
 
+  // Reset scroll position when wallpapers prop changes
+  useEffect(() => {
+    // If we're on the home page and not using prop wallpapers, scroll to top
+    if (!propWallpapers) {
+      window.scrollTo(0, 0);
+    }
+  }, [propWallpapers]);
+
   // Memoize the scroll handler
   const handleLoadMore = useCallback(() => {
     if (inView && hasNextPage && !isFetchingNextPage) {

@@ -1,5 +1,5 @@
 
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams, useNavigate, useLocation } from "react-router-dom";
 import { useWallpaperDetails } from "@/hooks/use-wallpaper-details";
 import { useWallpaperLikes } from "@/hooks/use-wallpaper-likes";
 import { useDownloadLimits } from "@/hooks/use-download-limits";
@@ -14,10 +14,13 @@ import { toast } from "@/hooks/use-toast";
 import { useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/App";
+import { useQueryClient } from "@tanstack/react-query";
 
 const WallpaperPage = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const location = useLocation();
+  const queryClient = useQueryClient();
   const { session } = useAuth();
   const [isDownloading, setIsDownloading] = useState(false);
   const { likedWallpapers, handleLike } = useWallpaperLikes();
@@ -32,6 +35,20 @@ const WallpaperPage = () => {
   } = useWallpaperDetails(id);
 
   const isLiked = wallpaper ? likedWallpapers.includes(wallpaper.id) : false;
+
+  // Handle back button navigation
+  const handleBackNavigation = () => {
+    // Invalidate the wallpapers query to force a fresh load on the home page
+    queryClient.invalidateQueries({ queryKey: ['wallpapers'] });
+    
+    // Check if there's a previous page in history
+    if (location.key !== "default") {
+      navigate(-1);
+    } else {
+      // If no history, go to home
+      navigate('/');
+    }
+  };
 
   // Prevent context menu and dragging
   const handleContextMenu = (e: React.MouseEvent) => {
@@ -158,7 +175,7 @@ const WallpaperPage = () => {
             <Button 
               variant="ghost" 
               className="mb-4 flex items-center gap-2" 
-              onClick={() => navigate(-1)}
+              onClick={handleBackNavigation}
             >
               <ArrowLeft className="h-4 w-4" /> Back
             </Button>
