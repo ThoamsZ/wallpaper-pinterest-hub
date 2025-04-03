@@ -183,12 +183,10 @@ const CreatorDetail = () => {
       return;
     }
     
-    setIsLoading(true);
-    
     try {
       console.log("Starting wallpaper deletion for:", wallpaperId);
       
-      toast({
+      const deleteToast = toast({
         title: "Deleting...",
         description: "Please wait while we delete this wallpaper.",
       });
@@ -197,14 +195,14 @@ const CreatorDetail = () => {
       
       if (success) {
         toast({
-          title: "Wallpaper Deleted",
+          title: "Success",
           description: "The wallpaper has been successfully deleted.",
         });
         
         setWallpapers(prevWallpapers => prevWallpapers.filter(w => w.id !== wallpaperId));
       } else {
         toast({
-          title: "Deletion Failed",
+          title: "Error",
           description: "Failed to delete the wallpaper. Please try again.",
           variant: "destructive",
         });
@@ -216,8 +214,6 @@ const CreatorDetail = () => {
         description: error.message || "An unexpected error occurred during deletion.",
         variant: "destructive",
       });
-    } finally {
-      setIsLoading(false);
     }
   };
 

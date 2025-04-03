@@ -32,34 +32,22 @@ export const deleteWallpaper = async (wallpaperId: string): Promise<boolean> => 
     console.log(`Found wallpaper with path: ${wallpaper.file_path}`);
     
     // 2. Execute all related data deletions in parallel
-    // First, remove from users favorites (using array_remove directly)
+    // First, update favorite lists
     console.log("Removing wallpaper from all user favorites");
-    const { error: favoritesError } = await supabase
-      .from('users')
-      .update({ 
-        favor_image: supabase.rpc('remove_wallpaper_from_favorites', { wallpaper_id: wallpaperId })
-      })
-      .filter('favor_image', 'cs', `{${wallpaperId}}`);
-    
-    if (favoritesError) {
-      console.error("Error removing from favorites:", favoritesError);
-      // Continue with deletion despite error
+    try {
+      // Using the traditional array_remove approach that works reliably
+      const { error: favoritesError } = await supabase
+        .from('users')
+        .update({
+          favor_image: supabase.raw(`array_remove(favor_image, '${wallpaperId}'::uuid)`)
+        })
+        .filter('favor_image', 'cs', `{${wallpaperId}}`);
       
-      // Fallback to direct update if RPC fails
-      try {
-        const { error: directUpdateError } = await supabase
-          .from('users')
-          .update({ 
-            favor_image: supabase.raw(`array_remove(favor_image, '${wallpaperId}'::uuid)`) 
-          })
-          .filter('favor_image', 'cs', `{${wallpaperId}}`);
-        
-        if (directUpdateError) {
-          console.error("Error with direct update of favorites:", directUpdateError);
-        }
-      } catch (fallbackError) {
-        console.error("Error with fallback favorites update:", fallbackError);
+      if (favoritesError) {
+        console.error("Error removing from favorites:", favoritesError);
       }
+    } catch (favError) {
+      console.error("Exception when removing from favorites:", favError);
     }
 
     console.log("Removing wallpaper from all collections");
@@ -70,7 +58,6 @@ export const deleteWallpaper = async (wallpaperId: string): Promise<boolean> => 
     
     if (collectionsError) {
       console.error("Error removing from collections:", collectionsError);
-      // Continue with deletion despite error
     }
 
     console.log("Removing wallpaper from VIP wallpapers if present");
@@ -81,7 +68,6 @@ export const deleteWallpaper = async (wallpaperId: string): Promise<boolean> => 
     
     if (vipWallpapersError) {
       console.error("Error removing from VIP wallpapers:", vipWallpapersError);
-      // Continue with deletion despite error
     }
     
     // 3. Delete the wallpaper from storage
@@ -91,7 +77,6 @@ export const deleteWallpaper = async (wallpaperId: string): Promise<boolean> => 
       
       if (!storageResult) {
         console.warn(`Warning: Failed to delete file from storage: ${wallpaper.file_path}`);
-        // We continue despite storage deletion failure - don't stop the whole process
       }
     } else {
       console.warn("No file path found for wallpaper, skipping storage deletion");
