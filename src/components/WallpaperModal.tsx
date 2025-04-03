@@ -1,7 +1,7 @@
 
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Heart, Download, X } from "lucide-react";
+import { Heart, Download, X, Link } from "lucide-react";
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
@@ -145,6 +145,26 @@ const WallpaperModal = ({ wallpaper, isOpen, onClose, onLike, isLiked }: Wallpap
     }
   };
 
+  const copyLinkToClipboard = () => {
+    if (!wallpaper) return;
+    
+    const wallpaperUrl = `${window.location.origin}/wallpaper/${wallpaper.id}`;
+    navigator.clipboard.writeText(wallpaperUrl)
+      .then(() => {
+        toast({
+          title: "Link copied",
+          description: "Wallpaper link copied to clipboard",
+        });
+      })
+      .catch(() => {
+        toast({
+          title: "Copy failed",
+          description: "Could not copy the link to clipboard",
+          variant: "destructive",
+        });
+      });
+  };
+
   if (!wallpaper) return null;
 
   return (
@@ -188,6 +208,14 @@ const WallpaperModal = ({ wallpaper, isOpen, onClose, onLike, isLiked }: Wallpap
                 disabled={isDownloading || (downloadsRemaining !== null && downloadsRemaining <= 0)}
               >
                 <Download className="h-7 w-7 text-white" />
+              </Button>
+              <Button
+                variant="secondary"
+                size="icon"
+                className="rounded-full bg-black/50 hover:bg-black/70 border-0 h-14 w-14"
+                onClick={copyLinkToClipboard}
+              >
+                <Link className="h-7 w-7 text-white" />
               </Button>
             </div>
           </div>

@@ -3,6 +3,9 @@ import { useState, useEffect, useRef, memo } from "react";
 import { useIsMobile } from "@/hooks/use-mobile";
 import type { Wallpaper } from "@/hooks/use-wallpapers";
 import { useInView } from "react-intersection-observer";
+import { Button } from "@/components/ui/button";
+import { Link } from "lucide-react";
+import { toast } from "@/hooks/use-toast";
 
 interface WallpaperItemProps {
   wallpaper: Wallpaper;
@@ -46,6 +49,26 @@ const WallpaperItem = memo(({ wallpaper, onSelect }: WallpaperItemProps) => {
     return false;
   };
 
+  // Copy the direct wallpaper link to clipboard
+  const copyLinkToClipboard = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    const wallpaperUrl = `${window.location.origin}/wallpaper/${wallpaper.id}`;
+    navigator.clipboard.writeText(wallpaperUrl)
+      .then(() => {
+        toast({
+          title: "Link copied",
+          description: "Wallpaper link copied to clipboard",
+        });
+      })
+      .catch(() => {
+        toast({
+          title: "Copy failed",
+          description: "Could not copy the link to clipboard",
+          variant: "destructive",
+        });
+      });
+  };
+
   return (
     <div
       ref={elementRef}
@@ -80,6 +103,16 @@ const WallpaperItem = memo(({ wallpaper, onSelect }: WallpaperItemProps) => {
               }}
             />
           )}
+          
+          {isHovered && imageLoaded && (
+            <Button 
+              size="icon" 
+              className="absolute bottom-2 right-2 h-8 w-8 rounded-full bg-black/50 hover:bg-black/70 z-10"
+              onClick={copyLinkToClipboard}
+            >
+              <Link className="h-4 w-4 text-white" />
+            </Button>
+          )}
         </div>
       </div>
     </div>
@@ -89,3 +122,4 @@ const WallpaperItem = memo(({ wallpaper, onSelect }: WallpaperItemProps) => {
 WallpaperItem.displayName = 'WallpaperItem';
 
 export default WallpaperItem;
+
