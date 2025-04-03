@@ -1,3 +1,4 @@
+
 import { useParams, useNavigate } from "react-router-dom";
 import { useWallpaperDetails } from "@/hooks/use-wallpaper-details";
 import { useWallpaperLikes } from "@/hooks/use-wallpaper-likes";
@@ -164,13 +165,13 @@ const WallpaperPage = () => {
 
             <div className="flex flex-col md:flex-row gap-8 justify-center items-start">
               {/* Center Wallpaper */}
-              <div className="flex-1 flex justify-center">
-                <Card className="overflow-hidden bg-gray-800 max-w-md w-full">
-                  <CardContent className="p-0">
+              <div className="flex justify-center flex-1">
+                <Card className="overflow-hidden bg-gray-800 max-w-full w-auto">
+                  <CardContent className="p-0 flex justify-center">
                     <img
                       src={wallpaper.url}
                       alt={`Wallpaper ${wallpaper.id}`}
-                      className="w-full h-auto object-contain max-h-[70vh]"
+                      className="max-w-full h-auto object-contain max-h-[70vh]"
                       onContextMenu={handleContextMenu}
                       onDragStart={handleDragStart}
                       style={{ userSelect: 'none', WebkitUserSelect: 'none' }}
