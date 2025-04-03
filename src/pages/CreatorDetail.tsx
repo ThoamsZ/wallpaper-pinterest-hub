@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Button } from "@/components/ui/button";
 import { toast } from "@/hooks/use-toast";
@@ -15,7 +15,6 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-  AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { Card, CardContent } from "@/components/ui/card";
 
@@ -29,12 +28,10 @@ const CreatorDetail = () => {
   const [deleteAlertOpen, setDeleteAlertOpen] = useState(false);
   const [wallpaperToDelete, setWallpaperToDelete] = useState(null);
   const [deleteError, setDeleteError] = useState(null);
+  const [refreshKey, setRefreshKey] = useState(0); // Add a refresh key to force re-render
 
-  useEffect(() => {
-    fetchCreatorWallpapers();
-  }, [creatorId]);
-
-  const fetchCreatorWallpapers = async () => {
+  // Convert fetchCreatorWallpapers to useCallback to prevent unnecessary re-renders
+  const fetchCreatorWallpapers = useCallback(async () => {
     setIsLoading(true);
     try {
       console.log("Fetching creator details for ID:", creatorId);
@@ -63,6 +60,12 @@ const CreatorDetail = () => {
       }
 
       console.log("Wallpapers found:", wallpapersData?.length || 0);
+      
+      // Debug log to see what wallpapers we're getting
+      if (wallpapersData) {
+        console.log("Wallpaper IDs:", wallpapersData.map(w => w.id));
+      }
+      
       setWallpapers(wallpapersData || []);
     } catch (error) {
       console.error("Error fetching creator details:", error);
@@ -74,9 +77,15 @@ const CreatorDetail = () => {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [creatorId]);
+
+  // Use effect to fetch wallpapers on mount and when refreshKey changes
+  useEffect(() => {
+    fetchCreatorWallpapers();
+  }, [fetchCreatorWallpapers, refreshKey]);
 
   const prepareWallpaperDelete = (wallpaper) => {
+    console.log("Preparing to delete wallpaper:", wallpaper.id);
     setWallpaperToDelete(wallpaper);
     setDeleteAlertOpen(true);
     setDeleteError(null);
@@ -94,22 +103,33 @@ const CreatorDetail = () => {
     }
     
     const wallpaperId = wallpaperToDelete.id;
+    console.log("Starting deletion process for wallpaper ID:", wallpaperId);
+    
     setIsDeleting(true);
     setCurrentDeletingId(wallpaperId);
     setDeleteError(null);
     
     try {
-      console.log("Starting wallpaper deletion for:", wallpaperId);
-      
       toast({
         title: "Deleting...",
         description: "Please wait while we delete this wallpaper.",
       });
       
+      // Perform the deletion
       await deleteWallpaper(wallpaperId);
+      console.log("Deletion successful for wallpaper:", wallpaperId);
       
-      // Remove the deleted wallpaper from the state
-      setWallpapers(prevWallpapers => prevWallpapers.filter(w => w.id !== wallpaperId));
+      // Update local state to remove the deleted wallpaper
+      console.log("Updating UI state - Before:", wallpapers.length, "wallpapers");
+      setWallpapers(prevWallpapers => {
+        const filteredWallpapers = prevWallpapers.filter(w => w.id !== wallpaperId);
+        console.log("Updating UI state - After:", filteredWallpapers.length, "wallpapers");
+        return filteredWallpapers;
+      });
+      
+      // Directly refetch to ensure we have the latest data
+      console.log("Triggering refresh after deletion");
+      setRefreshKey(prevKey => prevKey + 1);
       
       toast({
         title: "Wallpaper Deleted",
@@ -132,6 +152,12 @@ const CreatorDetail = () => {
     }
   };
 
+  // Function to manually refresh the wallpapers list
+  const handleRefresh = () => {
+    console.log("Manual refresh triggered");
+    setRefreshKey(prevKey => prevKey + 1);
+  };
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
@@ -147,6 +173,9 @@ const CreatorDetail = () => {
           Back to Creators
         </Button>
         <h1 className="text-2xl font-bold">Creator Wallpapers</h1>
+        <Button variant="secondary" onClick={handleRefresh} disabled={isLoading}>
+          Refresh
+        </Button>
       </div>
 
       {wallpapers.length > 0 ? (
@@ -166,7 +195,10 @@ const CreatorDetail = () => {
                 </AspectRatio>
               </div>
               <CardContent className="p-3">
-                <div className="mt-2">
+                <div className="flex flex-col space-y-1">
+                  <div className="text-xs text-muted-foreground truncate">
+                    ID: {wallpaper.id.substring(0, 8)}...
+                  </div>
                   <Button 
                     variant="destructive" 
                     size="sm" 
