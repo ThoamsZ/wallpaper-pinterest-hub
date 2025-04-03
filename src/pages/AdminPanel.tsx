@@ -1,3 +1,4 @@
+
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -15,6 +16,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Download, Heart, Trash, Upload, Grid, Plus, LayoutGrid, Link } from "lucide-react";
 import Header from "@/components/Header";
+import DashboardStats from "@/components/admin/DashboardStats";
 import { CollectionManager } from "@/components/admin/CollectionManager";
 import {
   Tabs,
