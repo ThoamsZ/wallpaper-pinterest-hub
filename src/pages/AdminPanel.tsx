@@ -1,4 +1,3 @@
-
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -14,7 +13,7 @@ import {
   CardDescription,
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Download, Heart, Trash, Upload, Grid, Plus, Settings, LayoutGrid, Link } from "lucide-react";
+import { Download, Heart, Trash, Upload, Grid, Plus, LayoutGrid, Link } from "lucide-react";
 import Header from "@/components/Header";
 import { CollectionManager } from "@/components/admin/CollectionManager";
 import {
@@ -343,18 +342,6 @@ const AdminPanel = () => {
                     <SidebarMenuButton tooltip="Upload Wallpapers" onClick={() => navigate("/upload")}>
                       <Upload className="w-4 h-4 mr-2" />
                       <span>Upload Wallpapers</span>
-                    </SidebarMenuButton>
-                  </SidebarMenuItem>
-                  <SidebarMenuItem>
-                    <SidebarMenuButton tooltip="Collections">
-                      <Grid className="w-4 h-4 mr-2" />
-                      <span>Collections</span>
-                    </SidebarMenuButton>
-                  </SidebarMenuItem>
-                  <SidebarMenuItem>
-                    <SidebarMenuButton tooltip="Settings">
-                      <Settings className="w-4 h-4 mr-2" />
-                      <span>Settings</span>
                     </SidebarMenuButton>
                   </SidebarMenuItem>
                 </SidebarMenu>
