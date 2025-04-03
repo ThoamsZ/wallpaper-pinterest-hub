@@ -1,3 +1,4 @@
+
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -119,14 +120,21 @@ const Upload = () => {
       let completed = 0;
 
       for (const file of files) {
+        // Generate a unique filename to avoid issues with special characters
+        const fileExt = file.name.split('.').pop();
         const timestamp = Date.now();
-        const filePath = `${userId}/${timestamp}-${file.name}`;
+        const randomString = Math.random().toString(36).substring(2, 10);
+        const safeFileName = `${timestamp}-${randomString}.${fileExt}`;
+        const filePath = `${userId}/${safeFileName}`;
+
+        console.log(`Uploading file: Original name ${file.name}, Safe name: ${safeFileName}`);
 
         const { data: uploadData, error: uploadError } = await supabase.storage
           .from('wallpapers')
           .upload(filePath, file);
 
         if (uploadError) {
+          console.error("Upload error:", uploadError);
           throw uploadError;
         }
 
@@ -134,6 +142,9 @@ const Upload = () => {
           .from('wallpapers')
           .getPublicUrl(filePath);
 
+        // Store the original filename in the metadata
+        const originalFilename = file.name;
+        
         const { error: dbError } = await supabase
           .from('wallpapers')
           .insert({
@@ -142,10 +153,12 @@ const Upload = () => {
             file_path: filePath,
             type: imageType,
             tags: tagArray,
-            uploaded_by: userId
+            uploaded_by: userId,
+            original_filename: originalFilename  // Store the original filename if needed
           });
 
         if (dbError) {
+          console.error("Database error:", dbError);
           throw dbError;
         }
         
@@ -166,6 +179,7 @@ const Upload = () => {
       
       navigate('/admin-panel');
     } catch (error: any) {
+      console.error("Upload error details:", error);
       toast({
         title: "Error",
         description: error.message || 'Failed to upload files',
