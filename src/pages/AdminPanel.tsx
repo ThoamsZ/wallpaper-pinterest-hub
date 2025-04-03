@@ -67,7 +67,6 @@ const AdminPanel = () => {
   const [creatorCode, setCreatorCode] = useState<string>("");
   const [currentCreatorCode, setCurrentCreatorCode] = useState<string>("");
 
-  // Check admin status
   const { data: adminData, isError: isAdminError } = useQuery({
     queryKey: ['admin-status'],
     queryFn: async () => {
@@ -76,7 +75,6 @@ const AdminPanel = () => {
         throw new Error("Not authenticated");
       }
 
-      // First check if user is an admin
       const { data: adminUserData, error: adminError } = await supabase
         .from('admin_users')
         .select('admin_type')
@@ -88,7 +86,6 @@ const AdminPanel = () => {
         throw new Error("Not an admin");
       }
 
-      // Then get user data
       const { data: userData, error: userError } = await supabase
         .from('users')
         .select('creator_code, email')
@@ -106,7 +103,6 @@ const AdminPanel = () => {
     retry: false
   });
 
-  // Handle admin check error
   useEffect(() => {
     if (isAdminError) {
       toast({
@@ -166,14 +162,12 @@ const AdminPanel = () => {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) throw new Error("Not authenticated");
 
-      // First, delete the file from storage
       const { error: storageError } = await supabase.storage
         .from('wallpapers')
         .remove([filePath]);
 
       if (storageError) throw storageError;
 
-      // Then, delete the record from the database
       const { error: dbError } = await supabase
         .from('wallpapers')
         .delete()
@@ -211,7 +205,6 @@ const AdminPanel = () => {
 
       const wallpapersToDelete = wallpapers.filter(w => selectedWallpapers.includes(w.id));
 
-      // First delete from storage
       for (const wallpaper of wallpapersToDelete) {
         const { error: storageError } = await supabase.storage
           .from('wallpapers')
@@ -220,7 +213,6 @@ const AdminPanel = () => {
         if (storageError) throw storageError;
       }
 
-      // Then delete from database
       const { error: dbError } = await supabase
         .from('wallpapers')
         .delete()
@@ -229,7 +221,6 @@ const AdminPanel = () => {
 
       if (dbError) throw dbError;
 
-      // Also delete from collection_wallpapers
       const { error: collectionError } = await supabase
         .from('collection_wallpapers')
         .delete()
@@ -283,7 +274,24 @@ const AdminPanel = () => {
     }
   };
 
-  // Fetch wallpapers
+  const copyLinkToClipboard = (id: string) => {
+    const wallpaperUrl = `${window.location.origin}/wallpaper/${id}`;
+    navigator.clipboard.writeText(wallpaperUrl)
+      .then(() => {
+        toast({
+          title: "Link copied",
+          description: "Wallpaper link copied to clipboard",
+        });
+      })
+      .catch(() => {
+        toast({
+          title: "Copy failed",
+          description: "Could not copy the link to clipboard",
+          variant: "destructive",
+        });
+      });
+  };
+
   const { data: wallpapers = [], refetch: refetchWallpapers } = useQuery({
     queryKey: ['admin-wallpapers'],
     queryFn: async () => {
@@ -307,7 +315,6 @@ const AdminPanel = () => {
     }
   }, [adminData]);
 
-  // If not admin or loading, show nothing
   if (!adminData) {
     return null;
   }
@@ -499,6 +506,14 @@ const AdminPanel = () => {
                               alt="Wallpaper"
                               className="w-full h-full object-cover"
                             />
+                            <Button 
+                              variant="secondary"
+                              size="icon"
+                              className="absolute bottom-2 right-2 h-8 w-8 rounded-full bg-black/50 hover:bg-black/70"
+                              onClick={() => copyLinkToClipboard(wallpaper.id)}
+                            >
+                              <Link className="h-4 w-4 text-white" />
+                            </Button>
                           </div>
                           <CardHeader className="pb-2">
                             <CardTitle className="text-sm">{wallpaper.type} Wallpaper</CardTitle>

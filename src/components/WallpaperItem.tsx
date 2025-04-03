@@ -111,15 +111,7 @@ const WallpaperItem = memo(({ wallpaper, onSelect }: WallpaperItemProps) => {
             />
           )}
           
-          {isHovered && imageLoaded && (
-            <Button 
-              size="icon" 
-              className="absolute bottom-2 right-2 h-8 w-8 rounded-full bg-black/50 hover:bg-black/70 z-10"
-              onClick={copyLinkToClipboard}
-            >
-              <Link className="h-4 w-4 text-white" />
-            </Button>
-          )}
+          {/* Removed the hover link button for regular users */}
         </div>
       </div>
     </div>
