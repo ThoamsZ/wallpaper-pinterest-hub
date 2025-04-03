@@ -10,6 +10,7 @@ import {
   CardHeader,
   CardTitle,
   CardDescription,
+  CardFooter,
 } from "@/components/ui/card";
 
 const CreatorDetail = () => {
@@ -17,7 +18,7 @@ const CreatorDetail = () => {
   const navigate = useNavigate();
   const [isLoading, setIsLoading] = useState(true);
   const [creatorInfo, setCreatorInfo] = useState(null);
-  const [creatorUserId, setCreatorUserId] = useState(null);
+  const [isRedirecting, setIsRedirecting] = useState(false);
 
   // Fetch creator details
   const fetchCreatorDetails = useCallback(async () => {
@@ -43,9 +44,6 @@ const CreatorDetail = () => {
       }
 
       console.log("Creator data:", creatorData);
-      
-      // Store the creator's user_id for the redirect link
-      setCreatorUserId(creatorData.user_id);
       setCreatorInfo(creatorData);
     } catch (error) {
       console.error("Error fetching creator details:", error);
@@ -66,9 +64,17 @@ const CreatorDetail = () => {
 
   // Function to handle redirection to the creator's admin panel
   const navigateToCreatorAdminPanel = () => {
-    if (creatorUserId) {
+    if (creatorInfo?.user_id) {
+      setIsRedirecting(true);
+      // Store creator info in localStorage for the admin panel to use
+      localStorage.setItem('viewing_creator', JSON.stringify({
+        id: creatorInfo.user_id,
+        email: creatorInfo.profile?.email,
+        adminId: creatorInfo.id
+      }));
+      
       // Redirect to the creator's admin panel
-      navigate('/admin-panel', { state: { userId: creatorUserId } });
+      navigate('/admin-panel', { state: { viewingCreator: creatorInfo.user_id } });
       toast({
         title: "Redirecting",
         description: "Navigating to creator's admin panel",
@@ -137,8 +143,9 @@ const CreatorDetail = () => {
         <Button 
           variant="primary" 
           onClick={navigateToCreatorAdminPanel}
+          disabled={isRedirecting}
         >
-          Go to Creator Admin Panel
+          {isRedirecting ? "Redirecting..." : "View Creator Admin Panel"}
         </Button>
       </div>
 
@@ -178,16 +185,15 @@ const CreatorDetail = () => {
                 </p>
               </div>
             </div>
-            
-            <div className="pt-4 flex justify-end space-x-2">
-              <Button 
-                variant={creatorInfo.is_blocked ? "outline" : "destructive"} 
-                onClick={toggleBlockStatus}
-              >
-                {creatorInfo.is_blocked ? 'Unblock Creator' : 'Block Creator'}
-              </Button>
-            </div>
           </CardContent>
+          <CardFooter className="flex justify-end space-x-2">
+            <Button 
+              variant={creatorInfo.is_blocked ? "outline" : "destructive"} 
+              onClick={toggleBlockStatus}
+            >
+              {creatorInfo.is_blocked ? 'Unblock Creator' : 'Block Creator'}
+            </Button>
+          </CardFooter>
         </Card>
       ) : (
         <Card>

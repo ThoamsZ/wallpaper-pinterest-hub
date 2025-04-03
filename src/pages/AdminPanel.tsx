@@ -1,8 +1,8 @@
-
 import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { toast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import {
@@ -64,59 +64,151 @@ interface Wallpaper {
 
 const AdminPanel = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const queryClient = useQueryClient();
   const [selectedWallpapers, setSelectedWallpapers] = useState<string[]>([]);
   const [creatorCode, setCreatorCode] = useState<string>("");
   const [currentCreatorCode, setCurrentCreatorCode] = useState<string>("");
   const [isDeleting, setIsDeleting] = useState(false);
   const [deleteItemId, setDeleteItemId] = useState<string | null>(null);
+  const [viewingCreator, setViewingCreator] = useState<any>(null);
 
+  // Check if we're viewing a creator's admin panel
+  useEffect(() => {
+    // Check if we have viewing_creator in localStorage or in location state
+    const storedCreator = localStorage.getItem('viewing_creator');
+    const stateCreator = location.state?.viewingCreator;
+    
+    if (storedCreator) {
+      try {
+        const creatorInfo = JSON.parse(storedCreator);
+        setViewingCreator(creatorInfo);
+      } catch (error) {
+        console.error('Error parsing creator info:', error);
+        localStorage.removeItem('viewing_creator');
+      }
+    } else if (stateCreator) {
+      // We're coming directly from CreatorDetail
+      const creatorInfo = typeof stateCreator === 'object' ? stateCreator : { id: stateCreator };
+      setViewingCreator(creatorInfo);
+      localStorage.setItem('viewing_creator', JSON.stringify(creatorInfo));
+    }
+  }, [location]);
+
+  // Function to exit creator view mode
+  const exitCreatorView = () => {
+    localStorage.removeItem('viewing_creator');
+    setViewingCreator(null);
+    navigate('/admin-manager');
+    
+    toast({
+      title: "Exited Creator View",
+      description: "You've returned to the admin manager",
+    });
+  };
+
+  // Modify the admin data query to use the correct user ID
   const { data: adminData, isError: isAdminError } = useQuery({
-    queryKey: ['admin-status'],
+    queryKey: ['admin-status', viewingCreator?.id],
     queryFn: async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) {
-        throw new Error("Not authenticated");
-      }
-
-      const { data: adminUserData, error: adminError } = await supabase
-        .from('admin_users')
-        .select('admin_type')
-        .eq('user_id', session.user.id)
-        .maybeSingle();
-
-      if (adminError) throw adminError;
-      if (!adminUserData || adminUserData.admin_type === null) {
-        throw new Error("Not an admin");
-      }
-
-      const { data: userData, error: userError } = await supabase
-        .from('users')
-        .select('creator_code, email')
-        .eq('id', session.user.id)
-        .single();
-
-      if (userError) throw userError;
+      // If we're viewing a creator, we need to fetch their data directly
+      const userId = viewingCreator?.id;
       
-      return {
-        admin_type: adminUserData.admin_type,
-        creator_code: userData?.creator_code,
-        email: userData?.email
-      };
+      if (userId) {
+        // Fetch creator's admin data
+        const { data: adminUserData, error: adminError } = await supabase
+          .from('admin_users')
+          .select('admin_type')
+          .eq('user_id', userId)
+          .maybeSingle();
+
+        if (adminError) throw adminError;
+        if (!adminUserData || adminUserData.admin_type === null) {
+          throw new Error("Not an admin");
+        }
+
+        // Fetch creator's user data
+        const { data: userData, error: userError } = await supabase
+          .from('users')
+          .select('creator_code, email')
+          .eq('id', userId)
+          .single();
+
+        if (userError) throw userError;
+        
+        return {
+          admin_type: adminUserData.admin_type,
+          creator_code: userData?.creator_code,
+          email: userData?.email,
+          isCreatorView: true
+        };
+      } else {
+        // Normal flow - get the logged-in user
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!session) {
+          throw new Error("Not authenticated");
+        }
+
+        const { data: adminUserData, error: adminError } = await supabase
+          .from('admin_users')
+          .select('admin_type')
+          .eq('user_id', session.user.id)
+          .maybeSingle();
+
+        if (adminError) throw adminError;
+        if (!adminUserData || adminUserData.admin_type === null) {
+          throw new Error("Not an admin");
+        }
+
+        const { data: userData, error: userError } = await supabase
+          .from('users')
+          .select('creator_code, email')
+          .eq('id', session.user.id)
+          .single();
+
+        if (userError) throw userError;
+        
+        return {
+          admin_type: adminUserData.admin_type,
+          creator_code: userData?.creator_code,
+          email: userData?.email
+        };
+      }
     },
     retry: false
   });
 
-  useEffect(() => {
-    if (isAdminError) {
-      toast({
-        title: "Access Denied",
-        description: "Please log in with an admin account",
-        variant: "destructive",
-      });
-      navigate("/auth");
-    }
-  }, [isAdminError, navigate]);
+  // Modify the wallpapers query to use the correct user ID
+  const { data: wallpapers = [], refetch: refetchWallpapers } = useQuery({
+    queryKey: ['admin-wallpapers', viewingCreator?.id],
+    queryFn: async () => {
+      const userId = viewingCreator?.id;
+      
+      if (userId) {
+        // We're viewing a creator's wallpapers
+        const { data, error } = await supabase
+          .from('wallpapers')
+          .select('*')
+          .eq('uploaded_by', userId);
+
+        if (error) throw error;
+        return data || [];
+      } else {
+        // Normal flow - get the logged-in user's wallpapers
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!session) throw new Error("Not authenticated");
+
+        const { data, error } = await supabase
+          .from('wallpapers')
+          .select('*')
+          .eq('uploaded_by', session.user.id);
+
+        if (error) throw error;
+        return data || [];
+      }
+    },
+    enabled: !!adminData
+  });
 
   const handleUpdateCreatorCode = async () => {
     try {
@@ -468,22 +560,7 @@ const AdminPanel = () => {
       });
   };
 
-  const { data: wallpapers = [], refetch: refetchWallpapers } = useQuery({
-    queryKey: ['admin-wallpapers'],
-    queryFn: async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) throw new Error("Not authenticated");
-
-      const { data, error } = await supabase
-        .from('wallpapers')
-        .select('*')
-        .eq('uploaded_by', session.user.id);
-
-      if (error) throw error;
-      return data || [];
-    },
-    enabled: !!adminData
-  });
+  
 
   useEffect(() => {
     if (adminData) {
@@ -502,6 +579,11 @@ const AdminPanel = () => {
           <SidebarHeader className="flex flex-col items-center justify-center py-4">
             <h2 className="text-lg font-semibold text-center">Creator Dashboard</h2>
             <p className="text-sm text-muted-foreground">{adminData.email}</p>
+            {viewingCreator && (
+              <div className="mt-2 px-2 py-1 bg-yellow-100 text-yellow-800 text-xs rounded-md">
+                Viewing Creator Account
+              </div>
+            )}
           </SidebarHeader>
           <SidebarContent>
             <SidebarGroup>
@@ -525,13 +607,43 @@ const AdminPanel = () => {
             </SidebarGroup>
           </SidebarContent>
           <SidebarFooter>
-            <div className="p-4 text-xs text-center text-muted-foreground">
-              <p>© 2023 Creator Portal</p>
+            <div className="p-4">
+              {viewingCreator ? (
+                <Button 
+                  onClick={exitCreatorView}
+                  variant="destructive"
+                  className="w-full"
+                >
+                  Exit Creator View
+                </Button>
+              ) : (
+                <div className="text-xs text-center text-muted-foreground">
+                  <p>© 2023 Creator Portal</p>
+                </div>
+              )}
             </div>
           </SidebarFooter>
         </Sidebar>
 
         <div className="flex-1 bg-background min-h-screen">
+          {viewingCreator && (
+            <div className="bg-yellow-50 border-b border-yellow-200 py-2 px-4">
+              <div className="container mx-auto flex justify-between items-center">
+                <p className="text-yellow-800">
+                  <strong>Creator View Mode:</strong> You are viewing {viewingCreator.email || "this creator"}'s dashboard
+                </p>
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  onClick={exitCreatorView}
+                  className="text-yellow-800 border-yellow-300 hover:bg-yellow-100"
+                >
+                  Exit
+                </Button>
+              </div>
+            </div>
+          )}
+          
           <Header />
           <div className="container mx-auto px-4 py-8 mt-20">
             <div className="flex justify-between items-center mb-8">
