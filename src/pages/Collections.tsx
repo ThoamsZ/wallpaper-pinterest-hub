@@ -9,12 +9,14 @@ import { toast } from "@/hooks/use-toast";
 import WallpaperGrid from "@/components/WallpaperGrid";
 import { useCollectionLikes } from "@/hooks/use-collection-likes";
 import type { Database } from "@/integrations/supabase/types";
+
 type Wallpaper = Database['public']['Tables']['wallpapers']['Row'];
 type Collection = Database['public']['Tables']['collections']['Row'] & {
   collection_wallpapers: {
     wallpapers: Wallpaper;
   }[];
 };
+
 const Collections = () => {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
@@ -24,6 +26,7 @@ const Collections = () => {
   } = useCollectionLikes();
   const [selectedCollection, setSelectedCollection] = useState<string | null>(null);
   const [isAuthChecking, setIsAuthChecking] = useState(true);
+
   useEffect(() => {
     const checkAuth = async () => {
       try {
@@ -66,6 +69,7 @@ const Collections = () => {
       subscription?.unsubscribe();
     };
   }, [navigate]);
+
   const {
     data: currentUser,
     isLoading: isUserLoading
@@ -90,6 +94,7 @@ const Collections = () => {
     },
     enabled: !isAuthChecking
   });
+
   const {
     data: collections = [],
     isLoading: isCollectionsLoading
@@ -125,34 +130,31 @@ const Collections = () => {
     },
     enabled: !isAuthChecking && !!currentUser?.favor_collections?.length
   });
+
   const getCollectionPreviewImages = (collection: any) => {
     return collection.collection_wallpapers.map((cw: any) => cw.wallpapers?.compressed_url).filter(Boolean).slice(0, 4);
   };
+
   const getCollectionWallpapers = (collection: any): Wallpaper[] => {
     return collection.collection_wallpapers.map((cw: any) => cw.wallpapers).filter(Boolean);
   };
+
   const handleShare = async (collectionId: string, collectionName: string, description?: string | null) => {
     try {
       const shareUrl = `${window.location.origin}/collection/${collectionId}`;
-      if (navigator.share) {
-        await navigator.share({
-          title: `Check out this collection: ${collectionName}`,
-          text: description || `A wallpaper collection: ${collectionName}`,
-          url: shareUrl
-        });
-      } else {
-        await navigator.clipboard.writeText(shareUrl);
-        toast({
-          title: "Link copied!",
-          description: "Collection link copied to clipboard"
-        });
-      }
+      await navigator.clipboard.writeText(shareUrl);
+      toast({
+        title: "Link copied!",
+        description: "Collection link copied to clipboard"
+      });
     } catch (error) {
       console.error('Share error:', error);
     }
   };
+
   const selectedCollectionData = collections.find(c => c.id === selectedCollection);
   const selectedCollectionWallpapers = selectedCollectionData ? getCollectionWallpapers(selectedCollectionData) : [];
+
   if (isAuthChecking || isUserLoading) {
     return <div className="min-h-screen bg-background">
         <Header />
@@ -163,6 +165,7 @@ const Collections = () => {
         </main>
       </div>;
   }
+
   return <div className="min-h-screen bg-background">
       <Header />
       <main className="container mx-auto pt-20">
@@ -180,11 +183,16 @@ const Collections = () => {
             </div> : <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {collections.map(collection => <div key={collection.id} className="p-6 rounded-lg border bg-card text-card-foreground shadow-sm hover:shadow-md transition-shadow cursor-pointer relative" onClick={() => navigate(`/collection/${collection.id}`)}>
                   <div className="absolute top-2 right-2 z-10 flex gap-2">
-                    
                     <Button variant="ghost" size="icon" className="h-8 w-8 bg-black/20 backdrop-blur-sm hover:bg-black/30" onClick={e => {
-              e.stopPropagation();
-              handleCollectionLike(collection.id);
-            }}>
+                      e.stopPropagation();
+                      handleShare(collection.id, collection.name, collection.description);
+                    }}>
+                      <Share className="h-4 w-4" />
+                    </Button>
+                    <Button variant="ghost" size="icon" className="h-8 w-8 bg-black/20 backdrop-blur-sm hover:bg-black/30" onClick={e => {
+                      e.stopPropagation();
+                      handleCollectionLike(collection.id);
+                    }}>
                       <Heart className={`h-4 w-4 ${likedCollections.includes(collection.id) ? "fill-red-500 text-red-500" : ""}`} />
                     </Button>
                   </div>
@@ -213,4 +221,5 @@ const Collections = () => {
       </main>
     </div>;
 };
+
 export default Collections;
