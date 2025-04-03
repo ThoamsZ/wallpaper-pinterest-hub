@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { toast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
@@ -13,7 +12,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 
-export const CreatorApplications = () => {
+const CreatorApplications = () => {
   const [creatorApplications, setCreatorApplications] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -138,3 +137,5 @@ export const CreatorApplications = () => {
     </div>
   );
 };
+
+export default CreatorApplications;
