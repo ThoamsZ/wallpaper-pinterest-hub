@@ -537,6 +537,12 @@ export type Database = {
         }
         Returns: boolean
       }
+      remove_wallpaper_from_favorites: {
+        Args: {
+          wallpaper_id: string
+        }
+        Returns: undefined
+      }
       reset_daily_downloads: {
         Args: Record<PropertyKey, never>
         Returns: undefined

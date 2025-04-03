@@ -183,6 +183,12 @@ const CreatorDetail = () => {
     try {
       console.log("Starting wallpaper deletion for:", wallpaperId);
       
+      // Show a loading toast
+      toast({
+        title: "Deleting...",
+        description: "Please wait while we delete this wallpaper.",
+      });
+      
       const success = await deleteWallpaper(wallpaperId);
       
       if (success) {
@@ -191,8 +197,8 @@ const CreatorDetail = () => {
           description: "The wallpaper has been successfully deleted.",
         });
         
-        // Refresh creator data after deletion
-        fetchCreatorDetails();
+        // Update the wallpapers list by filtering out the deleted one
+        setWallpapers(wallpapers.filter(w => w.id !== wallpaperId));
       } else {
         toast({
           title: "Deletion Failed",
@@ -340,7 +346,7 @@ const CreatorDetail = () => {
                   <TableCell>
                     <AlertDialog>
                       <AlertDialogTrigger asChild>
-                        <Button variant="destructive" size="sm">
+                        <Button variant="destructive" size="sm" disabled={isLoading}>
                           <UserX className="w-4 h-4 mr-2" />
                           Delete
                         </Button>
@@ -354,7 +360,12 @@ const CreatorDetail = () => {
                         </AlertDialogHeader>
                         <AlertDialogFooter>
                           <AlertDialogCancel>Cancel</AlertDialogCancel>
-                          <AlertDialogAction onClick={() => handleWallpaperDelete(wallpaper.id)}>Delete</AlertDialogAction>
+                          <AlertDialogAction 
+                            onClick={() => handleWallpaperDelete(wallpaper.id)}
+                            disabled={isLoading}
+                          >
+                            {isLoading ? 'Deleting...' : 'Delete'}
+                          </AlertDialogAction>
                         </AlertDialogFooter>
                       </AlertDialogContent>
                     </AlertDialog>

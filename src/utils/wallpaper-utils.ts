@@ -34,7 +34,9 @@ export const deleteWallpaper = async (wallpaperId: string): Promise<boolean> => 
     // 2. Execute all related data deletions in parallel
     // These operations don't depend on each other and can run concurrently for better performance
     console.log("Removing wallpaper from all user favorites");
-    const favoritesPromise = supabase.rpc('remove_wallpaper_from_favorites', { wallpaper_id: wallpaperId });
+    const favoritesPromise = supabase.rpc('remove_wallpaper_from_favorites', { 
+      wallpaper_id: wallpaperId
+    });
 
     console.log("Removing wallpaper from all collections");
     const collectionsPromise = supabase
@@ -56,7 +58,10 @@ export const deleteWallpaper = async (wallpaperId: string): Promise<boolean> => 
     ]);
     
     // Log any errors from cleanup operations, but continue with the deletion
-    if (favoritesResult.error) console.error("Error removing from favorites:", favoritesResult.error);
+    if (favoritesResult.error) {
+      console.error("Error removing from favorites:", favoritesResult.error);
+      // Don't throw, continue with deletion
+    }
     if (collectionsResult.error) console.error("Error removing from collections:", collectionsResult.error);
     if (vipWallpapersResult.error) console.error("Error removing from VIP wallpapers:", vipWallpapersResult.error);
     
