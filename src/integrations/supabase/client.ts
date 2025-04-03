@@ -14,41 +14,48 @@ export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABL
 // Helper function for checking if a table exists
 export const checkTableExists = async (tableName: string): Promise<boolean> => {
   try {
-    // Use a more direct approach to check table existence
+    // Use the information_schema to check if the table exists
+    // This is more reliable than trying to query the table directly
     const { data, error } = await supabase
-      .from(tableName)
-      .select('*')
-      .limit(1);
+      .from('information_schema.tables')
+      .select('table_name')
+      .eq('table_schema', 'public')
+      .eq('table_name', tableName)
+      .maybeSingle();
     
-    // If we get a "relation does not exist" error, the table doesn't exist
     if (error) {
-      if (error.code === '42P01' || 
-          error.message.includes('relation') || 
-          error.message.includes('does not exist')) {
-        console.log(`Table ${tableName} does not exist`);
+      console.error(`Error checking if table ${tableName} exists using information_schema:`, error);
+      
+      // Fallback to the original method if information_schema query fails
+      try {
+        const { error: fallbackError } = await supabase
+          .from(tableName)
+          .select('*')
+          .limit(1);
+        
+        if (fallbackError) {
+          if (fallbackError.code === '42P01' || 
+              fallbackError.message.includes('relation') || 
+              fallbackError.message.includes('does not exist')) {
+            console.log(`Table ${tableName} does not exist (fallback check)`);
+            return false;
+          }
+          console.error(`Fallback error checking if table ${tableName} exists:`, fallbackError);
+          return false;
+        }
+        
+        return true;
+      } catch (fallbackException: any) {
+        console.error(`Fallback exception checking if table ${tableName} exists:`, fallbackException);
         return false;
       }
-      // Any other error means we couldn't check, default to false to be safe
-      console.error(`Error checking if table ${tableName} exists:`, error);
-      return false;
     }
     
-    // If we get here with no error, the table exists
-    return true;
+    // If we get data from the information_schema query, the table exists
+    return data !== null;
   } catch (error: any) {
     // Log the error but don't throw it
     console.error(`Exception checking if table ${tableName} exists:`, error);
-    
-    // If the error message indicates the table doesn't exist, return false
-    if (error.message && (
-      error.message.includes('42P01') || 
-      error.message.includes('relation') || 
-      error.message.includes('does not exist')
-    )) {
-      return false;
-    }
-    
-    // For other errors, assume the table doesn't exist to be safe
     return false;
   }
 };
