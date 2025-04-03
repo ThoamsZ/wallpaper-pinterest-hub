@@ -72,10 +72,9 @@ const AdminPanel = () => {
   const [isDeleting, setIsDeleting] = useState(false);
   const [deleteItemId, setDeleteItemId] = useState<string | null>(null);
   const [viewingCreator, setViewingCreator] = useState<any>(null);
+  const [hasFullAccess, setHasFullAccess] = useState(false);
 
-  // Check if we're viewing a creator's admin panel
   useEffect(() => {
-    // Check if we have viewing_creator in localStorage or in location state
     const storedCreator = localStorage.getItem('viewing_creator');
     const stateCreator = location.state?.viewingCreator;
     
@@ -83,22 +82,26 @@ const AdminPanel = () => {
       try {
         const creatorInfo = JSON.parse(storedCreator);
         setViewingCreator(creatorInfo);
+        setHasFullAccess(creatorInfo.fullAccess || location.state?.fullAccess || false);
       } catch (error) {
         console.error('Error parsing creator info:', error);
         localStorage.removeItem('viewing_creator');
       }
     } else if (stateCreator) {
-      // We're coming directly from CreatorDetail
       const creatorInfo = typeof stateCreator === 'object' ? stateCreator : { id: stateCreator };
       setViewingCreator(creatorInfo);
-      localStorage.setItem('viewing_creator', JSON.stringify(creatorInfo));
+      setHasFullAccess(location.state?.fullAccess || false);
+      localStorage.setItem('viewing_creator', JSON.stringify({
+        ...creatorInfo,
+        fullAccess: location.state?.fullAccess || false
+      }));
     }
   }, [location]);
 
-  // Function to exit creator view mode
   const exitCreatorView = () => {
     localStorage.removeItem('viewing_creator');
     setViewingCreator(null);
+    setHasFullAccess(false);
     navigate('/admin-manager');
     
     toast({
@@ -107,15 +110,12 @@ const AdminPanel = () => {
     });
   };
 
-  // Modify the admin data query to use the correct user ID
   const { data: adminData, isError: isAdminError } = useQuery({
     queryKey: ['admin-status', viewingCreator?.id],
     queryFn: async () => {
-      // If we're viewing a creator, we need to fetch their data directly
       const userId = viewingCreator?.id;
       
       if (userId) {
-        // Fetch creator's admin data
         const { data: adminUserData, error: adminError } = await supabase
           .from('admin_users')
           .select('admin_type')
@@ -127,7 +127,6 @@ const AdminPanel = () => {
           throw new Error("Not an admin");
         }
 
-        // Fetch creator's user data
         const { data: userData, error: userError } = await supabase
           .from('users')
           .select('creator_code, email')
@@ -143,7 +142,6 @@ const AdminPanel = () => {
           isCreatorView: true
         };
       } else {
-        // Normal flow - get the logged-in user
         const { data: { session } } = await supabase.auth.getSession();
         if (!session) {
           throw new Error("Not authenticated");
@@ -178,14 +176,12 @@ const AdminPanel = () => {
     retry: false
   });
 
-  // Modify the wallpapers query to use the correct user ID
   const { data: wallpapers = [], refetch: refetchWallpapers } = useQuery({
     queryKey: ['admin-wallpapers', viewingCreator?.id],
     queryFn: async () => {
       const userId = viewingCreator?.id;
       
       if (userId) {
-        // We're viewing a creator's wallpapers
         const { data, error } = await supabase
           .from('wallpapers')
           .select('*')
@@ -194,7 +190,6 @@ const AdminPanel = () => {
         if (error) throw error;
         return data || [];
       } else {
-        // Normal flow - get the logged-in user's wallpapers
         const { data: { session } } = await supabase.auth.getSession();
         if (!session) throw new Error("Not authenticated");
 
@@ -261,7 +256,7 @@ const AdminPanel = () => {
       console.log(`Starting deletion of wallpaper ${id} with filePath ${filePath}`);
       
       const { data: { session } } = await supabase.auth.getSession();
-      if (!session) throw new Error("Not authenticated");
+      if (!session && !viewingCreator) throw new Error("Not authenticated");
       
       const { data: wallpaperCheck, error: checkError } = await supabase
         .from('wallpapers')
@@ -560,8 +555,6 @@ const AdminPanel = () => {
       });
   };
 
-  
-
   useEffect(() => {
     if (adminData) {
       setCurrentCreatorCode(adminData.creator_code || "");
@@ -627,16 +620,17 @@ const AdminPanel = () => {
 
         <div className="flex-1 bg-background min-h-screen">
           {viewingCreator && (
-            <div className="bg-yellow-50 border-b border-yellow-200 py-2 px-4">
+            <div className={`${hasFullAccess ? 'bg-red-50 border-red-200' : 'bg-yellow-50 border-yellow-200'} border-b py-2 px-4`}>
               <div className="container mx-auto flex justify-between items-center">
-                <p className="text-yellow-800">
+                <p className={hasFullAccess ? 'text-red-800' : 'text-yellow-800'}>
                   <strong>Creator View Mode:</strong> You are viewing {viewingCreator.email || "this creator"}'s dashboard
+                  {hasFullAccess && <span className="ml-2 bg-red-100 text-red-800 px-2 py-0.5 rounded text-xs font-semibold">Full Access Mode</span>}
                 </p>
                 <Button 
                   variant="outline" 
                   size="sm" 
                   onClick={exitCreatorView}
-                  className="text-yellow-800 border-yellow-300 hover:bg-yellow-100"
+                  className={hasFullAccess ? 'text-red-800 border-red-300 hover:bg-red-100' : 'text-yellow-800 border-yellow-300 hover:bg-yellow-100'}
                 >
                   Exit
                 </Button>
@@ -648,7 +642,7 @@ const AdminPanel = () => {
           <div className="container mx-auto px-4 py-8 mt-20">
             <div className="flex justify-between items-center mb-8">
               <div>
-                <h1 className="text-2xl font-bold">Creator Dashboard</h1>
+                <h1 className="text-2xl font-bold">Creator Dashboard {hasFullAccess && viewingCreator && <span className="text-sm font-normal text-red-600">(Full Access Mode)</span>}</h1>
                 <p className="text-gray-600">Manage your wallpapers and collections</p>
               </div>
               <div className="flex gap-3">
@@ -728,12 +722,19 @@ const AdminPanel = () => {
               <TabsContent value="wallpapers" className="space-y-6">
                 <Card>
                   <CardHeader>
-                    <CardTitle>Your Wallpapers</CardTitle>
-                    <CardDescription>Manage your uploaded wallpapers</CardDescription>
+                    <CardTitle>
+                      {viewingCreator ? `${viewingCreator.email}'s Wallpapers` : 'Your Wallpapers'}
+                      {hasFullAccess && <span className="ml-2 text-sm font-normal text-red-600">(Full Access Mode)</span>}
+                    </CardTitle>
+                    <CardDescription>
+                      {hasFullAccess 
+                        ? "You have full access to manage these wallpapers including deletion" 
+                        : "Manage your uploaded wallpapers"}
+                    </CardDescription>
                   </CardHeader>
                   <CardContent>
                     <div className="flex justify-between items-center mb-4">
-                      {selectedWallpapers.length > 0 && (
+                      {selectedWallpapers.length > 0 && hasFullAccess && (
                         <AlertDialog>
                           <AlertDialogTrigger asChild>
                             <Button variant="destructive">
@@ -765,16 +766,18 @@ const AdminPanel = () => {
                       {wallpapers.map((wallpaper) => (
                         <Card key={wallpaper.id} className={`relative overflow-hidden hover:shadow-md transition-shadow ${selectedWallpapers.includes(wallpaper.id) ? 'ring-2 ring-primary' : ''}`}>
                           <div className="absolute top-2 left-2 z-10">
-                            <Checkbox
-                              checked={selectedWallpapers.includes(wallpaper.id)}
-                              onCheckedChange={(checked) => {
-                                if (checked) {
-                                  setSelectedWallpapers([...selectedWallpapers, wallpaper.id]);
-                                } else {
-                                  setSelectedWallpapers(selectedWallpapers.filter(id => id !== wallpaper.id));
-                                }
-                              }}
-                            />
+                            {hasFullAccess && (
+                              <Checkbox
+                                checked={selectedWallpapers.includes(wallpaper.id)}
+                                onCheckedChange={(checked) => {
+                                  if (checked) {
+                                    setSelectedWallpapers([...selectedWallpapers, wallpaper.id]);
+                                  } else {
+                                    setSelectedWallpapers(selectedWallpapers.filter(id => id !== wallpaper.id));
+                                  }
+                                }}
+                              />
+                            )}
                           </div>
                           <div className="relative h-48">
                             <img
@@ -819,17 +822,19 @@ const AdminPanel = () => {
                               </div>
                             </div>
                           </CardContent>
-                          <CardFooter className="pt-0">
-                            <Button
-                              variant="destructive"
-                              size="sm"
-                              className="w-full"
-                              onClick={() => handleDelete(wallpaper.id, wallpaper.file_path)}
-                            >
-                              <Trash className="w-3 h-3 mr-1" />
-                              Delete
-                            </Button>
-                          </CardFooter>
+                          {hasFullAccess && (
+                            <CardFooter className="pt-0">
+                              <Button
+                                variant="destructive"
+                                size="sm"
+                                className="w-full"
+                                onClick={() => handleDelete(wallpaper.id, wallpaper.file_path)}
+                              >
+                                <Trash className="w-3 h-3 mr-1" />
+                                Delete
+                              </Button>
+                            </CardFooter>
+                          )}
                         </Card>
                       ))}
                     </div>
@@ -840,7 +845,7 @@ const AdminPanel = () => {
               <TabsContent value="collections">
                 <Card>
                   <CardHeader>
-                    <CardTitle>Your Collections</CardTitle>
+                    <CardTitle>{viewingCreator ? `${viewingCreator.email}'s Collections` : 'Your Collections'}</CardTitle>
                     <CardDescription>Manage your wallpaper collections</CardDescription>
                   </CardHeader>
                   <CardContent>

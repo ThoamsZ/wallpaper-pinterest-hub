@@ -6,30 +6,37 @@ import { toast } from "@/hooks/use-toast";
  * Completely deletes a wallpaper and all its dependencies from the system
  * 
  * @param wallpaperId - The ID of the wallpaper to delete
+ * @param filePath - Optional file path, if already known
  * @returns Promise<boolean> - True if deletion was successful, false otherwise
  */
-export const deleteWallpaper = async (wallpaperId: string): Promise<boolean> => {
+export const deleteWallpaper = async (wallpaperId: string, filePath?: string): Promise<boolean> => {
   console.log(`Starting deletion process for wallpaper ${wallpaperId}`);
   
   try {
-    // 1. Get wallpaper data first (we need the file path)
-    const { data: wallpaper, error: wallpaperError } = await supabase
-      .from('wallpapers')
-      .select('*')
-      .eq('id', wallpaperId)
-      .single();
+    // 1. Get wallpaper data first (we need the file path if not provided)
+    let wallpaperFilePath = filePath;
     
-    if (wallpaperError) {
-      console.error("Error fetching wallpaper data:", wallpaperError);
-      throw new Error(`Could not fetch wallpaper data: ${wallpaperError.message}`);
+    if (!wallpaperFilePath) {
+      const { data: wallpaper, error: wallpaperError } = await supabase
+        .from('wallpapers')
+        .select('file_path')
+        .eq('id', wallpaperId)
+        .single();
+      
+      if (wallpaperError) {
+        console.error("Error fetching wallpaper data:", wallpaperError);
+        throw new Error(`Could not fetch wallpaper data: ${wallpaperError.message}`);
+      }
+      
+      if (!wallpaper) {
+        console.error("Wallpaper not found");
+        throw new Error("Wallpaper not found");
+      }
+      
+      wallpaperFilePath = wallpaper.file_path;
     }
     
-    if (!wallpaper) {
-      console.error("Wallpaper not found");
-      throw new Error("Wallpaper not found");
-    }
-    
-    console.log(`Found wallpaper with path: ${wallpaper.file_path}`);
+    console.log(`Found wallpaper with path: ${wallpaperFilePath}`);
 
     // 2. Delete all related data in parallel for efficiency
     const promises = [];
@@ -80,12 +87,12 @@ export const deleteWallpaper = async (wallpaperId: string): Promise<boolean> => 
     await Promise.all(promises);
     
     // 3. Delete the file from storage
-    if (wallpaper.file_path) {
-      console.log(`Deleting file from storage: ${wallpaper.file_path}`);
-      const storageResult = await deleteFileFromStorage(wallpaper.file_path);
+    if (wallpaperFilePath) {
+      console.log(`Deleting file from storage: ${wallpaperFilePath}`);
+      const storageResult = await deleteFileFromStorage(wallpaperFilePath);
       
       if (!storageResult) {
-        console.warn(`Warning: Failed to delete file from storage: ${wallpaper.file_path}`);
+        console.warn(`Warning: Failed to delete file from storage: ${wallpaperFilePath}`);
         // Continue despite storage deletion failure
       }
     }

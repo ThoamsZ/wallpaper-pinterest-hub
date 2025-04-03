@@ -70,14 +70,18 @@ const CreatorDetail = () => {
       localStorage.setItem('viewing_creator', JSON.stringify({
         id: creatorInfo.user_id,
         email: creatorInfo.profile?.email,
-        adminId: creatorInfo.id
+        adminId: creatorInfo.id,
+        fullAccess: true  // Add flag to grant deletion privileges
       }));
       
       // Redirect to the creator's admin panel
-      navigate('/admin-panel', { state: { viewingCreator: creatorInfo.user_id } });
+      navigate('/admin-panel', { state: { 
+        viewingCreator: creatorInfo.user_id,
+        fullAccess: true  // Add flag to grant deletion privileges
+      }});
       toast({
         title: "Redirecting",
-        description: "Navigating to creator's admin panel",
+        description: "Navigating to creator's admin panel with full access",
       });
     } else {
       toast({
@@ -145,7 +149,7 @@ const CreatorDetail = () => {
           onClick={navigateToCreatorAdminPanel}
           disabled={isRedirecting}
         >
-          {isRedirecting ? "Redirecting..." : "View Creator Admin Panel"}
+          {isRedirecting ? "Redirecting..." : "View Creator Admin Panel (Full Access)"}
         </Button>
       </div>
 
