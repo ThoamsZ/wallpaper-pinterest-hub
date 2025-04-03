@@ -255,10 +255,6 @@ const Collections = () => {
                     <p className="text-sm text-muted-foreground">
                       Created: {new Date(collection.created_at).toLocaleDateString()}
                     </p>
-                    <div className="flex items-center gap-1 text-sm text-muted-foreground">
-                      <Heart className="h-3 w-3" />
-                      <span>{collection.like_count || 0}</span>
-                    </div>
                   </div>
                   <p className="text-sm text-muted-foreground mt-2">
                     Wallpapers: {collection.collection_wallpapers.length}
