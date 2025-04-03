@@ -62,7 +62,7 @@ interface EditingCollection {
   description: string | null;
 }
 
-const CollectionManager = () => {
+export const CollectionManager = () => {
   const navigate = useNavigate();
   const [newCollectionName, setNewCollectionName] = useState("");
   const [newCollectionDesc, setNewCollectionDesc] = useState("");
@@ -970,5 +970,3 @@ const CollectionManager = () => {
     </div>
   );
 };
-
-export default CollectionManager;

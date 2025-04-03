@@ -1,3 +1,4 @@
+
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -119,6 +120,7 @@ const Upload = () => {
       let completed = 0;
 
       for (const file of files) {
+        // Generate a unique filename to avoid issues with special characters
         const fileExt = file.name.split('.').pop();
         const timestamp = Date.now();
         const randomString = Math.random().toString(36).substring(2, 10);
@@ -149,6 +151,7 @@ const Upload = () => {
             type: imageType,
             tags: tagArray,
             uploaded_by: userId
+            // Remove the original_filename field as it doesn't exist in the schema
           });
 
         if (dbError) {

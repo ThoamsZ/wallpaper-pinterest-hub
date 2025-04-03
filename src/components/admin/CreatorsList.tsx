@@ -1,4 +1,6 @@
+
 import { useState, useEffect } from "react";
+import { NavigateFunction } from "react-router-dom";
 import { toast } from "@/hooks/use-toast";
 import { supabase, deleteFileFromStorage, checkTableExists } from "@/integrations/supabase/client";
 import { Input } from "@/components/ui/input";
@@ -24,7 +26,11 @@ import {
 } from "@/components/ui/alert-dialog";
 import { deleteWallpaper } from "@/utils/wallpaper-utils";
 
-const CreatorsList = () => {
+interface CreatorsListProps {
+  navigate: NavigateFunction;
+}
+
+export const CreatorsList = ({ navigate }: CreatorsListProps) => {
   const [creators, setCreators] = useState<any[]>([]);
   const [wallpapers, setWallpapers] = useState<any[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
@@ -293,6 +299,7 @@ const CreatorsList = () => {
           <Card 
             key={creator.id} 
             className="cursor-pointer hover:border-primary transition-colors"
+            onClick={() => navigate(`/admin-manager/creator/${creator.id}`)}
           >
             <CardHeader>
               <CardTitle className="flex justify-between items-center">
@@ -396,5 +403,3 @@ const CreatorsList = () => {
     </div>
   );
 };
-
-export default CreatorsList;
