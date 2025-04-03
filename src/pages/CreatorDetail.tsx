@@ -17,13 +17,15 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 
 const CreatorDetail = () => {
   const { creatorId } = useParams();
   const navigate = useNavigate();
   const [wallpapers, setWallpapers] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [currentDeletingId, setCurrentDeletingId] = useState(null);
 
   useEffect(() => {
     fetchCreatorWallpapers();
@@ -82,7 +84,8 @@ const CreatorDetail = () => {
       return;
     }
     
-    setIsLoading(true);
+    setIsDeleting(true);
+    setCurrentDeletingId(wallpaperId);
     
     try {
       console.log("Starting wallpaper deletion for:", wallpaperId);
@@ -92,31 +95,25 @@ const CreatorDetail = () => {
         description: "Please wait while we delete this wallpaper.",
       });
       
-      const success = await deleteWallpaper(wallpaperId);
+      await deleteWallpaper(wallpaperId);
       
-      if (success) {
-        toast({
-          title: "Wallpaper Deleted",
-          description: "The wallpaper has been successfully deleted.",
-        });
-        
-        setWallpapers(prevWallpapers => prevWallpapers.filter(w => w.id !== wallpaperId));
-      } else {
-        toast({
-          title: "Deletion Failed",
-          description: "Failed to delete the wallpaper. Please try again.",
-          variant: "destructive",
-        });
-      }
+      toast({
+        title: "Wallpaper Deleted",
+        description: "The wallpaper has been successfully deleted.",
+      });
+      
+      // Remove the deleted wallpaper from the state
+      setWallpapers(prevWallpapers => prevWallpapers.filter(w => w.id !== wallpaperId));
     } catch (error) {
       console.error("Error in wallpaper deletion:", error);
       toast({
-        title: "Error",
+        title: "Deletion Failed",
         description: error.message || "An unexpected error occurred during deletion.",
         variant: "destructive",
       });
     } finally {
-      setIsLoading(false);
+      setIsDeleting(false);
+      setCurrentDeletingId(null);
     }
   };
 
@@ -172,9 +169,9 @@ const CreatorDetail = () => {
                         <AlertDialogCancel>Cancel</AlertDialogCancel>
                         <AlertDialogAction 
                           onClick={() => handleWallpaperDelete(wallpaper.id)}
-                          disabled={isLoading}
+                          disabled={isDeleting && currentDeletingId === wallpaper.id}
                         >
-                          {isLoading ? 'Deleting...' : 'Delete'}
+                          {isDeleting && currentDeletingId === wallpaper.id ? 'Deleting...' : 'Delete'}
                         </AlertDialogAction>
                       </AlertDialogFooter>
                     </AlertDialogContent>

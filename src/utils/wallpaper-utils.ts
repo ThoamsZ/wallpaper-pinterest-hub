@@ -30,53 +30,55 @@ export const deleteWallpaper = async (wallpaperId: string): Promise<boolean> => 
     }
     
     console.log(`Found wallpaper with path: ${wallpaper.file_path}`);
+
+    // 2. Delete all related data in parallel for efficiency
+    const promises = [];
     
-    // 2. Execute all related data deletions in parallel
-    // First, directly remove from users favorites
+    // Remove from users favorites using RPC function
     console.log("Removing wallpaper from all user favorites");
-    const { error: favoritesError } = await supabase.rpc(
-      'remove_wallpaper_from_favorites', 
-      { wallpaper_id: wallpaperId }
+    promises.push(
+      supabase.rpc('remove_wallpaper_from_favorites', { wallpaper_id: wallpaperId })
+        .then(({ error }) => {
+          if (error) console.error("Error removing from favorites:", error);
+        })
     );
     
-    if (favoritesError) {
-      console.error("Error removing from favorites:", favoritesError);
-      // Continue with deletion despite error
-    }
-
+    // Remove from collections
     console.log("Removing wallpaper from all collections");
-    const { error: collectionsError } = await supabase
-      .from('collection_wallpapers')
-      .delete()
-      .eq('wallpaper_id', wallpaperId);
-    
-    if (collectionsError) {
-      console.error("Error removing from collections:", collectionsError);
-      // Continue with deletion despite error
-    }
+    promises.push(
+      supabase
+        .from('collection_wallpapers')
+        .delete()
+        .eq('wallpaper_id', wallpaperId)
+        .then(({ error }) => {
+          if (error) console.error("Error removing from collections:", error);
+        })
+    );
 
+    // Remove from VIP wallpapers if present
     console.log("Removing wallpaper from VIP wallpapers if present");
-    const { error: vipWallpapersError } = await supabase
-      .from('vip_wallpapers')
-      .delete()
-      .eq('wallpaper_id', wallpaperId);
+    promises.push(
+      supabase
+        .from('vip_wallpapers')
+        .delete()
+        .eq('wallpaper_id', wallpaperId)
+        .then(({ error }) => {
+          if (error) console.error("Error removing from VIP wallpapers:", error);
+        })
+    );
     
-    if (vipWallpapersError) {
-      console.error("Error removing from VIP wallpapers:", vipWallpapersError);
-      // Continue with deletion despite error
-    }
+    // Wait for all cleanup operations to complete
+    await Promise.all(promises);
     
-    // 3. Delete the wallpaper from storage
+    // 3. Delete the file from storage
     if (wallpaper.file_path) {
       console.log(`Deleting file from storage: ${wallpaper.file_path}`);
       const storageResult = await deleteFileFromStorage(wallpaper.file_path);
       
       if (!storageResult) {
         console.warn(`Warning: Failed to delete file from storage: ${wallpaper.file_path}`);
-        // We continue despite storage deletion failure - don't stop the whole process
+        // Continue despite storage deletion failure
       }
-    } else {
-      console.warn("No file path found for wallpaper, skipping storage deletion");
     }
     
     // 4. Finally, delete the wallpaper record itself
@@ -95,6 +97,6 @@ export const deleteWallpaper = async (wallpaperId: string): Promise<boolean> => 
     return true;
   } catch (error) {
     console.error("Wallpaper deletion failed:", error);
-    return false;
+    throw error; // Re-throw to handle in the component
   }
 };
