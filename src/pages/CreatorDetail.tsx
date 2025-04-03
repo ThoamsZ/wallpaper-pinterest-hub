@@ -142,62 +142,43 @@ const CreatorDetail = () => {
     try {
       console.log("Starting wallpaper deletion process for:", wallpaperId);
       
-      // First check if the wallpaper exists with direct query
-      const { data: wallpaperCheck, error: wallpaperCheckError } = await supabase
-        .from('wallpapers')
-        .select('id')
-        .eq('id', wallpaperId)
-        .maybeSingle();
-      
-      if (wallpaperCheckError) {
-        console.error("Wallpaper check error:", wallpaperCheckError);
-        throw wallpaperCheckError;
-      }
-      
-      if (!wallpaperCheck) {
-        toast({ 
-          title: "Notice", 
-          description: "Wallpaper already deleted or doesn't exist" 
-        });
-        setWallpapers(prev => prev.filter(w => w.id !== wallpaperId));
-        return;
-      }
-      
-      // Handle file storage deletion first
-      try {
-        if (filePath) {
-          console.log(`Attempting to delete file from storage: ${filePath}`);
-          
-          const storagePath = filePath.split('/').slice(1).join('/');
-          const bucketName = filePath.split('/')[0];
-          
-          console.log(`Bucket: ${bucketName}, Path: ${storagePath}`);
-          
+      // Step 1: Delete the file from storage
+      if (filePath && filePath.includes('/')) {
+        const pathParts = filePath.split('/');
+        const bucketName = pathParts[0];
+        const storagePath = pathParts.slice(1).join('/');
+        
+        console.log(`Deleting file from storage bucket: ${bucketName}, path: ${storagePath}`);
+        
+        try {
           const { error: storageError } = await supabase.storage
             .from(bucketName)
             .remove([storagePath]);
-            
+          
           if (storageError) {
-            console.error("Error removing from storage:", storageError);
+            console.error("Storage error:", storageError);
             // Continue with database deletion even if storage fails
           } else {
-            console.log("Successfully removed file from storage");
+            console.log("Successfully deleted file from storage");
           }
+        } catch (storageError) {
+          console.error("Storage error:", storageError);
+          // Continue with database deletion
         }
-      } catch (storageError) {
-        console.error("Storage deletion exception:", storageError);
-        // Continue with database deletion even if storage deletion fails
+      } else {
+        console.log("Invalid file path format:", filePath);
       }
       
-      // Update user favorites to remove this wallpaper ID
+      // Step 2: Update user favorites to remove this wallpaper
       try {
-        const { data: usersWithFavorite, error: usersFavorError } = await supabase
+        console.log("Updating user favorites...");
+        const { data: usersWithFavorite, error: favoritesError } = await supabase
           .from('users')
           .select('id, favor_image')
           .contains('favor_image', [wallpaperId]);
         
-        if (usersFavorError) {
-          console.error("Error finding users with this wallpaper in favorites:", usersFavorError);
+        if (favoritesError) {
+          console.error("Error finding users with favorite:", favoritesError);
         } else if (usersWithFavorite && usersWithFavorite.length > 0) {
           console.log(`Found ${usersWithFavorite.length} users with this wallpaper in favorites`);
           
@@ -211,96 +192,90 @@ const CreatorDetail = () => {
             
             if (updateError) {
               console.error(`Error updating favorites for user ${user.id}:`, updateError);
-            } else {
-              console.log(`Updated favorites for user ${user.id}`);
             }
           }
         }
       } catch (favoritesError) {
-        console.error("Error updating user favorites:", favoritesError);
+        console.error("Error updating favorites:", favoritesError);
         // Continue with database deletion
       }
       
-      // Handle collection_wallpapers with direct DELETE
+      // Step 3: Remove from collection_wallpapers
       try {
-        const { error: collectionWallpapersError } = await supabase
+        console.log("Removing from collections...");
+        const { error: collectionError } = await supabase
           .from('collection_wallpapers')
           .delete()
           .eq('wallpaper_id', wallpaperId);
-
-        if (collectionWallpapersError) {
-          console.error("Error removing from collection_wallpapers:", collectionWallpapersError);
-        } else {
-          console.log("Removed from collection_wallpapers");
+        
+        if (collectionError) {
+          console.error("Error removing from collections:", collectionError);
         }
       } catch (collectionError) {
-        console.error("Exception removing from collections:", collectionError);
-        // Continue with main deletion
+        console.error("Error removing from collections:", collectionError);
+        // Continue with database deletion
       }
-
-      // Handle vip_wallpapers with direct check and DELETE
+      
+      // Step 4: Remove from VIP wallpapers if applicable
       try {
-        const vipWallpapersExists = await checkTableExists('vip_wallpapers');
-        if (vipWallpapersExists) {
-          const { error: vipWallpapersError } = await supabase
+        console.log("Checking for VIP wallpapers table...");
+        const vipTableExists = await checkTableExists('vip_wallpapers');
+        
+        if (vipTableExists) {
+          console.log("Removing from VIP wallpapers...");
+          const { error: vipError } = await supabase
             .from('vip_wallpapers')
             .delete()
             .eq('wallpaper_id', wallpaperId);
           
-          if (vipWallpapersError) {
-            console.error("Error removing from vip_wallpapers:", vipWallpapersError);
-          } else {
-            console.log("Removed from vip_wallpapers");
+          if (vipError) {
+            console.error("Error removing from VIP wallpapers:", vipError);
           }
-        } else {
-          console.log("vip_wallpapers table doesn't exist, skipping");
         }
       } catch (vipError) {
-        console.error("Exception handling vip wallpapers:", vipError);
-        // Continue with main deletion
+        console.error("Error checking/removing from VIP wallpapers:", vipError);
+        // Continue with database deletion
       }
-
-      // Create notification if applicable
+      
+      // Step 5: Create notification for creator
       try {
+        console.log("Creating notification for creator...");
         const notificationsExists = await checkTableExists('notifications');
+        
         if (creator && creator.user_id && notificationsExists) {
           const { error: notificationError } = await supabase
             .from('notifications')
             .insert({
               user_id: creator.user_id,
-              message: `Your wallpaper "${filePath.split('/').pop()}" has been removed by an admin.`,
+              message: `Your wallpaper has been removed by an admin.`,
               type: 'wallpaper_deleted',
               read: false
             });
-
+          
           if (notificationError) {
             console.error("Error creating notification:", notificationError);
-          } else {
-            console.log("Created notification for creator");
           }
-        } else {
-          console.log("Skipping notification - creator info or notifications table missing");
         }
       } catch (notifyError) {
-        console.error("Exception creating notification:", notifyError);
-        // Continue with main deletion
+        console.error("Error creating notification:", notifyError);
+        // Continue with database deletion
       }
-
-      // Finally perform the actual wallpaper deletion with direct DELETE
-      console.log("Executing final DELETE operation on wallpapers table for ID:", wallpaperId);
+      
+      // Step 6: Delete from wallpapers table
+      console.log("Executing final DELETE from wallpapers table...");
       const { error: deleteError } = await supabase
         .from('wallpapers')
         .delete()
         .eq('id', wallpaperId);
-
+      
       if (deleteError) {
-        console.error("Error deleting wallpaper from database:", deleteError);
+        console.error("Error deleting from wallpapers table:", deleteError);
         throw deleteError;
       }
       
-      console.log("Successfully removed wallpaper from database");
+      console.log("Successfully deleted wallpaper from database");
       
-      // Update UI immediately
+      // Step 7: Update UI
       setWallpapers(prev => prev.filter(w => w.id !== wallpaperId));
       
       if (selectedImage === wallpaperUrl) {
@@ -309,22 +284,23 @@ const CreatorDetail = () => {
       
       toast({
         title: "Success",
-        description: "Wallpaper completely removed from the system",
+        description: "Wallpaper successfully deleted",
       });
       
-      // Refetch wallpapers to ensure UI is in sync
+      // Step 8: Refresh data to ensure UI is in sync
       if (creator && creator.user_id) {
-        const { data: refreshedWallpapers } = await supabase
+        console.log("Refreshing wallpaper data...");
+        const { data: refreshedData } = await supabase
           .from('wallpapers')
           .select('*')
           .eq('uploaded_by', creator.user_id);
           
-        if (refreshedWallpapers) {
-          setWallpapers(refreshedWallpapers);
+        if (refreshedData) {
+          setWallpapers(refreshedData);
         }
       }
     } catch (error: any) {
-      console.error("Full deletion error:", error);
+      console.error("Deletion error:", error);
       toast({
         title: "Error",
         description: error.message || "Failed to delete wallpaper",
