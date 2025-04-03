@@ -37,7 +37,7 @@ export const AdminManagerAuth = ({ setIsLoggedIn }: AdminManagerAuthProps) => {
 
       const { data: adminData, error: adminError } = await supabase
         .from('admin_users')
-        .select('admin_type')
+        .select('admin_type, is_blocked')
         .eq('user_id', signInData.session?.user.id)
         .maybeSingle();
 
@@ -48,9 +48,21 @@ export const AdminManagerAuth = ({ setIsLoggedIn }: AdminManagerAuthProps) => {
         throw adminError;
       }
 
-      if (!adminData || adminData.admin_type !== 'admin_manager') {
+      if (!adminData) {
+        console.error("Access denied: Not an admin user");
+        await supabase.auth.signOut();
+        throw new Error("Access denied. This page is only for admin users.");
+      }
+      
+      if (adminData.is_blocked) {
+        console.error("Access denied: Admin account is blocked");
+        await supabase.auth.signOut();
+        throw new Error("Access denied. Your admin account has been blocked.");
+      }
+
+      if (adminData.admin_type !== 'admin_manager') {
         console.error("Access denied: Not an admin manager");
-        console.log("Admin type found:", adminData?.admin_type);
+        console.log("Admin type found:", adminData.admin_type);
         await supabase.auth.signOut();
         throw new Error("Access denied. This page is only for admin managers.");
       }
