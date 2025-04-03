@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -88,7 +87,6 @@ const CreatorDetail = () => {
   const fetchCreatorDetails = async (id: string) => {
     setIsLoading(true);
     try {
-      // Fetch the creator details
       const { data: adminData, error: adminError } = await supabase
         .from('admin_users')
         .select(`
@@ -105,7 +103,6 @@ const CreatorDetail = () => {
       
       setCreator(adminData);
 
-      // Fetch wallpapers uploaded by the creator
       const { data: wallpaperData, error: wallpaperError } = await supabase
         .from('wallpapers')
         .select('*')
@@ -115,7 +112,6 @@ const CreatorDetail = () => {
       
       setWallpapers(wallpaperData || []);
 
-      // Fetch collections created by the creator
       const { data: collectionData, error: collectionError } = await supabase
         .from('collections')
         .select('*')
@@ -135,9 +131,8 @@ const CreatorDetail = () => {
     }
   };
 
-  const handleDeleteWallpaper = async (wallpaperId: string, filePath: string) => {
+  const handleDeleteWallpaper = async (wallpaperId: string, filePath: string, wallpaperUrl: string) => {
     try {
-      // Remove from collection_wallpapers
       const { error: collectionWallpapersError } = await supabase
         .from('collection_wallpapers')
         .delete()
@@ -145,20 +140,22 @@ const CreatorDetail = () => {
 
       if (collectionWallpapersError) throw collectionWallpapersError;
 
-      // Delete from storage
       const { error: storageError } = await supabase.storage
         .from('wallpapers')
         .remove([filePath]);
 
       if (storageError) throw storageError;
 
-      // Delete from wallpapers table
       const { error: dbError } = await supabase
         .from('wallpapers')
         .delete()
         .eq('id', wallpaperId);
 
       if (dbError) throw dbError;
+
+      if (selectedImage === wallpaperUrl) {
+        setSelectedImage(null);
+      }
 
       setWallpapers(prev => prev.filter(w => w.id !== wallpaperId));
       
@@ -177,7 +174,6 @@ const CreatorDetail = () => {
 
   const handleDeleteCollection = async (collectionId: string) => {
     try {
-      // Remove all wallpapers from this collection
       const { error: collectionWallpapersError } = await supabase
         .from('collection_wallpapers')
         .delete()
@@ -185,7 +181,6 @@ const CreatorDetail = () => {
 
       if (collectionWallpapersError) throw collectionWallpapersError;
 
-      // Delete collection likes
       const { error: likesError } = await supabase
         .from('collection_likes')
         .delete()
@@ -193,7 +188,6 @@ const CreatorDetail = () => {
 
       if (likesError) throw likesError;
 
-      // Delete the collection
       const { error: collectionError } = await supabase
         .from('collections')
         .delete()
@@ -216,7 +210,6 @@ const CreatorDetail = () => {
     }
   };
 
-  // Handle image preview
   const openImagePreview = (url: string) => {
     setSelectedImage(url);
   };
@@ -330,7 +323,7 @@ const CreatorDetail = () => {
                             <AlertDialogFooter>
                               <AlertDialogCancel>Cancel</AlertDialogCancel>
                               <AlertDialogAction
-                                onClick={() => handleDeleteWallpaper(wallpaper.id, wallpaper.file_path)}
+                                onClick={() => handleDeleteWallpaper(wallpaper.id, wallpaper.file_path, wallpaper.url)}
                                 className="bg-red-500 hover:bg-red-600"
                               >
                                 Delete
@@ -411,7 +404,6 @@ const CreatorDetail = () => {
         </TabsContent>
       </Tabs>
 
-      {/* Image Preview Modal */}
       <Dialog open={!!selectedImage} onOpenChange={() => selectedImage && closeImagePreview()}>
         <DialogContent className="max-w-[90vw] max-h-[90vh] p-0 overflow-hidden">
           <DialogTitle className="sr-only">Image Preview</DialogTitle>
