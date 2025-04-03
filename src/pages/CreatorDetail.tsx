@@ -50,6 +50,8 @@ const CreatorDetail = () => {
   const fetchCreatorDetails = async () => {
     setIsLoading(true);
     try {
+      console.log("Fetching creator details for ID:", creatorId);
+      
       // Fetch creator details from admin_users table
       const { data: creatorData, error: creatorError } = await supabase
         .from('admin_users')
@@ -64,8 +66,11 @@ const CreatorDetail = () => {
         .single();
 
       if (creatorError) {
+        console.error("Error fetching creator data:", creatorError);
         throw creatorError;
       }
+
+      console.log("Creator data received:", creatorData);
 
       // Format the creator data
       const formattedCreator = {
@@ -78,6 +83,8 @@ const CreatorDetail = () => {
       setIsBlocked(formattedCreator?.is_blocked || false);
       setNewEmail(formattedCreator.email || '');
 
+      console.log("Looking for wallpapers with user_id:", creatorData.user_id);
+      
       // Fetch wallpapers by creator's user_id
       const { data: wallpapersData, error: wallpapersError } = await supabase
         .from('wallpapers')
@@ -85,9 +92,11 @@ const CreatorDetail = () => {
         .eq('uploaded_by', creatorData.user_id);
 
       if (wallpapersError) {
+        console.error("Error fetching wallpapers:", wallpapersError);
         throw wallpapersError;
       }
 
+      console.log("Wallpapers found:", wallpapersData?.length || 0);
       setWallpapers(wallpapersData || []);
     } catch (error) {
       console.error("Error fetching creator details:", error);
@@ -104,12 +113,15 @@ const CreatorDetail = () => {
   const handleBlockCreator = async () => {
     setIsLoading(true);
     try {
+      console.log("Updating block status for creator:", creatorId);
+      
       const { error } = await supabase
         .from('admin_users')
         .update({ is_blocked: !isBlocked })
         .eq('id', creatorId);
 
       if (error) {
+        console.error("Error updating block status:", error);
         throw error;
       }
 
@@ -134,6 +146,8 @@ const CreatorDetail = () => {
   const handleChangeEmail = async () => {
     setIsLoading(true);
     try {
+      console.log("Updating email for creator:", creatorId);
+      
       // Update the email in admin_users table
       const { error } = await supabase
         .from('admin_users')
@@ -141,6 +155,7 @@ const CreatorDetail = () => {
         .eq('id', creatorId);
 
       if (error) {
+        console.error("Error updating email:", error);
         throw error;
       }
 
@@ -213,6 +228,9 @@ const CreatorDetail = () => {
           </CardHeader>
           <CardContent>
             <p>The requested creator could not be found.</p>
+            <Button variant="outline" className="mt-4" onClick={() => navigate('/admin-manager')}>
+              Back to Admin Manager
+            </Button>
           </CardContent>
         </Card>
       </div>
@@ -331,7 +349,7 @@ const CreatorDetail = () => {
           </Table>
         ) : (
           <Card>
-            <CardContent>
+            <CardContent className="py-4">
               <p>No wallpapers found for this creator.</p>
             </CardContent>
           </Card>
