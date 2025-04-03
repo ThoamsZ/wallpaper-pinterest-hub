@@ -9,7 +9,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 
-const DashboardStats = () => {
+export const DashboardStats = () => {
   const [statsData, setStatsData] = useState({
     totalDownloads: 0,
     totalPurchases: 0,
