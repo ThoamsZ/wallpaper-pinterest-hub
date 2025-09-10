@@ -3,7 +3,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { useNavigate, useLocation } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { toast } from "@/hooks/use-toast";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useQueryClient } from "@tanstack/react-query";
@@ -23,6 +23,7 @@ const Header = ({
   const [searchQuery, setSearchQuery] = useState("");
   const [isProcessing, setIsProcessing] = useState(false);
   const [isVip, setIsVip] = useState(false);
+  const [searchTimeout, setSearchTimeout] = useState<NodeJS.Timeout | null>(null);
   const isAdminPanel = location.pathname === "/admin-panel";
   useEffect(() => {
     let mounted = true;
@@ -125,32 +126,42 @@ const Header = ({
   const handleSearch = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     if (isDisabled || isProcessing) return;
+    
+    const query = searchQuery.trim();
+    if (!query) {
+      // Reset to show all wallpapers when search is empty
+      queryClient.invalidateQueries({ queryKey: ['wallpapers'] });
+      return;
+    }
+
     setIsProcessing(true);
+    
     try {
-      if (!searchQuery.trim()) {
-        // Reset to show all wallpapers when search is empty
-        queryClient.invalidateQueries({
-          queryKey: ['wallpapers']
-        });
-        setIsProcessing(false);
-        return;
-      }
-      const {
-        data: creatorData,
-        error: creatorError
-      } = await supabase.from('users').select('id').eq('creator_code', searchQuery.trim()).maybeSingle();
+      // Search for creator by creator_code in the creators table
+      const { data: creatorData } = await supabase
+        .from('creators')
+        .select('creator_code')
+        .eq('creator_code', query)
+        .eq('is_active', true)
+        .not('is_blocked', 'eq', true)
+        .maybeSingle();
+      
       if (creatorData) {
-        navigate(`/creator/${searchQuery.trim()}`);
-        setIsProcessing(false);
+        navigate(`/creator/${query}`);
         return;
       }
-      const {
-        data: wallpaperData,
-        error: wallpaperError
-      } = await supabase.from('wallpapers').select('*').contains('tags', [searchQuery.trim()]);
+      
+      // Search for wallpapers by tags
+      const { data: wallpaperData } = await supabase
+        .from('wallpapers')
+        .select('*')
+        .contains('tags', [query])
+        .limit(50);
+      
       if (wallpaperData && wallpaperData.length > 0) {
+        // Update the query cache with search results
         queryClient.setQueryData(['wallpapers'], {
-          pages: [wallpaperData],
+          pages: [{ data: wallpaperData, count: wallpaperData.length }],
           pageParams: [0]
         });
       } else {
@@ -160,9 +171,7 @@ const Header = ({
           variant: "destructive"
         });
         // Reset to show all wallpapers when no results found
-        queryClient.invalidateQueries({
-          queryKey: ['wallpapers']
-        });
+        queryClient.invalidateQueries({ queryKey: ['wallpapers'] });
       }
     } catch (error) {
       console.error('Search error:', error);
@@ -281,13 +290,24 @@ const Header = ({
 
           {!isAdminPanel && <form onSubmit={handleSearch} className="w-full">
               <div className="relative">
-                <Input type="search" placeholder="Search for wallpapers or creator codes..." className={`w-full pl-10 pr-4 py-1.5 rounded-full border-gray-200 text-sm ${isButtonDisabled ? 'bg-gray-100 cursor-not-allowed' : ''}`} value={searchQuery} onChange={e => {
-              setSearchQuery(e.target.value);
-              if (!e.target.value.trim()) {
-                const form = e.target.form;
-                if (form) form.requestSubmit();
-              }
-            }} disabled={isButtonDisabled} />
+                <Input 
+                  type="search" 
+                  placeholder="Search for wallpapers or creator codes..." 
+                  className={`w-full pl-10 pr-4 py-1.5 rounded-full border-gray-200 text-sm ${isButtonDisabled ? 'bg-gray-100 cursor-not-allowed' : ''}`} 
+                  value={searchQuery} 
+                  onChange={(e) => {
+                    setSearchQuery(e.target.value);
+                    // Clear existing timeout
+                    if (searchTimeout) {
+                      clearTimeout(searchTimeout);
+                    }
+                    // If search is empty, clear immediately
+                    if (!e.target.value.trim()) {
+                      queryClient.invalidateQueries({ queryKey: ['wallpapers'] });
+                    }
+                  }}
+                  disabled={isButtonDisabled} 
+                />
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4" />
               </div>
             </form>}
