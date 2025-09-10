@@ -26,9 +26,9 @@ const CreatorProfile = () => {
       if (!session) return null;
 
       const { data, error } = await supabase
-        .from('users')
+        .from('customers')
         .select('*')
-        .eq('id', session.user.id)
+        .eq('user_id', session.user.id)
         .single();
 
       if (error) throw error;
@@ -54,8 +54,8 @@ const CreatorProfile = () => {
     queryKey: ['creator', creatorCode],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from('users')
-        .select('id, creator_code')
+        .from('creators')
+        .select('user_id, creator_code')
         .eq('creator_code', creatorCode)
         .maybeSingle();
 
@@ -83,12 +83,12 @@ const CreatorProfile = () => {
   });
 
   const { data: wallpapers = [], isLoading: isWallpapersLoading } = useQuery({
-    queryKey: ['creator-wallpapers', creatorData?.id],
+    queryKey: ['creator-wallpapers', creatorData?.user_id],
     queryFn: async () => {
       const { data, error } = await supabase
         .from('wallpapers')
         .select('*')
-        .eq('uploaded_by', creatorData.id)
+        .eq('uploaded_by', creatorData.user_id)
         .order('created_at', { ascending: false });
 
       if (error) {
@@ -102,11 +102,11 @@ const CreatorProfile = () => {
 
       return data || [];
     },
-    enabled: !!creatorData?.id,
+    enabled: !!creatorData?.user_id,
   });
 
   const { data: collections = [], isLoading: isCollectionsLoading } = useQuery({
-    queryKey: ['creator-collections', creatorData?.id],
+    queryKey: ['creator-collections', creatorData?.user_id],
     queryFn: async () => {
       const { data, error } = await supabase
         .from('collections')
@@ -125,7 +125,7 @@ const CreatorProfile = () => {
             )
           )
         `)
-        .eq('created_by', creatorData.id)
+        .eq('created_by', creatorData.user_id)
         .order('created_at', { ascending: false });
 
       if (error) {
@@ -135,7 +135,7 @@ const CreatorProfile = () => {
       
       return data || [];
     },
-    enabled: !!creatorData?.id,
+    enabled: !!creatorData?.user_id,
   });
 
   const handleCollectionLike = async (collectionId: string) => {
@@ -162,9 +162,9 @@ const CreatorProfile = () => {
         : [...currentFavorites, collectionId];
 
       const { error: updateError } = await supabase
-        .from('users')
+        .from('customers')
         .update({ favor_collections: newFavorites })
-        .eq('id', session.user.id);
+        .eq('user_id', session.user.id);
 
       if (updateError) throw updateError;
 

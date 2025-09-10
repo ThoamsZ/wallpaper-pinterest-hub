@@ -324,8 +324,8 @@ export const CollectionManager = () => {
       try {
         for (const wallpaperId of selectedWallpapers) {
           const { data: usersWithFavorite, error: usersFavorError } = await supabase
-            .from('users')
-            .select('id, favor_image')
+            .from('customers')
+            .select('user_id, favor_image')
             .contains('favor_image', [wallpaperId]);
           
           if (usersFavorError) {
@@ -340,14 +340,14 @@ export const CollectionManager = () => {
               const updatedFavorites = (user.favor_image || []).filter(id => id !== wallpaperId);
               
               const { error: updateError } = await supabase
-                .from('users')
+                .from('customers')
                 .update({ favor_image: updatedFavorites })
-                .eq('id', user.id);
+                .eq('user_id', user.user_id);
               
               if (updateError) {
-                console.error(`Error updating favorites for user ${user.id}:`, updateError);
+                console.error(`Error updating favorites for user ${user.user_id}:`, updateError);
               } else {
-                console.log(`Updated favorites for user ${user.id}`);
+                console.log(`Updated favorites for user ${user.user_id}`);
               }
             }
           }
@@ -528,8 +528,8 @@ export const CollectionManager = () => {
       
       try {
         const { data: usersWithFavorite, error: usersFavorError } = await supabase
-          .from('users')
-          .select('id, favor_image')
+          .from('customers')
+          .select('user_id, favor_image')
           .contains('favor_image', [wallpaper.id]);
         
         if (usersFavorError) {
@@ -541,14 +541,14 @@ export const CollectionManager = () => {
             const updatedFavorites = (user.favor_image || []).filter(id => id !== wallpaper.id);
             
             const { error: updateError } = await supabase
-              .from('users')
+              .from('customers')
               .update({ favor_image: updatedFavorites })
-              .eq('id', user.id);
+              .eq('user_id', user.user_id);
             
             if (updateError) {
-              console.error(`Error updating favorites for user ${user.id}:`, updateError);
+              console.error(`Error updating favorites for user ${user.user_id}:`, updateError);
             } else {
-              console.log(`Updated favorites for user ${user.id}`);
+              console.log(`Updated favorites for user ${user.user_id}`);
             }
           }
         }

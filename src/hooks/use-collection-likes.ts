@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
@@ -13,9 +12,9 @@ export const useCollectionLikes = () => {
       const { data: { session } } = await supabase.auth.getSession();
       if (session && session.user.email !== 'guest@wallpaperhub.com') {
         const { data: userData } = await supabase
-          .from('users')
+          .from('customers')
           .select('favor_collections')
-          .eq('id', session.user.id)
+          .eq('user_id', session.user.id)
           .maybeSingle();
         
         if (userData?.favor_collections) {
@@ -65,9 +64,9 @@ export const useCollectionLikes = () => {
       }
 
       const { data: userData, error: userError } = await supabase
-        .from('users')
+        .from('customers')
         .select('favor_collections')
-        .eq('id', session.user.id)
+        .eq('user_id', session.user.id)
         .maybeSingle();
 
       if (userError) throw userError;
@@ -78,11 +77,11 @@ export const useCollectionLikes = () => {
         ? currentFavorites.filter(id => id !== collectionId)
         : [...currentFavorites, collectionId];
 
-      // Update the user's favorites
+      // Update the user's favorites in customers table
       const { error: updateError } = await supabase
-        .from('users')
+        .from('customers')
         .update({ favor_collections: newFavorites })
-        .eq('id', session.user.id);
+        .eq('user_id', session.user.id);
 
       if (updateError) throw updateError;
 

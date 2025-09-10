@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
@@ -15,9 +14,9 @@ export const useWallpaperLikes = () => {
         const { data: { session } } = await supabase.auth.getSession();
         if (session && session.user.email !== 'guest@wallpaperhub.com') {
           const { data: userData, error } = await supabase
-            .from('users')
+            .from('customers')
             .select('favor_image')
-            .eq('id', session.user.id)
+            .eq('user_id', session.user.id)
             .maybeSingle();
           
           if (error) {
@@ -98,11 +97,11 @@ export const useWallpaperLikes = () => {
         return;
       }
 
-      // Get user's current favorites with a direct query
+      // Get user's current favorites from customers table
       const { data: userData, error: userError } = await supabase
-        .from('users')
+        .from('customers')
         .select('favor_image')
-        .eq('id', session.user.id)
+        .eq('user_id', session.user.id)
         .single();
 
       if (userError) {
@@ -120,11 +119,11 @@ export const useWallpaperLikes = () => {
       console.log("Is liked:", isLiked);
       console.log("New favorites:", newFavorites);
 
-      // Update user's favorites with a direct update
+      // Update user's favorites in customers table
       const { error: updateError } = await supabase
-        .from('users')
+        .from('customers')
         .update({ favor_image: newFavorites })
-        .eq('id', session.user.id);
+        .eq('user_id', session.user.id);
 
       if (updateError) {
         console.error("Error updating user favorites:", updateError);

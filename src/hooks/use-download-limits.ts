@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
@@ -14,11 +13,11 @@ export const useDownloadLimits = () => {
         // First check if subscription has expired and update if needed
         await checkAndUpdateExpiredSubscription(session.user.id);
         
-        // Then fetch the current download limits
+        // Then fetch the current download limits from customers table
         const { data: userData, error } = await supabase
-          .from('users')
+          .from('customers')
           .select('daily_downloads_remaining')
-          .eq('id', session.user.id)
+          .eq('user_id', session.user.id)
           .maybeSingle();
 
         if (error) {
@@ -50,10 +49,10 @@ export const useDownloadLimits = () => {
   // Function to check all users with expired subscriptions
   const checkAllExpiredSubscriptions = async () => {
     try {
-      // Find all users with expired VIP subscriptions
+      // Find all customers with expired VIP subscriptions
       const { data, error } = await supabase
-        .from('users')
-        .select('id, vip_type, vip_expires_at, subscription_status')
+        .from('customers')
+        .select('user_id, vip_type, vip_expires_at, subscription_status')
         .not('vip_type', 'eq', 'lifetime')
         .not('vip_type', 'eq', 'none')
         .lt('vip_expires_at', new Date().toISOString());
@@ -64,24 +63,24 @@ export const useDownloadLimits = () => {
       }
       
       if (data && data.length > 0) {
-        console.log(`Found ${data.length} users with expired subscriptions`);
+        console.log(`Found ${data.length} customers with expired subscriptions`);
         
-        // Update each user with expired subscription
-        for (const user of data) {
-          if (user.vip_expires_at && new Date(user.vip_expires_at) < new Date()) {
+        // Update each customer with expired subscription
+        for (const customer of data) {
+          if (customer.vip_expires_at && new Date(customer.vip_expires_at) < new Date()) {
             const { error: updateError } = await supabase
-              .from('users')
+              .from('customers')
               .update({
                 subscription_status: 'expired',
                 vip_type: 'none',
                 daily_downloads_remaining: 5 // Reset to non-VIP limit
               })
-              .eq('id', user.id);
+              .eq('user_id', customer.user_id);
             
             if (updateError) {
-              console.error(`Error updating expired subscription for user ${user.id}:`, updateError);
+              console.error(`Error updating expired subscription for customer ${customer.user_id}:`, updateError);
             } else {
-              console.log(`Updated expired subscription for user ${user.id}`);
+              console.log(`Updated expired subscription for customer ${customer.user_id}`);
             }
           }
         }
@@ -91,12 +90,12 @@ export const useDownloadLimits = () => {
     }
   };
 
-  // Function to check if subscription has expired and update user status
+  // Function to check if subscription has expired and update customer status
   const checkAndUpdateExpiredSubscription = async (userId: string) => {
     const { data: userData, error } = await supabase
-      .from('users')
+      .from('customers')
       .select('vip_type, vip_expires_at, subscription_status')
-      .eq('id', userId)
+      .eq('user_id', userId)
       .maybeSingle();
     
     if (error || !userData) {
@@ -113,15 +112,15 @@ export const useDownloadLimits = () => {
     ) {
       console.log('Subscription expired, updating status...');
       
-      // Update user status to reflect expired subscription
+      // Update customer status to reflect expired subscription
       const { error: updateError } = await supabase
-        .from('users')
+        .from('customers')
         .update({
           subscription_status: 'expired',
           vip_type: 'none',
           daily_downloads_remaining: 5 // Reset to non-VIP limit
         })
-        .eq('id', userId);
+        .eq('user_id', userId);
       
       if (updateError) {
         console.error('Error updating expired subscription:', updateError);
@@ -143,11 +142,11 @@ export const useDownloadLimits = () => {
     await checkAndUpdateExpiredSubscription(session.user.id);
 
     const { error } = await supabase
-      .from('users')
+      .from('customers')
       .update({
         daily_downloads_remaining: Math.max((downloadsRemaining || 0) - 1, 0)
       })
-      .eq('id', session.user.id);
+      .eq('user_id', session.user.id);
 
     if (error) {
       console.error('Error updating download count:', error);

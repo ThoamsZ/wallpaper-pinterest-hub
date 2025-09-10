@@ -24,9 +24,9 @@ const Likes = () => {
       if (!session) return [];
 
       const { data: userData, error: userError } = await supabase
-        .from('users')
+        .from('customers')
         .select('favor_image')
-        .eq('id', session.user.id)
+        .eq('user_id', session.user.id)
         .single();
 
       if (userError) throw userError;

@@ -24,9 +24,10 @@ export const CreatorApplications = () => {
   const fetchCreatorApplications = async () => {
     setIsLoading(true);
     try {
+      // Get all creators who have a creator code (applications)
       const { data: userApplications, error: usersError } = await supabase
-        .from('users')
-        .select('id, email, creator_code')
+        .from('creators')
+        .select('user_id, email, creator_code')
         .not('creator_code', 'is', null);
 
       if (usersError) throw usersError;
@@ -37,7 +38,7 @@ export const CreatorApplications = () => {
         return;
       }
 
-      const userIds = userApplications.map(user => user.id);
+      const userIds = userApplications.map(user => user.user_id);
 
       const { data: existingAdmins, error: adminsError } = await supabase
         .from('admin_users')
@@ -48,7 +49,7 @@ export const CreatorApplications = () => {
 
       const existingAdminIds = existingAdmins?.map(admin => admin.user_id) || [];
       const pendingApplications = userApplications.filter(
-        user => !existingAdminIds.includes(user.id)
+        user => !existingAdminIds.includes(user.user_id)
       );
 
       setCreatorApplications(pendingApplications);
@@ -75,7 +76,7 @@ export const CreatorApplications = () => {
 
       if (adminError) throw adminError;
 
-      setCreatorApplications(prev => prev.filter(app => app.id !== userId));
+      setCreatorApplications(prev => prev.filter(app => app.user_id !== userId));
 
       toast({
         title: "Success",
@@ -113,14 +114,14 @@ export const CreatorApplications = () => {
           </TableHeader>
           <TableBody>
             {creatorApplications.map((application) => (
-              <TableRow key={application.id}>
+              <TableRow key={application.user_id}>
                 <TableCell>{application.email}</TableCell>
                 <TableCell>{application.creator_code}</TableCell>
                 <TableCell className="text-right">
                   <Button
                     variant="default"
                     size="sm"
-                    onClick={() => handleApproveCreator(application.id, application.email)}
+                    onClick={() => handleApproveCreator(application.user_id, application.email)}
                   >
                     <Check className="w-4 h-4 mr-2" />
                     Approve

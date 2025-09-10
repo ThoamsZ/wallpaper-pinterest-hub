@@ -43,9 +43,9 @@ const WallpaperPage = () => {
       if (!wallpaper?.uploaded_by) return;
       
       const { data, error } = await supabase
-        .from('users')
+        .from('creators')
         .select('creator_code')
-        .eq('id', wallpaper.uploaded_by)
+        .eq('user_id', wallpaper.uploaded_by)
         .maybeSingle();
       
       if (error) {

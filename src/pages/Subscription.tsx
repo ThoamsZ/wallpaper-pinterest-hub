@@ -36,9 +36,9 @@ const Subscription = () => {
       if (!session?.user?.id) return;
 
       const { data, error } = await supabase
-        .from('users')
+        .from('customers')
         .select('vip_expires_at, vip_type')
-        .eq('id', session.user.id)
+        .eq('user_id', session.user.id)
         .single();
 
       if (error) {

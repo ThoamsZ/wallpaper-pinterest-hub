@@ -64,9 +64,9 @@ const Auth = () => {
           
           setTimeout(async () => {
             const { data: userData, error: userError } = await supabase
-              .from('users')
+              .from('customers')
               .select('email')
-              .eq('id', signUpData.user!.id)
+              .eq('user_id', signUpData.user!.id)
               .single();
               
             if (userError) {
