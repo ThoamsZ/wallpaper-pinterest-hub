@@ -140,55 +140,10 @@ const Header = ({
       return;
     }
 
-    setIsProcessing(true);
-    
-    try {
-      // Search for creator by creator_code in the creators table
-      const { data: creatorData } = await supabase
-        .from('creators')
-        .select('creator_code')
-        .eq('creator_code', query)
-        .eq('is_active', true)
-        .not('is_blocked', 'eq', true)
-        .maybeSingle();
-      
-      if (creatorData) {
-        navigate(`/creator/${query}`);
-        return;
-      }
-      
-      // Search for wallpapers by tags
-      const { data: wallpaperData } = await supabase
-        .from('wallpapers')
-        .select('*')
-        .contains('tags', [query])
-        .limit(50);
-      
-      if (wallpaperData && wallpaperData.length > 0) {
-        // Update the query cache with search results
-        queryClient.setQueryData(['wallpapers'], {
-          pages: [{ data: wallpaperData, count: wallpaperData.length }],
-          pageParams: [0]
-        });
-      } else {
-        toast({
-          title: "No Results",
-          description: "No wallpapers or creators found with your search term",
-          variant: "destructive"
-        });
-        // Reset to show all wallpapers when no results found
-        queryClient.invalidateQueries({ queryKey: ['wallpapers'] });
-      }
-    } catch (error) {
-      console.error('Search error:', error);
-      toast({
-        title: "Error",
-        description: "An error occurred while searching",
-        variant: "destructive"
-      });
-    } finally {
-      setIsProcessing(false);
-    }
+    // Trigger search in parent component
+    window.dispatchEvent(new CustomEvent('headerSearch', { 
+      detail: { query } 
+    }));
   };
   const handleLogout = async () => {
     if (isDisabled || isProcessing) return;

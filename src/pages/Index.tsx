@@ -5,10 +5,12 @@ import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import WallpaperGrid from "@/components/WallpaperGrid";
 import FilterBar from "@/components/FilterBar";
+import { SearchResults } from "@/components/SearchResults";
 import { useAuth } from "@/App";
 import { useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
+import { useSearch } from "@/hooks/use-search";
 
 const Index = () => {
   const navigate = useNavigate();
@@ -16,6 +18,8 @@ const Index = () => {
   const queryClient = useQueryClient();
   const [searchParams] = useSearchParams();
   const [isInitializing, setIsInitializing] = useState(true);
+  const [currentSearchQuery, setCurrentSearchQuery] = useState("");
+  const { isSearching, searchResults, performSearch, clearSearch } = useSearch();
   const tag = searchParams.get('tag');
 
   useEffect(() => {
@@ -30,7 +34,15 @@ const Index = () => {
       }
     };
 
+    // Handle search from header
+    const handleHeaderSearch = (event: CustomEvent) => {
+      const query = event.detail.query;
+      setCurrentSearchQuery(query);
+      performSearch(query);
+    };
+
     window.addEventListener('error', handleError);
+    window.addEventListener('headerSearch', handleHeaderSearch as EventListener);
     
     const checkSession = async () => {
       try {
@@ -50,8 +62,9 @@ const Index = () => {
 
     return () => {
       window.removeEventListener('error', handleError);
+      window.removeEventListener('headerSearch', handleHeaderSearch as EventListener);
     };
-  }, [navigate, queryClient, session]);
+  }, [navigate, queryClient, session, performSearch]);
 
   // Check if user is guest with proper null checking
   const isGuestUser = session?.user?.email === 'guest@wallpaperhub.com';
@@ -79,10 +92,25 @@ const Index = () => {
     <div className="min-h-screen bg-background flex flex-col">
       <Header isDisabled={false} />
       <main className="container mx-auto px-4 sm:px-6 lg:px-8 flex-grow">
-        <div className="mt-4 mb-6">
-          <FilterBar />
-        </div>
-        <WallpaperGrid tag={tag || undefined} />
+        {searchResults ? (
+          <div className="mt-4 mb-6">
+            <SearchResults 
+              results={searchResults} 
+              searchQuery={currentSearchQuery}
+              onClear={() => {
+                clearSearch();
+                setCurrentSearchQuery("");
+              }}
+            />
+          </div>
+        ) : (
+          <>
+            <div className="mt-4 mb-6">
+              <FilterBar />
+            </div>
+            <WallpaperGrid tag={tag || undefined} />
+          </>
+        )}
       </main>
       <Footer />
     </div>
