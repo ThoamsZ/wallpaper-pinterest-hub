@@ -6,6 +6,9 @@ verify_jwt = true
 [functions.r2-upload-direct]
 verify_jwt = true
 
+[functions.r2-proxy]
+verify_jwt = false
+
 [functions.r2-download]
 verify_jwt = false
 

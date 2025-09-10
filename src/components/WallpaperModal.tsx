@@ -116,7 +116,10 @@ const WallpaperModal = ({ wallpaper, isOpen, onClose, onLike, isLiked }: Wallpap
               <X className="h-7 w-7 text-white" />
             </Button>
             <img
-              src={wallpaper.url}
+              src={wallpaper.r2_key ? 
+                `https://begjbzrzxmbwsrniirao.supabase.co/functions/v1/r2-proxy?key=${wallpaper.r2_key}` : 
+                wallpaper.url
+              }
               alt={`Wallpaper ${wallpaper.id}`}
               className="w-full h-auto max-h-[95vh] object-contain"
               onContextMenu={handleContextMenu}

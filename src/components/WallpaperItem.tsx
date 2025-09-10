@@ -93,7 +93,10 @@ const WallpaperItem = memo(({ wallpaper, onSelect }: WallpaperItemProps) => {
           )}
           {inView && (
             <img
-              src={wallpaper.compressed_url}
+              src={wallpaper.r2_key ? 
+                `https://begjbzrzxmbwsrniirao.supabase.co/functions/v1/r2-proxy?key=${wallpaper.r2_key}` : 
+                wallpaper.compressed_url
+              }
               alt={`Wallpaper ${wallpaper.id}`}
               loading="lazy"
               onLoad={() => setImageLoaded(true)}
