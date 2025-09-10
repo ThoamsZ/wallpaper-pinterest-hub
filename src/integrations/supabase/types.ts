@@ -216,6 +216,41 @@ export type Database = {
         }
         Relationships: []
       }
+      download_logs: {
+        Row: {
+          downloaded_at: string
+          id: string
+          ip_address: unknown | null
+          user_agent: string | null
+          user_id: string | null
+          wallpaper_id: string | null
+        }
+        Insert: {
+          downloaded_at?: string
+          id?: string
+          ip_address?: unknown | null
+          user_agent?: string | null
+          user_id?: string | null
+          wallpaper_id?: string | null
+        }
+        Update: {
+          downloaded_at?: string
+          id?: string
+          ip_address?: unknown | null
+          user_agent?: string | null
+          user_id?: string | null
+          wallpaper_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "download_logs_wallpaper_id_fkey"
+            columns: ["wallpaper_id"]
+            isOneToOne: false
+            referencedRelation: "wallpapers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       notifications: {
         Row: {
           created_at: string
@@ -561,6 +596,9 @@ export type Database = {
           file_path: string
           id: string
           like_count: number | null
+          migrated_at: string | null
+          r2_key: string | null
+          r2_url: string | null
           tags: string[] | null
           type: string
           uploaded_by: string | null
@@ -573,6 +611,9 @@ export type Database = {
           file_path: string
           id?: string
           like_count?: number | null
+          migrated_at?: string | null
+          r2_key?: string | null
+          r2_url?: string | null
           tags?: string[] | null
           type: string
           uploaded_by?: string | null
@@ -585,6 +626,9 @@ export type Database = {
           file_path?: string
           id?: string
           like_count?: number | null
+          migrated_at?: string | null
+          r2_key?: string | null
+          r2_url?: string | null
           tags?: string[] | null
           type?: string
           uploaded_by?: string | null

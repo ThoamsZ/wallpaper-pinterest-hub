@@ -8,6 +8,7 @@ import { toast } from "@/hooks/use-toast";
 import { useNavigate } from "react-router-dom";
 import { useDownloadLimits } from "@/hooks/use-download-limits";
 import type { Database } from "@/integrations/supabase/types";
+import { downloadWallpaper } from "@/utils/download-utils";
 
 type Wallpaper = Database['public']['Tables']['wallpapers']['Row'];
 
@@ -68,81 +69,14 @@ const WallpaperModal = ({ wallpaper, isOpen, onClose, onLike, isLiked }: Wallpap
     if (!wallpaper) return;
     
     setIsDownloading(true);
-    try {
-      const { data: { session } } = await supabase.auth.getSession();
-      
-      if (!session) {
-        toast({
-          title: "Authentication required",
-          description: "Please login to download wallpapers",
-          variant: "destructive",
-        });
-        navigate('/auth');
-        return;
-      }
-
-      // Check if user is guest
-      if (session.user.email === 'guest@wallpaperhub.com') {
-        toast({
-          title: "Guest account",
-          description: "Please sign up to download wallpapers",
-          variant: "destructive",
-        });
-        navigate('/auth');
-        return;
-      }
-
-      // Check download limits
-      if (downloadsRemaining !== null && downloadsRemaining <= 0) {
-        toast({
-          title: "Daily download limit reached",
-          description: "Please wait until tomorrow or upgrade your subscription for more downloads",
-          variant: "destructive",
-        });
-        return;
-      }
-
-      // Increment wallpaper download count
-      const { error: wallpaperError } = await supabase
-        .from('wallpapers')
-        .update({
-          download_count: (wallpaper.download_count || 0) + 1
-        })
-        .eq('id', wallpaper.id);
-
-      if (wallpaperError) throw wallpaperError;
-
-      // Decrement user's remaining downloads
-      await decrementDownloads();
-
-      // Trigger download
-      const response = await fetch(wallpaper.url);
-      const blob = await response.blob();
-      const url = window.URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `wallpaper-${wallpaper.id}.${wallpaper.url.split('.').pop()}`;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      window.URL.revokeObjectURL(url);
-
-      toast({
-        title: "Download started",
-        description: downloadsRemaining !== null ? 
-          `You have ${downloadsRemaining - 1} downloads remaining today` : 
-          "Your wallpaper is being downloaded",
-      });
-    } catch (error) {
-      console.error('Download error:', error);
-      toast({
-        title: "Download failed",
-        description: "There was an error downloading the wallpaper",
-        variant: "destructive",
-      });
-    } finally {
-      setIsDownloading(false);
+    
+    const result = await downloadWallpaper(wallpaper.id, decrementDownloads, downloadsRemaining);
+    
+    if (!result.success && (result.message === "Authentication required" || result.message === "Guest account")) {
+      navigate('/auth');
     }
+    
+    setIsDownloading(false);
   };
 
   const copyLinkToClipboard = () => {

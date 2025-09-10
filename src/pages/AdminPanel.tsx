@@ -19,6 +19,7 @@ import { Download, Heart, Trash, Upload, Grid, Plus, LayoutGrid, Link, User, Cod
 import Header from "@/components/Header";
 import DashboardStats from "@/components/admin/DashboardStats";
 import { CollectionManager } from "@/components/admin/CollectionManager";
+import R2Migration from "@/components/admin/R2Migration";
 import {
   Tabs,
   TabsContent,
@@ -616,7 +617,7 @@ const AdminPanel = () => {
 
             {/* Main Content Tabs */}
             <Tabs defaultValue="wallpapers" className="space-y-4">
-              <TabsList className="grid w-full grid-cols-2">
+              <TabsList className="grid w-full grid-cols-3">
                 <TabsTrigger value="wallpapers" className="flex items-center gap-2">
                   <Grid className="w-4 h-4" />
                   Wallpapers ({wallpapers.length})
@@ -624,6 +625,10 @@ const AdminPanel = () => {
                 <TabsTrigger value="collections" className="flex items-center gap-2">
                   <Plus className="w-4 h-4" />
                   Collections
+                </TabsTrigger>
+                <TabsTrigger value="r2-migration" className="flex items-center gap-2">
+                  <Settings className="w-4 h-4" />
+                  R2 Migration
                 </TabsTrigger>
               </TabsList>
 
@@ -782,6 +787,10 @@ const AdminPanel = () => {
 
               <TabsContent value="collections">
                 <CollectionManager />
+              </TabsContent>
+
+              <TabsContent value="r2-migration">
+                <R2Migration />
               </TabsContent>
             </Tabs>
           </main>

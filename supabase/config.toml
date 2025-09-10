@@ -1,1 +1,10 @@
 project_id = "begjbzrzxmbwsrniirao"
+
+[functions.r2-upload]
+verify_jwt = true
+
+[functions.r2-download]
+verify_jwt = false
+
+[functions.migrate-to-r2]
+verify_jwt = true

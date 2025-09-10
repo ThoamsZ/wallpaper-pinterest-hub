@@ -131,38 +131,48 @@ const Upload = () => {
       let completed = 0;
 
       for (const file of files) {
-        // Generate a unique filename to avoid issues with special characters
-        const fileExt = file.name.split('.').pop();
-        const timestamp = Date.now();
-        const randomString = Math.random().toString(36).substring(2, 10);
-        const safeFileName = `${timestamp}-${randomString}.${fileExt}`;
-        const filePath = `${userId}/${safeFileName}`;
+        console.log(`Starting upload for: ${file.name}`);
 
-        console.log(`Uploading file: Original name ${file.name}, Safe name: ${safeFileName}`);
+        // Step 1: Get presigned URL from R2
+        const { data: presignedData, error: presignedError } = await supabase.functions.invoke('r2-upload', {
+          body: {
+            fileName: file.name,
+            contentType: file.type || 'image/jpeg'
+          }
+        });
 
-        const { data: uploadData, error: uploadError } = await supabase.storage
-          .from('wallpapers')
-          .upload(filePath, file);
-
-        if (uploadError) {
-          console.error("Upload error:", uploadError);
-          throw uploadError;
+        if (presignedError || !presignedData) {
+          console.error("Presigned URL error:", presignedError);
+          throw new Error(`Failed to get upload URL: ${presignedError?.message || 'Unknown error'}`);
         }
 
-        const { data: { publicUrl } } = supabase.storage
-          .from('wallpapers')
-          .getPublicUrl(filePath);
-        
+        // Step 2: Upload directly to R2 using presigned URL
+        const uploadResponse = await fetch(presignedData.presignedUrl, {
+          method: 'PUT',
+          headers: {
+            'Content-Type': file.type || 'image/jpeg',
+          },
+          body: file,
+        });
+
+        if (!uploadResponse.ok) {
+          throw new Error(`Failed to upload to R2: ${uploadResponse.statusText}`);
+        }
+
+        console.log(`Successfully uploaded to R2: ${presignedData.key}`);
+
+        // Step 3: Save metadata to database
         const { error: dbError } = await supabase
           .from('wallpapers')
           .insert({
-            url: publicUrl,
-            compressed_url: publicUrl,
-            file_path: filePath,
+            url: presignedData.publicUrl, // Fallback URL
+            compressed_url: presignedData.publicUrl, // Fallback URL  
+            file_path: presignedData.key, // Keep for backward compatibility
+            r2_key: presignedData.key,
+            r2_url: presignedData.publicUrl,
             type: imageType,
             tags: tagArray,
             uploaded_by: userId
-            // Remove the original_filename field as it doesn't exist in the schema
           });
 
         if (dbError) {
@@ -172,11 +182,12 @@ const Upload = () => {
         
         completed++;
         setProgress((completed / files.length) * 100);
+        console.log(`Completed upload ${completed}/${files.length}`);
       }
 
       toast({
         title: "Success",
-        description: `${files.length} wallpapers uploaded successfully`,
+        description: `${files.length} wallpapers uploaded successfully to R2`,
       });
 
       setFiles([]);
