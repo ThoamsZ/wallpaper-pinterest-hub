@@ -536,6 +536,10 @@ export type Database = {
       }
     }
     Functions: {
+      is_admin_user: {
+        Args: Record<PropertyKey, never>
+        Returns: boolean
+      }
       is_vip: {
         Args: { user_id: string }
         Returns: boolean
