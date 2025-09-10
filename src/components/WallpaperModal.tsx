@@ -117,15 +117,16 @@ const WallpaperModal = ({ wallpaper, isOpen, onClose, onLike, isLiked }: Wallpap
             </Button>
             <img
               src={(() => {
-                const imageUrl = wallpaper.r2_key ? 
+                const proxyUrl = wallpaper.r2_key ? 
                   `https://begjbzrzxmbwsrniirao.supabase.co/functions/v1/r2-proxy?key=${wallpaper.r2_key}` : 
                   wallpaper.url;
                 console.log(`Loading modal image for wallpaper ${wallpaper.id}:`, {
                   r2_key: wallpaper.r2_key,
-                  imageUrl,
+                  using_proxy: !!wallpaper.r2_key,
+                  imageUrl: proxyUrl,
                   url: wallpaper.url
                 });
-                return imageUrl;
+                return proxyUrl;
               })()}
               alt={`Wallpaper ${wallpaper.id}`}
               className="w-full h-auto max-h-[95vh] object-contain"

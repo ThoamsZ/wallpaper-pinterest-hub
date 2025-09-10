@@ -94,26 +94,18 @@ const WallpaperItem = memo(({ wallpaper, onSelect }: WallpaperItemProps) => {
           {inView && (
             <img
               src={(() => {
-                // 先尝试使用R2直接URL，如果失败再使用代理
-                const r2DirectUrl = wallpaper.r2_url || wallpaper.r2_key ? 
-                  `https://wallpapers.dd823d36e67f79a2702d42c5762fe5bd.r2.cloudflarestorage.com/${wallpaper.r2_key}` : 
-                  null;
-                
+                // 只对R2图片使用代理
                 const proxyUrl = wallpaper.r2_key ? 
                   `https://begjbzrzxmbwsrniirao.supabase.co/functions/v1/r2-proxy?key=${wallpaper.r2_key}` : 
-                  null;
-                
-                const imageUrl = r2DirectUrl || wallpaper.compressed_url;
+                  wallpaper.compressed_url;
                 
                 console.log(`Loading image for wallpaper ${wallpaper.id}:`, {
                   r2_key: wallpaper.r2_key,
-                  r2_url: wallpaper.r2_url,
-                  r2DirectUrl,
-                  proxyUrl,
-                  imageUrl,
+                  using_proxy: !!wallpaper.r2_key,
+                  imageUrl: proxyUrl,
                   compressed_url: wallpaper.compressed_url
                 });
-                return imageUrl;
+                return proxyUrl;
               })()}
               alt={`Wallpaper ${wallpaper.id}`}
               loading="lazy"
