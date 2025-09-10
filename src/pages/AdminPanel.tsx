@@ -629,7 +629,7 @@ const AdminPanel = () => {
 
               <TabsContent value="wallpapers" className="space-y-4">
                 {/* Bulk Actions */}
-                {selectedWallpapers.length > 0 && (adminData.admin_type === 'creator' || hasFullAccess) && (
+                {selectedWallpapers.length > 0 && (
                   <Card>
                     <CardContent className="pt-6">
                       <div className="flex items-center justify-between">
@@ -677,21 +677,19 @@ const AdminPanel = () => {
                           alt={`Wallpaper ${wallpaper.id}`}
                           className="w-full h-full object-cover"
                         />
-                        {(adminData.admin_type === 'creator' || hasFullAccess) && (
-                          <div className="absolute top-2 left-2">
-                            <Checkbox
-                              checked={selectedWallpapers.includes(wallpaper.id)}
-                              onCheckedChange={(checked) => {
-                                if (checked) {
-                                  setSelectedWallpapers(prev => [...prev, wallpaper.id]);
-                                } else {
-                                  setSelectedWallpapers(prev => prev.filter(id => id !== wallpaper.id));
-                                }
-                              }}
-                              className="bg-background"
-                            />
-                          </div>
-                        )}
+                        <div className="absolute top-2 left-2">
+                          <Checkbox
+                            checked={selectedWallpapers.includes(wallpaper.id)}
+                            onCheckedChange={(checked) => {
+                              if (checked) {
+                                setSelectedWallpapers(prev => [...prev, wallpaper.id]);
+                              } else {
+                                setSelectedWallpapers(prev => prev.filter(id => id !== wallpaper.id));
+                              }
+                            }}
+                            className="bg-background"
+                          />
+                        </div>
                       </div>
                       
                       <CardContent className="p-4 space-y-3">
@@ -732,17 +730,16 @@ const AdminPanel = () => {
                           <Link className="w-4 h-4" />
                         </Button>
                         
-                        {(adminData.admin_type === 'creator' || hasFullAccess) && (
-                          <AlertDialog>
-                            <AlertDialogTrigger asChild>
-                              <Button 
-                                size="sm"
-                                variant="destructive"
-                                disabled={isDeleting && deleteItemId === wallpaper.id}
-                              >
-                                <Trash className="w-4 h-4" />
-                              </Button>
-                            </AlertDialogTrigger>
+                        <AlertDialog>
+                          <AlertDialogTrigger asChild>
+                            <Button 
+                              size="sm"
+                              variant="destructive"
+                              disabled={isDeleting && deleteItemId === wallpaper.id}
+                            >
+                              <Trash className="w-4 h-4" />
+                            </Button>
+                          </AlertDialogTrigger>
                             <AlertDialogContent>
                               <AlertDialogHeader>
                                 <AlertDialogTitle>Delete Wallpaper</AlertDialogTitle>
@@ -761,7 +758,6 @@ const AdminPanel = () => {
                               </AlertDialogFooter>
                             </AlertDialogContent>
                           </AlertDialog>
-                        )}
                       </CardFooter>
                     </Card>
                   ))}
