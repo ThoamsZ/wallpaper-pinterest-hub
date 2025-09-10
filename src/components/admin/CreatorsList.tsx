@@ -5,7 +5,7 @@ import { toast } from "@/hooks/use-toast";
 import { supabase, deleteFileFromStorage, checkTableExists } from "@/integrations/supabase/client";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Search, Ban, UserX } from "lucide-react";
+import { Search, Ban, UserX, Trash2, ImageIcon } from "lucide-react";
 import {
   Card,
   CardContent,
@@ -103,7 +103,7 @@ export const CreatorsList = ({ navigate }: CreatorsListProps) => {
       const newBlockStatus = !(creator?.is_blocked || false);
       
       const { error } = await supabase
-        .from('admin_users')
+        .from('creators')
         .update({ is_blocked: newBlockStatus })
         .eq('id', adminId);
 
@@ -216,31 +216,18 @@ export const CreatorsList = ({ navigate }: CreatorsListProps) => {
 
       console.log('Deleted collections');
 
-      // Remove admin status
-      const { error: adminError } = await supabase
-        .from('admin_users')
+      // Remove creator status
+      const { error: creatorError } = await supabase
+        .from('creators')
         .delete()
         .eq('id', adminId);
 
-      if (adminError) {
-        console.error('Error deleting admin status:', adminError);
-        throw adminError;
+      if (creatorError) {
+        console.error('Error deleting creator status:', creatorError);
+        throw creatorError;
       }
 
-      console.log('Deleted admin status');
-
-      // Update user record, remove creator code
-      const { error: userError } = await supabase
-        .from('users')
-        .update({ creator_code: null })
-        .eq('id', userId);
-
-      if (userError) {
-        console.error('Error updating user:', userError);
-        throw userError;
-      }
-
-      console.log('Updated user, removed creator code');
+      console.log('Deleted creator status');
 
       // Update UI
       setCreators(prev => prev.filter(creator => creator.id !== adminId));
@@ -279,6 +266,42 @@ export const CreatorsList = ({ navigate }: CreatorsListProps) => {
     );
   }
 
+  const handleDeleteAllWallpapers = async (userId: string, creatorEmail: string) => {
+    if (!confirm(`Are you sure you want to delete ALL wallpapers from ${creatorEmail}? This action cannot be undone.`)) {
+      return;
+    }
+    
+    setIsLoading(true);
+    
+    try {
+      const creatorWallpapers = wallpapers.filter(w => w.uploaded_by === userId);
+      console.log(`Deleting ${creatorWallpapers.length} wallpapers for creator ${userId}`);
+      
+      let successCount = 0;
+      for (const wallpaper of creatorWallpapers) {
+        const deleted = await deleteWallpaper(wallpaper.id);
+        if (deleted) successCount++;
+      }
+      
+      toast({
+        title: "Wallpapers Deleted",
+        description: `Successfully deleted ${successCount} of ${creatorWallpapers.length} wallpapers.`,
+      });
+      
+      // Refresh data
+      fetchCreators();
+    } catch (error) {
+      console.error("Error deleting all wallpapers:", error);
+      toast({
+        title: "Error",
+        description: "Failed to delete wallpapers. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   return (
     <div>
       <div className="mb-6">
@@ -293,35 +316,80 @@ export const CreatorsList = ({ navigate }: CreatorsListProps) => {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {filteredCreators.map((creator) => (
-          <Card 
-            key={creator.id} 
-            className="cursor-pointer hover:border-primary transition-colors"
-            onClick={() => navigate(`/admin-manager/creator/${creator.id}`)}
-          >
-            <CardHeader>
-              <CardTitle className="flex justify-between items-center">
-                <div className="flex flex-col">
-                  <span>{creator.users?.email}</span>
-                  <span className="text-sm text-muted-foreground">Creator Code: {creator.users?.creator_code || 'N/A'}</span>
-                </div>
-                {creator.is_blocked && (
-                  <span className="text-sm text-red-500">Blocked</span>
+      <div className="space-y-6">
+        {filteredCreators.map((creator) => {
+          const creatorWallpapers = wallpapers.filter(w => w.uploaded_by === creator.user_id);
+          
+          return (
+            <Card key={creator.id} className="w-full">
+              <CardHeader>
+                <CardTitle className="flex justify-between items-center">
+                  <div className="flex flex-col">
+                    <span>{creator.users?.email}</span>
+                    <span className="text-sm text-muted-foreground">Creator Code: {creator.users?.creator_code || 'N/A'}</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    {creator.is_blocked && (
+                      <span className="text-sm text-red-500">Blocked</span>
+                    )}
+                    <span className="text-sm text-muted-foreground">{creatorWallpapers.length} wallpapers</span>
+                  </div>
+                </CardTitle>
+              </CardHeader>
+              
+              <CardContent>
+                {creatorWallpapers.length > 0 ? (
+                  <div className="space-y-4">
+                    <div className="flex justify-between items-center">
+                      <h3 className="font-semibold">Wallpapers:</h3>
+                      <Button
+                        variant="destructive"
+                        size="sm"
+                        onClick={() => handleDeleteAllWallpapers(creator.user_id, creator.users?.email)}
+                        disabled={isLoading}
+                      >
+                        <Trash2 className="w-4 h-4 mr-2" />
+                        Delete All
+                      </Button>
+                    </div>
+                    
+                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
+                      {creatorWallpapers.map((wallpaper) => (
+                        <div key={wallpaper.id} className="relative group">
+                          <div className="aspect-square overflow-hidden rounded-lg border">
+                            <img 
+                              src={wallpaper.compressed_url || wallpaper.url} 
+                              alt="Wallpaper" 
+                              className="w-full h-full object-cover"
+                              onError={(e) => {
+                                e.currentTarget.src = '/placeholder.svg';
+                              }}
+                            />
+                          </div>
+                          <Button
+                            variant="destructive"
+                            size="sm"
+                            className="absolute top-1 right-1 opacity-0 group-hover:opacity-100 transition-opacity h-6 w-6 p-0"
+                            onClick={() => handleWallpaperDelete(wallpaper.id)}
+                            disabled={isLoading}
+                          >
+                            <Trash2 className="w-3 h-3" />
+                          </Button>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ) : (
+                  <div className="flex items-center justify-center p-8 border rounded-lg bg-muted/30">
+                    <div className="text-center">
+                      <ImageIcon className="w-8 h-8 mx-auto text-muted-foreground mb-2" />
+                      <p className="text-muted-foreground">No wallpapers uploaded</p>
+                    </div>
+                  </div>
                 )}
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="mt-4">
-                <h3 className="font-semibold mb-2">Wallpapers:</h3>
-                <div className="p-4 border rounded-md bg-muted/30">
-                  <p className="text-muted-foreground">
-                    {wallpapers.filter(w => w.uploaded_by === creator.user_id).length} wallpapers uploaded
-                  </p>
-                </div>
-              </div>
-            </CardContent>
-            <CardFooter className="flex justify-end gap-2">
+              </CardContent>
+              
+              <CardFooter className="flex justify-end gap-2">
               <AlertDialog>
                 <AlertDialogTrigger asChild>
                   <Button 
@@ -387,12 +455,13 @@ export const CreatorsList = ({ navigate }: CreatorsListProps) => {
                       Remove
                     </AlertDialogAction>
                   </AlertDialogFooter>
-                </AlertDialogContent>
-              </AlertDialog>
-            </CardFooter>
-          </Card>
-        ))}
-      </div>
+                 </AlertDialogContent>
+               </AlertDialog>
+             </CardFooter>
+           </Card>
+         );
+        })}
+       </div>
       
       {filteredCreators.length === 0 && (
         <div className="text-center py-10">
