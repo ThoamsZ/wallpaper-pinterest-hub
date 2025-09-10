@@ -111,8 +111,8 @@ const Auth = () => {
 
         if (signInData.session) {
           const { data: adminData, error: adminError } = await supabase
-            .from('admin_users')
-            .select('admin_type')
+            .from('admins')
+            .select('is_active')
             .eq('user_id', signInData.session.user.id)
             .maybeSingle();
 

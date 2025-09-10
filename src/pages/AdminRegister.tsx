@@ -22,13 +22,13 @@ const AdminRegister = () => {
       
       // First, check if the user already exists
       const { data: existingUsers, error: checkError } = await supabase
-        .from('admin_users')
+        .from('admins')
         .select('email')
         .eq('email', email)
         .maybeSingle();
         
       if (existingUsers) {
-        throw new Error("This email is already registered as a creator. Please login instead.");
+        throw new Error("This email is already registered as an admin. Please login instead.");
       }
       
       // First sign up the user
@@ -59,11 +59,11 @@ const AdminRegister = () => {
 
       // Then create the admin user entry with email information
       const { error: adminError } = await supabase
-        .from('admin_users')
+        .from('admins')
         .insert([{ 
           user_id: signUpData.user.id,
-          email: email
-          // admin_type will be set manually later
+          email: email,
+          is_active: false  // Admin needs to be activated manually
         }]);
 
       if (adminError) {
@@ -77,7 +77,7 @@ const AdminRegister = () => {
 
       toast({
         title: "Registration successful",
-        description: "Please wait for an admin to approve your account",
+        description: "Please wait for an admin manager to activate your account",
       });
 
       // Redirect to admin login page
