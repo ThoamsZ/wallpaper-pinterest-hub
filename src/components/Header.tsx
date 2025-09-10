@@ -48,10 +48,13 @@ const Header = ({
           setUserEmail(session.user.email || "");
 
           // Check admin status
-          const {
-            data: adminData,
-            error: adminError
-          } = await supabase.from('admin_users').select('admin_type').eq('user_id', session.user.id).maybeSingle();
+          const { data: adminData, error: adminError } = await supabase
+            .from('admins')
+            .select('id')
+            .eq('user_id', session.user.id)
+            .eq('is_active', true)
+            .maybeSingle();
+          
           if (adminError) {
             console.error('Error fetching admin data:', adminError);
           } else {
@@ -93,10 +96,13 @@ const Header = ({
       setUserEmail(session.user.email || "");
       try {
         // Check admin status
-        const {
-          data: adminData,
-          error: adminError
-        } = await supabase.from('admin_users').select('admin_type').eq('user_id', session.user.id).maybeSingle();
+        const { data: adminData, error: adminError } = await supabase
+          .from('admins')
+          .select('id')
+          .eq('user_id', session.user.id)
+          .eq('is_active', true)
+          .maybeSingle();
+        
         if (adminError) {
           console.error('Error fetching admin data:', adminError);
         } else if (mounted) {
