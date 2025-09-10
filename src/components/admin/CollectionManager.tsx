@@ -79,18 +79,28 @@ export const CollectionManager = () => {
         throw new Error("Not authenticated");
       }
 
+      // Check if user is an admin
       const { data: adminData, error: adminError } = await supabase
-        .from('admin_users')
-        .select('admin_type')
+        .from('admins')
+        .select('*')
         .eq('user_id', session.user.id)
+        .eq('is_active', true)
         .maybeSingle();
 
-      if (adminError) throw adminError;
-      if (!adminData) {
-        throw new Error("Not an admin");
+      // Check if user is a creator
+      const { data: creatorData, error: creatorError } = await supabase
+        .from('creators')
+        .select('*')
+        .eq('user_id', session.user.id)
+        .eq('is_active', true)
+        .not('is_blocked', 'eq', true)
+        .maybeSingle();
+
+      if (adminData || creatorData) {
+        return true;
       }
 
-      return true;
+      throw new Error("Not authorized");
     },
     retry: false,
   });

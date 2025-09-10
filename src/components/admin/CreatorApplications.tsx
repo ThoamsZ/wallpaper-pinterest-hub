@@ -41,7 +41,7 @@ export const CreatorApplications = () => {
       const userIds = userApplications.map(user => user.user_id);
 
       const { data: existingAdmins, error: adminsError } = await supabase
-        .from('admin_users')
+        .from('admins')
         .select('user_id')
         .in('user_id', userIds);
 
@@ -67,10 +67,9 @@ export const CreatorApplications = () => {
   const handleApproveCreator = async (userId: string, email: string) => {
     try {
       const { error: adminError } = await supabase
-        .from('admin_users')
+        .from('admins')
         .insert({
           user_id: userId,
-          admin_type: 'admin',
           email: email
         });
 

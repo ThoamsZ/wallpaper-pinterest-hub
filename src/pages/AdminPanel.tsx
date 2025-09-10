@@ -15,7 +15,7 @@ import {
   CardDescription,
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Download, Heart, Trash, Upload, Grid, Plus, LayoutGrid, Link } from "lucide-react";
+import { Download, Heart, Trash, Upload, Grid, Plus, LayoutGrid, Link, User, Code, Settings } from "lucide-react";
 import Header from "@/components/Header";
 import DashboardStats from "@/components/admin/DashboardStats";
 import { CollectionManager } from "@/components/admin/CollectionManager";
@@ -203,7 +203,8 @@ const AdminPanel = () => {
         const { data, error } = await supabase
           .from('wallpapers')
           .select('*')
-          .eq('uploaded_by', userId);
+          .eq('uploaded_by', userId)
+          .order('created_at', { ascending: false });
 
         if (error) throw error;
         return data || [];
@@ -214,7 +215,8 @@ const AdminPanel = () => {
         const { data, error } = await supabase
           .from('wallpapers')
           .select('*')
-          .eq('uploaded_by', session.user.id);
+          .eq('uploaded_by', session.user.id)
+          .order('created_at', { ascending: false });
 
         if (error) throw error;
         return data || [];
@@ -271,9 +273,6 @@ const AdminPanel = () => {
       setIsDeleting(true);
       setDeleteItemId(id);
       
-      console.log(`Starting deletion of wallpaper ${id} with filePath ${filePath}`);
-      console.log(`Has full access: ${hasFullAccess}`);
-      
       const { data: { session } } = await supabase.auth.getSession();
       if (!session && !viewingCreator) throw new Error("Not authenticated");
       
@@ -329,9 +328,6 @@ const AdminPanel = () => {
     try {
       setIsDeleting(true);
       
-      console.log("Starting deletion of multiple wallpapers:", selectedWallpapers);
-      console.log(`Has full access: ${hasFullAccess}`);
-      
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) throw new Error("Not authenticated");
 
@@ -353,8 +349,6 @@ const AdminPanel = () => {
         return;
       }
 
-      console.log(`Found ${wallpapersToDelete.length} wallpapers to delete`);
-
       let successCount = 0;
       for (const wallpaper of wallpapersToDelete) {
         try {
@@ -364,8 +358,6 @@ const AdminPanel = () => {
           console.error(`Error deleting wallpaper ${wallpaper.id}:`, error);
         }
       }
-
-      console.log(`Successfully deleted ${successCount} of ${wallpapersToDelete.length} wallpapers`);
       
       toast({
         title: "Success",
@@ -434,6 +426,26 @@ const AdminPanel = () => {
       });
   };
 
+  const copyCreatorProfileLink = () => {
+    if (currentCreatorCode) {
+      const profileUrl = `${window.location.origin}/creator/${currentCreatorCode}`;
+      navigator.clipboard.writeText(profileUrl)
+        .then(() => {
+          toast({
+            title: "Profile link copied",
+            description: "Creator profile link copied to clipboard",
+          });
+        })
+        .catch(() => {
+          toast({
+            title: "Copy failed",
+            description: "Could not copy the profile link to clipboard",
+            variant: "destructive",
+          });
+        });
+    }
+  };
+
   useEffect(() => {
     if (adminData) {
       setCurrentCreatorCode(adminData.creator_code || "");
@@ -446,294 +458,333 @@ const AdminPanel = () => {
 
   return (
     <SidebarProvider defaultOpen={true}>
-      <div className="flex h-full">
-        <Sidebar variant="inset" collapsible="icon">
-          <SidebarHeader className="flex flex-col items-center justify-center py-4">
-            <h2 className="text-lg font-semibold text-center">Creator Dashboard</h2>
-            <p className="text-sm text-muted-foreground">{adminData.email}</p>
-            {viewingCreator && (
-              <div className="mt-2 px-2 py-1 bg-yellow-100 text-yellow-800 text-xs rounded-md">
-                Viewing Creator Account
-              </div>
-            )}
+      <div className="flex h-full min-h-screen">
+        <Sidebar variant="inset" collapsible="icon" className="border-r">
+          <SidebarHeader className="flex flex-col items-center justify-center py-6 border-b">
+            <div className="text-center space-y-2">
+              <h2 className="text-lg font-bold">Creator Dashboard</h2>
+              <p className="text-sm text-muted-foreground">{adminData.email}</p>
+              {viewingCreator && (
+                <div className="px-2 py-1 bg-warning/10 text-warning text-xs rounded-md">
+                  Admin View Mode
+                </div>
+              )}
+              {hasFullAccess && (
+                <div className="px-2 py-1 bg-destructive/10 text-destructive text-xs rounded-md">
+                  Full Access Mode
+                </div>
+              )}
+            </div>
           </SidebarHeader>
+
           <SidebarContent>
             <SidebarGroup>
-              <SidebarGroupLabel>Management</SidebarGroupLabel>
+              <SidebarGroupLabel>Navigation</SidebarGroupLabel>
               <SidebarGroupContent>
                 <SidebarMenu>
                   <SidebarMenuItem>
-                    <SidebarMenuButton isActive={true} tooltip="Dashboard">
-                      <LayoutGrid className="w-4 h-4 mr-2" />
+                    <SidebarMenuButton isActive={true}>
+                      <LayoutGrid className="w-4 h-4" />
                       <span>Dashboard</span>
                     </SidebarMenuButton>
                   </SidebarMenuItem>
                   <SidebarMenuItem>
-                    <SidebarMenuButton tooltip="Upload Wallpapers" onClick={() => navigate("/upload")}>
-                      <Upload className="w-4 h-4 mr-2" />
-                      <span>Upload Wallpapers</span>
+                    <SidebarMenuButton onClick={() => navigate("/upload")}>
+                      <Upload className="w-4 h-4" />
+                      <span>Upload</span>
                     </SidebarMenuButton>
                   </SidebarMenuItem>
                 </SidebarMenu>
               </SidebarGroupContent>
             </SidebarGroup>
+
+            <SidebarGroup>
+              <SidebarGroupLabel>Management</SidebarGroupLabel>
+              <SidebarGroupContent>
+                <SidebarMenu>
+                  <SidebarMenuItem>
+                    <SidebarMenuButton>
+                      <Grid className="w-4 h-4" />
+                      <span>Wallpapers ({wallpapers.length})</span>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                  <SidebarMenuItem>
+                    <SidebarMenuButton>
+                      <Plus className="w-4 h-4" />
+                      <span>Collections</span>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                  {currentCreatorCode && (
+                    <SidebarMenuItem>
+                      <SidebarMenuButton onClick={copyCreatorProfileLink}>
+                        <User className="w-4 h-4" />
+                        <span>My Profile</span>
+                      </SidebarMenuButton>
+                    </SidebarMenuItem>
+                  )}
+                </SidebarMenu>
+              </SidebarGroupContent>
+            </SidebarGroup>
           </SidebarContent>
-          <SidebarFooter>
-            <div className="p-4">
+
+          <SidebarFooter className="border-t">
+            <div className="p-4 space-y-2">
               {viewingCreator ? (
                 <Button 
                   onClick={exitCreatorView}
                   variant="destructive"
                   className="w-full"
+                  size="sm"
                 >
                   Exit Creator View
                 </Button>
               ) : (
                 <div className="text-xs text-center text-muted-foreground">
-                  <p>© 2023 Creator Portal</p>
+                  <p>Creator Dashboard v1.0</p>
                 </div>
               )}
             </div>
           </SidebarFooter>
         </Sidebar>
 
-        <div className="flex-1 bg-background min-h-screen">
-          {viewingCreator && (
-            <div className={`${hasFullAccess ? 'bg-red-50 border-red-200' : 'bg-yellow-50 border-yellow-200'} border-b py-2 px-4`}>
-              <div className="container mx-auto flex justify-between items-center">
-                <p className={hasFullAccess ? 'text-red-800' : 'text-yellow-800'}>
-                  <strong>Creator View Mode:</strong> You are viewing {viewingCreator.email || "this creator"}'s dashboard
-                  {hasFullAccess && <span className="ml-2 bg-red-100 text-red-800 px-2 py-0.5 rounded text-xs font-semibold">Full Access Mode</span>}
-                </p>
-                <Button 
-                  variant="outline" 
-                  size="sm" 
-                  onClick={exitCreatorView}
-                  className={hasFullAccess ? 'text-red-800 border-red-300 hover:bg-red-100' : 'text-yellow-800 border-yellow-300 hover:bg-yellow-100'}
-                >
-                  Exit
-                </Button>
-              </div>
-            </div>
-          )}
-          
-          <Header />
-          <div className="container mx-auto px-4 py-8 mt-20">
-            <div className="flex justify-between items-center mb-8">
-              <div>
-                <h1 className="text-2xl font-bold">Creator Dashboard {hasFullAccess && viewingCreator && <span className="text-sm font-normal text-red-600">(Full Access Mode)</span>}</h1>
-                <p className="text-gray-600">Manage your wallpapers and collections</p>
-              </div>
-              <div className="flex gap-3">
-                <Button variant="outline" onClick={() => navigate("/")}>
-                  View Site
-                </Button>
-                <Button onClick={() => navigate("/upload")}>
-                  <Plus className="w-4 h-4 mr-2" />
-                  Upload Wallpapers
-                </Button>
-              </div>
-            </div>
+        <div className="flex-1 bg-background">
+          <div className="sticky top-0 z-40 bg-background border-b px-4 py-2">
+            <SidebarTrigger />
+          </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-              <Card>
-                <CardHeader className="pb-2">
-                  <CardTitle className="text-base font-medium">Total Wallpapers</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="text-3xl font-bold">{wallpapers.length}</div>
-                </CardContent>
-              </Card>
-              <Card>
-                <CardHeader className="pb-2">
-                  <CardTitle className="text-base font-medium">Total Downloads</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="text-3xl font-bold">
-                    {wallpapers.reduce((sum, w) => sum + (w.download_count || 0), 0)}
-                  </div>
-                </CardContent>
-              </Card>
-              <Card>
-                <CardHeader className="pb-2">
-                  <CardTitle className="text-base font-medium">Total Likes</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="text-3xl font-bold">
-                    {wallpapers.reduce((sum, w) => sum + (w.like_count || 0), 0)}
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
+          <main className="p-6 space-y-6">
+            {/* Stats Overview */}
+            <DashboardStats />
 
-            <Card className="mb-8">
-              <CardHeader>
-                <CardTitle>Creator Code Management</CardTitle>
-                <CardDescription>Set or update your creator referral code</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  {currentCreatorCode && (
-                    <p className="text-sm">
-                      Current Creator Code: <span className="font-semibold bg-secondary px-2 py-1 rounded-md">{currentCreatorCode}</span>
-                    </p>
+            {/* Creator Code Management */}
+            {adminData.admin_type === 'creator' && (
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Code className="w-5 h-5" />
+                    Creator Code Management
+                  </CardTitle>
+                  <CardDescription>
+                    Set your unique creator code for users to find your profile
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  {currentCreatorCode ? (
+                    <div className="space-y-3">
+                      <div className="flex items-center gap-2">
+                        <Label>Current Code:</Label>
+                        <Badge variant="secondary" className="font-mono">
+                          {currentCreatorCode}
+                        </Badge>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={copyCreatorProfileLink}
+                        >
+                          <Link className="w-4 h-4 mr-1" />
+                          Copy Profile Link
+                        </Button>
+                      </div>
+                      <div className="text-sm text-muted-foreground">
+                        Profile URL: {window.location.origin}/creator/{currentCreatorCode}
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="text-sm text-muted-foreground">
+                      No creator code set. Create one to allow users to find your profile.
+                    </div>
                   )}
-                  <div className="flex gap-4">
+                  
+                  <div className="flex gap-2">
                     <Input
                       placeholder="Enter new creator code"
                       value={creatorCode}
                       onChange={(e) => setCreatorCode(e.target.value)}
+                      className="max-w-xs"
                     />
                     <Button onClick={handleUpdateCreatorCode}>
-                      {currentCreatorCode ? "Update" : "Set"} Creator Code
+                      {currentCreatorCode ? "Update Code" : "Set Code"}
                     </Button>
                   </div>
-                </div>
-              </CardContent>
-            </Card>
+                </CardContent>
+              </Card>
+            )}
 
-            <Tabs defaultValue="wallpapers" className="space-y-6">
-              <TabsList className="mb-4">
-                <TabsTrigger value="wallpapers">Wallpapers</TabsTrigger>
-                <TabsTrigger value="collections">Collections</TabsTrigger>
+            {/* Main Content Tabs */}
+            <Tabs defaultValue="wallpapers" className="space-y-4">
+              <TabsList className="grid w-full grid-cols-2">
+                <TabsTrigger value="wallpapers" className="flex items-center gap-2">
+                  <Grid className="w-4 h-4" />
+                  Wallpapers ({wallpapers.length})
+                </TabsTrigger>
+                <TabsTrigger value="collections" className="flex items-center gap-2">
+                  <Plus className="w-4 h-4" />
+                  Collections
+                </TabsTrigger>
               </TabsList>
 
-              <TabsContent value="wallpapers" className="space-y-6">
-                <Card>
-                  <CardHeader>
-                    <CardTitle>
-                      {viewingCreator ? `${viewingCreator.email}'s Wallpapers` : 'Your Wallpapers'}
-                      {hasFullAccess && <span className="ml-2 text-sm font-normal text-red-600">(Full Access Mode)</span>}
-                    </CardTitle>
-                    <CardDescription>
-                      {hasFullAccess 
-                        ? "You have full access to manage these wallpapers including deletion" 
-                        : "Manage your uploaded wallpapers"}
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="flex justify-between items-center mb-4">
-                      {selectedWallpapers.length > 0 && hasFullAccess && (
+              <TabsContent value="wallpapers" className="space-y-4">
+                {/* Bulk Actions */}
+                {selectedWallpapers.length > 0 && hasFullAccess && (
+                  <Card>
+                    <CardContent className="pt-6">
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm text-muted-foreground">
+                          {selectedWallpapers.length} wallpaper(s) selected
+                        </span>
                         <AlertDialog>
                           <AlertDialogTrigger asChild>
-                            <Button variant="destructive">
+                            <Button variant="destructive" size="sm">
                               <Trash className="w-4 h-4 mr-2" />
-                              Delete Selected ({selectedWallpapers.length})
+                              Delete Selected
                             </Button>
                           </AlertDialogTrigger>
                           <AlertDialogContent>
                             <AlertDialogHeader>
-                              <AlertDialogTitle>Delete Multiple Wallpapers</AlertDialogTitle>
+                              <AlertDialogTitle>Delete Wallpapers</AlertDialogTitle>
                               <AlertDialogDescription>
-                                Are you sure you want to delete {selectedWallpapers.length} wallpapers? This action cannot be undone.
+                                Are you sure you want to delete {selectedWallpapers.length} wallpaper(s)? 
+                                This action cannot be undone.
                               </AlertDialogDescription>
                             </AlertDialogHeader>
                             <AlertDialogFooter>
                               <AlertDialogCancel>Cancel</AlertDialogCancel>
-                              <AlertDialogAction
+                              <AlertDialogAction 
                                 onClick={handleDeleteMultiple}
-                                className="bg-red-500 hover:bg-red-600"
+                                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
                               >
                                 Delete
                               </AlertDialogAction>
                             </AlertDialogFooter>
                           </AlertDialogContent>
                         </AlertDialog>
-                      )}
-                    </div>
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                      {wallpapers.map((wallpaper) => (
-                        <Card key={wallpaper.id} className={`relative overflow-hidden hover:shadow-md transition-shadow ${selectedWallpapers.includes(wallpaper.id) ? 'ring-2 ring-primary' : ''}`}>
-                          <div className="absolute top-2 left-2 z-10">
-                            {hasFullAccess && (
-                              <Checkbox
-                                checked={selectedWallpapers.includes(wallpaper.id)}
-                                onCheckedChange={(checked) => {
-                                  if (checked) {
-                                    setSelectedWallpapers([...selectedWallpapers, wallpaper.id]);
-                                  } else {
-                                    setSelectedWallpapers(selectedWallpapers.filter(id => id !== wallpaper.id));
-                                  }
-                                }}
-                              />
+                      </div>
+                    </CardContent>
+                  </Card>
+                )}
+
+                {/* Wallpapers Grid */}
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                  {wallpapers.map((wallpaper) => (
+                    <Card key={wallpaper.id} className="overflow-hidden">
+                      <div className="aspect-square relative">
+                        <img
+                          src={wallpaper.url}
+                          alt={`Wallpaper ${wallpaper.id}`}
+                          className="w-full h-full object-cover"
+                        />
+                        {hasFullAccess && (
+                          <div className="absolute top-2 left-2">
+                            <Checkbox
+                              checked={selectedWallpapers.includes(wallpaper.id)}
+                              onCheckedChange={(checked) => {
+                                if (checked) {
+                                  setSelectedWallpapers(prev => [...prev, wallpaper.id]);
+                                } else {
+                                  setSelectedWallpapers(prev => prev.filter(id => id !== wallpaper.id));
+                                }
+                              }}
+                              className="bg-background"
+                            />
+                          </div>
+                        )}
+                      </div>
+                      
+                      <CardContent className="p-4 space-y-3">
+                        <div className="flex items-center justify-between text-sm text-muted-foreground">
+                          <div className="flex items-center gap-2">
+                            <Download className="w-4 h-4" />
+                            <span>{wallpaper.download_count}</span>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <Heart className="w-4 h-4" />
+                            <span>{wallpaper.like_count}</span>
+                          </div>
+                        </div>
+
+                        {wallpaper.tags && wallpaper.tags.length > 0 && (
+                          <div className="flex flex-wrap gap-1">
+                            {wallpaper.tags.slice(0, 3).map((tag, index) => (
+                              <Badge key={index} variant="secondary" className="text-xs">
+                                {tag}
+                              </Badge>
+                            ))}
+                            {wallpaper.tags.length > 3 && (
+                              <Badge variant="outline" className="text-xs">
+                                +{wallpaper.tags.length - 3}
+                              </Badge>
                             )}
                           </div>
-                          <div className="relative h-48">
-                            <img
-                              src={wallpaper.url}
-                              alt="Wallpaper"
-                              className="w-full h-full object-cover"
-                            />
-                            <Button 
-                              variant="secondary"
-                              size="icon"
-                              className="absolute bottom-2 right-2 h-8 w-8 rounded-full bg-black/50 hover:bg-black/70"
-                              onClick={() => copyLinkToClipboard(wallpaper.id)}
-                            >
-                              <Link className="h-4 w-4 text-white" />
-                            </Button>
-                          </div>
-                          <CardHeader className="pb-2">
-                            <CardTitle className="text-sm">{wallpaper.type} Wallpaper</CardTitle>
-                          </CardHeader>
-                          <CardContent className="space-y-3 pb-2">
-                            <div className="flex flex-wrap gap-1">
-                              {wallpaper.tags.map((tag, index) => (
-                                <Badge key={index} variant="secondary" className="text-xs">
-                                  {tag}
-                                </Badge>
-                              ))}
-                            </div>
-                            <Input
-                              defaultValue={wallpaper.tags.join(', ')}
-                              placeholder="Update tags (comma-separated)"
-                              onBlur={(e) => handleUpdateTags(wallpaper.id, e.target.value)}
-                              className="text-xs"
-                            />
-                            <div className="flex justify-between items-center text-xs text-muted-foreground">
-                              <div className="flex items-center gap-1">
-                                <Download className="w-3 h-3" />
-                                <span>{wallpaper.download_count || 0}</span>
-                              </div>
-                              <div className="flex items-center gap-1">
-                                <Heart className="w-3 h-3" />
-                                <span>{wallpaper.like_count || 0}</span>
-                              </div>
-                            </div>
-                          </CardContent>
-                          {hasFullAccess && (
-                            <CardFooter className="pt-0">
-                              <Button
-                                variant="destructive"
+                        )}
+                      </CardContent>
+
+                      <CardFooter className="p-4 pt-0 flex gap-2">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => copyLinkToClipboard(wallpaper.id)}
+                          className="flex-1"
+                        >
+                          <Link className="w-4 h-4" />
+                        </Button>
+                        
+                        {hasFullAccess && (
+                          <AlertDialog>
+                            <AlertDialogTrigger asChild>
+                              <Button 
                                 size="sm"
-                                className="w-full"
-                                onClick={() => handleDelete(wallpaper.id, wallpaper.file_path)}
+                                variant="destructive"
+                                disabled={isDeleting && deleteItemId === wallpaper.id}
                               >
-                                <Trash className="w-3 h-3 mr-1" />
-                                Delete
+                                <Trash className="w-4 h-4" />
                               </Button>
-                            </CardFooter>
-                          )}
-                        </Card>
-                      ))}
-                    </div>
-                  </CardContent>
-                </Card>
+                            </AlertDialogTrigger>
+                            <AlertDialogContent>
+                              <AlertDialogHeader>
+                                <AlertDialogTitle>Delete Wallpaper</AlertDialogTitle>
+                                <AlertDialogDescription>
+                                  Are you sure you want to delete this wallpaper? This action cannot be undone.
+                                </AlertDialogDescription>
+                              </AlertDialogHeader>
+                              <AlertDialogFooter>
+                                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                <AlertDialogAction 
+                                  onClick={() => handleDelete(wallpaper.id, wallpaper.file_path)}
+                                  className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                                >
+                                  Delete
+                                </AlertDialogAction>
+                              </AlertDialogFooter>
+                            </AlertDialogContent>
+                          </AlertDialog>
+                        )}
+                      </CardFooter>
+                    </Card>
+                  ))}
+                </div>
+
+                {wallpapers.length === 0 && (
+                  <Card>
+                    <CardContent className="flex flex-col items-center justify-center py-12">
+                      <Grid className="w-12 h-12 text-muted-foreground mb-4" />
+                      <h3 className="text-lg font-semibold mb-2">No wallpapers uploaded</h3>
+                      <p className="text-sm text-muted-foreground mb-4">
+                        Start by uploading your first wallpaper
+                      </p>
+                      <Button onClick={() => navigate("/upload")}>
+                        <Upload className="w-4 h-4 mr-2" />
+                        Upload Wallpaper
+                      </Button>
+                    </CardContent>
+                  </Card>
+                )}
               </TabsContent>
 
               <TabsContent value="collections">
-                <Card>
-                  <CardHeader>
-                    <CardTitle>{viewingCreator ? `${viewingCreator.email}'s Collections` : 'Your Collections'}</CardTitle>
-                    <CardDescription>Manage your wallpaper collections</CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    <CollectionManager />
-                  </CardContent>
-                </Card>
+                <CollectionManager />
               </TabsContent>
             </Tabs>
-          </div>
+          </main>
         </div>
       </div>
     </SidebarProvider>

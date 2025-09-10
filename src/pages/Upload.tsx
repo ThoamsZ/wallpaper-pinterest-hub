@@ -43,13 +43,24 @@ const Upload = () => {
 
     setUserId(session.user.id);
 
-    const { data: adminData } = await supabase
-      .from('admin_users')
-      .select('admin_type')
+    // Check if user is an admin
+    const { data: adminData, error: adminError } = await supabase
+      .from('admins')
+      .select('*')
       .eq('user_id', session.user.id)
+      .eq('is_active', true)
       .maybeSingle();
 
-    if (!adminData) {
+    // Check if user is a creator
+    const { data: creatorData, error: creatorError } = await supabase
+      .from('creators')
+      .select('*')
+      .eq('user_id', session.user.id)
+      .eq('is_active', true)
+      .not('is_blocked', 'eq', true)
+      .maybeSingle();
+
+    if (!adminData && !creatorData) {
       navigate("/");
       toast({
         title: "Access Denied",

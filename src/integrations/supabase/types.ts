@@ -14,41 +14,6 @@ export type Database = {
   }
   public: {
     Tables: {
-      admin_users: {
-        Row: {
-          admin_type: string | null
-          created_at: string
-          email: string | null
-          id: string
-          is_blocked: boolean | null
-          user_id: string
-        }
-        Insert: {
-          admin_type?: string | null
-          created_at?: string
-          email?: string | null
-          id?: string
-          is_blocked?: boolean | null
-          user_id: string
-        }
-        Update: {
-          admin_type?: string | null
-          created_at?: string
-          email?: string | null
-          id?: string
-          is_blocked?: boolean | null
-          user_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "admin_users_user_id_fkey"
-            columns: ["user_id"]
-            isOneToOne: true
-            referencedRelation: "users"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       admins: {
         Row: {
           created_at: string
