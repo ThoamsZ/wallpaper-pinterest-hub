@@ -239,10 +239,12 @@ const AdminPanel = () => {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) throw new Error("Not authenticated");
 
+      const targetUserId = viewingCreator?.id || session.user.id;
+
       const { error } = await supabase
         .from('creators')
         .update({ creator_code: creatorCode.trim() })
-        .eq('user_id', session.user.id);
+        .eq('user_id', targetUserId);
 
       if (error) {
         if (error.code === '23505') {
@@ -557,7 +559,7 @@ const AdminPanel = () => {
             <DashboardStats />
 
             {/* Creator Code Management */}
-            {adminData.admin_type === 'creator' && (
+            {(adminData.admin_type === 'creator' || adminData.creator_code !== undefined) && (
               <Card>
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
@@ -625,7 +627,7 @@ const AdminPanel = () => {
 
               <TabsContent value="wallpapers" className="space-y-4">
                 {/* Bulk Actions */}
-                {selectedWallpapers.length > 0 && hasFullAccess && (
+                {selectedWallpapers.length > 0 && (adminData.admin_type === 'creator' || hasFullAccess) && (
                   <Card>
                     <CardContent className="pt-6">
                       <div className="flex items-center justify-between">
@@ -673,7 +675,7 @@ const AdminPanel = () => {
                           alt={`Wallpaper ${wallpaper.id}`}
                           className="w-full h-full object-cover"
                         />
-                        {hasFullAccess && (
+                        {(adminData.admin_type === 'creator' || hasFullAccess) && (
                           <div className="absolute top-2 left-2">
                             <Checkbox
                               checked={selectedWallpapers.includes(wallpaper.id)}
@@ -728,7 +730,7 @@ const AdminPanel = () => {
                           <Link className="w-4 h-4" />
                         </Button>
                         
-                        {hasFullAccess && (
+                        {(adminData.admin_type === 'creator' || hasFullAccess) && (
                           <AlertDialog>
                             <AlertDialogTrigger asChild>
                               <Button 
