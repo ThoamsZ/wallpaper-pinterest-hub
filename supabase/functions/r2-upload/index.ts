@@ -150,11 +150,21 @@ serve(async (req) => {
     }
 
     // Check if user is creator or admin
-    const { data: isCreator } = await supabase.rpc('is_creator');
-    const { data: isAdmin } = await supabase.rpc('is_admin');
+    const { data: isCreator, error: creatorError } = await supabase.rpc('is_creator');
+    const { data: isAdmin, error: adminError } = await supabase.rpc('is_admin');
+    
+    console.log(`User ${user.id} permission check:`, {
+      isCreator,
+      creatorError,
+      isAdmin,
+      adminError
+    });
     
     if (!isCreator && !isAdmin) {
-      return new Response(JSON.stringify({ error: 'Only creators and admins can upload' }), {
+      return new Response(JSON.stringify({ 
+        error: 'Only creators and admins can upload',
+        debug: { isCreator, isAdmin, creatorError, adminError }
+      }), {
         status: 403,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
