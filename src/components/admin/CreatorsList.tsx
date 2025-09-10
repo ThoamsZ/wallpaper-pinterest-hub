@@ -59,19 +59,11 @@ export const CreatorsList = ({ navigate }: CreatorsListProps) => {
 
       console.log("Fetched creators:", creatorsData?.length || 0);
 
-      // Transform data to match existing format
-      const formattedCreators = creatorsData?.map(creator => ({
-        ...creator,
-        users: {
-          email: creator.email,
-          creator_code: creator.creator_code
-        }
-      })) || [];
-
-      setCreators(formattedCreators);
+      // Use creators data directly since it already has email and creator_code
+      setCreators(creatorsData || []);
 
       console.log("Fetching all wallpapers for creators...");
-      const wallpapersPromises = formattedCreators.map((creator: any) =>
+      const wallpapersPromises = (creatorsData || []).map((creator: any) =>
         supabase
           .from('wallpapers')
           .select('*')
@@ -253,8 +245,8 @@ export const CreatorsList = ({ navigate }: CreatorsListProps) => {
 
   const filteredCreators = searchTerm 
     ? creators.filter(creator => 
-        creator.users?.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        creator.users?.creator_code?.toLowerCase().includes(searchTerm.toLowerCase())
+        creator.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        creator.creator_code?.toLowerCase().includes(searchTerm.toLowerCase())
       )
     : creators;
 
@@ -325,8 +317,8 @@ export const CreatorsList = ({ navigate }: CreatorsListProps) => {
               <CardHeader>
                 <CardTitle className="flex justify-between items-center">
                   <div className="flex flex-col">
-                    <span>{creator.users?.email}</span>
-                    <span className="text-sm text-muted-foreground">Creator Code: {creator.users?.creator_code || 'N/A'}</span>
+                    <span>{creator.email}</span>
+                    <span className="text-sm text-muted-foreground">Creator Code: {creator.creator_code || 'N/A'}</span>
                   </div>
                   <div className="flex items-center gap-2">
                     {creator.is_blocked && (
@@ -345,7 +337,7 @@ export const CreatorsList = ({ navigate }: CreatorsListProps) => {
                       <Button
                         variant="destructive"
                         size="sm"
-                        onClick={() => handleDeleteAllWallpapers(creator.user_id, creator.users?.email)}
+                        onClick={() => handleDeleteAllWallpapers(creator.user_id, creator.email)}
                         disabled={isLoading}
                       >
                         <Trash2 className="w-4 h-4 mr-2" />
