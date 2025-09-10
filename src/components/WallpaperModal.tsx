@@ -116,12 +116,22 @@ const WallpaperModal = ({ wallpaper, isOpen, onClose, onLike, isLiked }: Wallpap
               <X className="h-7 w-7 text-white" />
             </Button>
             <img
-              src={wallpaper.r2_key ? 
-                `https://begjbzrzxmbwsrniirao.supabase.co/functions/v1/r2-proxy?key=${wallpaper.r2_key}` : 
-                wallpaper.url
-              }
+              src={(() => {
+                const imageUrl = wallpaper.r2_key ? 
+                  `https://begjbzrzxmbwsrniirao.supabase.co/functions/v1/r2-proxy?key=${wallpaper.r2_key}` : 
+                  wallpaper.url;
+                console.log(`Loading modal image for wallpaper ${wallpaper.id}:`, {
+                  r2_key: wallpaper.r2_key,
+                  imageUrl,
+                  url: wallpaper.url
+                });
+                return imageUrl;
+              })()}
               alt={`Wallpaper ${wallpaper.id}`}
               className="w-full h-auto max-h-[95vh] object-contain"
+              onError={(e) => {
+                console.error(`Failed to load modal image for wallpaper ${wallpaper.id}:`, e);
+              }}
               onContextMenu={handleContextMenu}
               onDragStart={handleDragStart}
               style={{ userSelect: 'none', WebkitUserSelect: 'none' }}
