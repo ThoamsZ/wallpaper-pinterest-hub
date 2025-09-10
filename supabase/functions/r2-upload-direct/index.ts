@@ -184,17 +184,22 @@ serve(async (req) => {
       bucketName: Deno.env.get('CLOUDFLARE_R2_BUCKET_NAME')!,
     };
 
-    // Generate unique file path
+    // Generate unique file path with hash
     const timestamp = Date.now();
-    const randomString = crypto.randomUUID().substring(0, 8);
-    const safeFileName = file.name.replace(/[^a-zA-Z0-9.-]/g, '_');
-    const key = `wallpapers/${timestamp}_${randomString}_${safeFileName}`;
+    const fileBuffer = await file.arrayBuffer();
+    const hashBuffer = await crypto.subtle.digest('SHA-256', fileBuffer);
+    const hashArray = Array.from(new Uint8Array(hashBuffer));
+    const hashHex = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+    const shortHash = hashHex.substring(0, 12); // Use first 12 characters of hash
+    
+    // Get file extension
+    const fileExtension = file.name.split('.').pop()?.toLowerCase() || 'jpg';
+    const key = `wallpapers/${timestamp}_${shortHash}.${fileExtension}`;
 
     // Generate presigned URL for upload
     const presignedUrl = await generatePresignedUrl(r2Config, key, file.type, 3600);
 
-    // Upload file to R2 using presigned URL
-    const fileBuffer = await file.arrayBuffer();
+    // Upload file to R2 using presigned URL (use the already read fileBuffer)
     const uploadResponse = await fetch(presignedUrl, {
       method: 'PUT',
       headers: {

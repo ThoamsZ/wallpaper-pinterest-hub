@@ -143,7 +143,22 @@ const WallpaperPage = () => {
                 <Card className="overflow-hidden bg-gray-800 max-w-full w-auto">
                   <CardContent className="p-0 flex justify-center">
                     <img
-                      src={wallpaper.url}
+                      src={(() => {
+                        // 如果有r2_key，使用R2公共域名
+                        const r2PublicUrl = wallpaper.r2_key ? 
+                          `https://pub-a16d17b142a64b8cb94ff08966efe9ca.r2.dev/${wallpaper.r2_key}` : 
+                          null;
+                        
+                        const imageUrl = r2PublicUrl || wallpaper.url;
+                        
+                        console.log(`Loading wallpaper page image for ${wallpaper.id}:`, {
+                          r2_key: wallpaper.r2_key,
+                          r2PublicUrl,
+                          imageUrl,
+                          url: wallpaper.url
+                        });
+                        return imageUrl;
+                      })()}
                       alt={`Wallpaper ${wallpaper.id}`}
                       className="max-w-full h-auto object-contain max-h-[70vh]"
                       onContextMenu={handleContextMenu}
