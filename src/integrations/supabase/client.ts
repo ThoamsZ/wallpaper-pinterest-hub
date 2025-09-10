@@ -18,7 +18,7 @@ export const checkTableExists = async (tableName: string): Promise<boolean> => {
     // Try to select from the table directly
     try {
       const { error: queryError } = await supabase
-        .from(tableName)
+        .from(tableName as any)
         .select('*')
         .limit(1);
       

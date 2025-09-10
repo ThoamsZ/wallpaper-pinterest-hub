@@ -28,7 +28,7 @@ export const DashboardStats = () => {
       const { data: downloadData, error: downloadError } = await supabase
         .from('wallpapers')
         .select('download_count')
-        .is('download_count', null, { negate: true });
+        .not('download_count', 'is', null);
 
       if (downloadError) throw downloadError;
 

@@ -107,8 +107,7 @@ export const deleteWallpaper = async (wallpaperId: string, filePath?: string, fo
     const { error: deletionError } = await supabase
       .from('wallpapers')
       .delete()
-      .eq('id', wallpaperId)
-      .options(deleteOptions || {});
+      .eq('id', wallpaperId);
     
     if (deletionError) {
       console.error("Error deleting wallpaper record:", deletionError);

@@ -46,15 +46,11 @@ export const CreatorsList = ({ navigate }: CreatorsListProps) => {
     setIsLoading(true);
     try {
       console.log("Fetching creators...");
+      
+      // First get admin users
       const { data: adminUsers, error: adminsError } = await supabase
         .from('admin_users')
-        .select(`
-          *,
-          profile:users!inner(
-            email,
-            creator_code
-          )
-        `)
+        .select('*')
         .eq('admin_type', 'admin');
 
       if (adminsError) {
@@ -62,14 +58,29 @@ export const CreatorsList = ({ navigate }: CreatorsListProps) => {
         throw adminsError;
       }
 
-      console.log("Fetched creators:", adminUsers?.length || 0);
-      
-      const formattedAdminUsers = adminUsers?.map(admin => ({
-        ...admin,
-        users: admin.profile
-      })) || [];
+      console.log("Fetched admin users:", adminUsers?.length || 0);
 
-      setCreators(formattedAdminUsers);
+      // Then get user profiles for each admin
+      const creatorsWithProfiles = [];
+      if (adminUsers && adminUsers.length > 0) {
+        for (const admin of adminUsers) {
+          const { data: userProfile, error: userError } = await supabase
+            .from('users')
+            .select('email, creator_code')
+            .eq('id', admin.user_id)
+            .single();
+
+          if (!userError && userProfile) {
+            creatorsWithProfiles.push({
+              ...admin,
+              users: userProfile
+            });
+          }
+        }
+      }
+
+      console.log("Fetched creators:", creatorsWithProfiles.length);
+      setCreators(creatorsWithProfiles);
 
       console.log("Fetching all wallpapers for creators...");
       const wallpapersPromises = adminUsers.map((admin: any) =>

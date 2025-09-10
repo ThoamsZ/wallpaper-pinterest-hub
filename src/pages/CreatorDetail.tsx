@@ -25,22 +25,34 @@ const CreatorDetail = () => {
     try {
       console.log("Fetching creator details for ID:", creatorId);
       
-      const { data: creatorData, error: creatorError } = await supabase
+      // First get admin user
+      const { data: adminData, error: adminError } = await supabase
         .from('admin_users')
-        .select(`
-          *,
-          profile:users!inner(
-            email,
-            creator_code
-          )
-        `)
+        .select('*')
         .eq('id', creatorId)
         .single();
 
-      if (creatorError) {
-        console.error("Error fetching creator data:", creatorError);
-        throw creatorError;
+      if (adminError) {
+        console.error("Error fetching admin data:", adminError);
+        throw adminError;
       }
+
+      // Then get user profile
+      const { data: userProfile, error: userError } = await supabase
+        .from('users')
+        .select('email, creator_code')
+        .eq('id', adminData.user_id)
+        .single();
+
+      if (userError) {
+        console.error("Error fetching user profile:", userError);
+        throw userError;
+      }
+
+      const creatorData = {
+        ...adminData,
+        profile: userProfile
+      };
 
       console.log("Creator data:", creatorData);
       setCreatorInfo(creatorData);
@@ -144,7 +156,7 @@ const CreatorDetail = () => {
         </Button>
         <h1 className="text-2xl font-bold">Creator Details</h1>
         <Button 
-          variant="primary" 
+          variant="default" 
           onClick={navigateToCreatorAdminPanel}
           disabled={isRedirecting}
         >
