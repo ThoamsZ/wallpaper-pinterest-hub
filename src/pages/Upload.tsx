@@ -133,52 +133,22 @@ const Upload = () => {
       for (const file of files) {
         console.log(`Starting upload for: ${file.name}`);
 
-        // Step 1: Get presigned URL from R2
-        const { data: presignedData, error: presignedError } = await supabase.functions.invoke('r2-upload', {
-          body: {
-            fileName: file.name,
-            contentType: file.type || 'image/jpeg'
-          }
+        // Upload file using server-side edge function
+        const formData = new FormData();
+        formData.append('file', file);
+        formData.append('imageType', imageType);
+        formData.append('tags', tagArray.join(','));
+
+        const { data: uploadData, error: uploadError } = await supabase.functions.invoke('r2-upload-direct', {
+          body: formData
         });
 
-        if (presignedError || !presignedData) {
-          console.error("Presigned URL error:", presignedError);
-          throw new Error(`Failed to get upload URL: ${presignedError?.message || 'Unknown error'}`);
+        if (uploadError || !uploadData) {
+          console.error("Upload error:", uploadError);
+          throw new Error(`Failed to upload: ${uploadError?.message || 'Unknown error'}`);
         }
 
-        // Step 2: Upload directly to R2 using presigned URL
-        const uploadResponse = await fetch(presignedData.presignedUrl, {
-          method: 'PUT',
-          headers: {
-            'Content-Type': file.type || 'image/jpeg',
-          },
-          body: file,
-        });
-
-        if (!uploadResponse.ok) {
-          throw new Error(`Failed to upload to R2: ${uploadResponse.statusText}`);
-        }
-
-        console.log(`Successfully uploaded to R2: ${presignedData.key}`);
-
-        // Step 3: Save metadata to database
-        const { error: dbError } = await supabase
-          .from('wallpapers')
-          .insert({
-            url: presignedData.publicUrl, // Fallback URL
-            compressed_url: presignedData.publicUrl, // Fallback URL  
-            file_path: presignedData.key, // Keep for backward compatibility
-            r2_key: presignedData.key,
-            r2_url: presignedData.publicUrl,
-            type: imageType,
-            tags: tagArray,
-            uploaded_by: userId
-          });
-
-        if (dbError) {
-          console.error("Database error:", dbError);
-          throw dbError;
-        }
+        console.log(`Successfully uploaded: ${uploadData.key}`);
         
         completed++;
         setProgress((completed / files.length) * 100);
