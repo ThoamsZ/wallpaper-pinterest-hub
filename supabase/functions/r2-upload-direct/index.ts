@@ -211,8 +211,8 @@ serve(async (req) => {
       });
     }
 
-    // Generate the public URL
-    const publicUrl = `https://${r2Config.bucketName}.${r2Config.accountId}.r2.cloudflarestorage.com/${key}`;
+    // Generate the public URL using R2 public domain
+    const publicUrl = `https://pub-a16d17b142a64b8cb94ff08966efe9ca.r2.dev/${key}`;
 
     // Save metadata to database
     const tagArray = tags ? tags.split(',').map(tag => tag.trim()).filter(tag => tag) : [];

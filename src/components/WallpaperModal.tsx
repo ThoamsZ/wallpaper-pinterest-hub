@@ -117,16 +117,20 @@ const WallpaperModal = ({ wallpaper, isOpen, onClose, onLike, isLiked }: Wallpap
             </Button>
             <img
               src={(() => {
-                const proxyUrl = wallpaper.r2_key ? 
-                  `https://begjbzrzxmbwsrniirao.supabase.co/functions/v1/r2-proxy?key=${wallpaper.r2_key}` : 
-                  wallpaper.url;
+                // 如果有r2_key，使用R2公共域名
+                const r2PublicUrl = wallpaper.r2_key ? 
+                  `https://pub-a16d17b142a64b8cb94ff08966efe9ca.r2.dev/${wallpaper.r2_key}` : 
+                  null;
+                
+                const imageUrl = r2PublicUrl || wallpaper.url;
+                
                 console.log(`Loading modal image for wallpaper ${wallpaper.id}:`, {
                   r2_key: wallpaper.r2_key,
-                  using_proxy: !!wallpaper.r2_key,
-                  imageUrl: proxyUrl,
+                  r2PublicUrl,
+                  imageUrl,
                   url: wallpaper.url
                 });
-                return proxyUrl;
+                return imageUrl;
               })()}
               alt={`Wallpaper ${wallpaper.id}`}
               className="w-full h-auto max-h-[95vh] object-contain"
