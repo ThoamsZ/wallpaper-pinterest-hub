@@ -25,37 +25,29 @@ const CreatorDetail = () => {
     try {
       console.log("Fetching creator details for ID:", creatorId);
       
-      // First get admin user
-      const { data: adminData, error: adminError } = await supabase
-        .from('admin_users')
+      // Get creator data from new table structure
+      const { data: creatorData, error: creatorError } = await supabase
+        .from('creators')
         .select('*')
         .eq('id', creatorId)
         .single();
 
-      if (adminError) {
-        console.error("Error fetching admin data:", adminError);
-        throw adminError;
+      if (creatorError) {
+        console.error("Error fetching creator data:", creatorError);
+        throw creatorError;
       }
 
-      // Then get user profile
-      const { data: userProfile, error: userError } = await supabase
-        .from('users')
-        .select('email, creator_code')
-        .eq('id', adminData.user_id)
-        .single();
-
-      if (userError) {
-        console.error("Error fetching user profile:", userError);
-        throw userError;
-      }
-
-      const creatorData = {
-        ...adminData,
-        profile: userProfile
+      // Transform to match existing format
+      const formattedCreatorData = {
+        ...creatorData,
+        profile: {
+          email: creatorData.email,
+          creator_code: creatorData.creator_code
+        }
       };
 
-      console.log("Creator data:", creatorData);
-      setCreatorInfo(creatorData);
+      console.log("Creator data:", formattedCreatorData);
+      setCreatorInfo(formattedCreatorData);
     } catch (error) {
       console.error("Error fetching creator details:", error);
       toast({
@@ -111,7 +103,7 @@ const CreatorDetail = () => {
       const newBlockStatus = !creatorInfo.is_blocked;
       
       const { error } = await supabase
-        .from('admin_users')
+        .from('creators')
         .update({ is_blocked: newBlockStatus })
         .eq('id', creatorId);
 

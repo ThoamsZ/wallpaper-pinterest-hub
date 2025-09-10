@@ -65,10 +65,10 @@ const AdminManager = () => {
       }
 
       const { data: adminData, error: adminError } = await supabase
-        .from('admin_users')
+        .from('admins')
         .select()
         .eq('user_id', session.user.id)
-        .eq('admin_type', 'admin_manager')
+        .eq('is_active', true)
         .maybeSingle();
 
       if (adminError) {
@@ -79,7 +79,7 @@ const AdminManager = () => {
       }
 
       if (!adminData) {
-        console.log('Not an admin manager');
+        console.log('Not an admin');
         setIsLoggedIn(false);
         navigate('/admin-panel');
         setIsLoading(false);

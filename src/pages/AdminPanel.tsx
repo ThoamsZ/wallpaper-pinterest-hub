@@ -117,61 +117,78 @@ const AdminPanel = () => {
       const userId = viewingCreator?.id;
       
       if (userId) {
+        // Check if viewing user is an admin
         const { data: adminUserData, error: adminError } = await supabase
-          .from('admin_users')
-          .select('admin_type')
+          .from('admins')
+          .select('*')
           .eq('user_id', userId)
+          .eq('is_active', true)
           .maybeSingle();
 
-        if (adminError) throw adminError;
-        if (!adminUserData || adminUserData.admin_type === null) {
-          throw new Error("Not an admin");
+        // Check if viewing user is a creator
+        const { data: creatorData, error: creatorError } = await supabase
+          .from('creators')
+          .select('*')
+          .eq('user_id', userId)
+          .eq('is_active', true)
+          .not('is_blocked', 'eq', true)
+          .maybeSingle();
+
+        if (adminUserData) {
+          return {
+            admin_type: 'admin',
+            creator_code: null,
+            email: adminUserData.email,
+            isCreatorView: true
+          };
+        } else if (creatorData) {
+          return {
+            admin_type: 'creator',
+            creator_code: creatorData.creator_code,
+            email: creatorData.email,
+            isCreatorView: true
+          };
+        } else {
+          throw new Error("Not an admin or creator");
         }
-
-        const { data: userData, error: userError } = await supabase
-          .from('users')
-          .select('creator_code, email')
-          .eq('id', userId)
-          .single();
-
-        if (userError) throw userError;
-        
-        return {
-          admin_type: adminUserData.admin_type,
-          creator_code: userData?.creator_code,
-          email: userData?.email,
-          isCreatorView: true
-        };
       } else {
         const { data: { session } } = await supabase.auth.getSession();
         if (!session) {
           throw new Error("Not authenticated");
         }
 
+        // Check if current user is an admin
         const { data: adminUserData, error: adminError } = await supabase
-          .from('admin_users')
-          .select('admin_type')
+          .from('admins')
+          .select('*')
           .eq('user_id', session.user.id)
+          .eq('is_active', true)
           .maybeSingle();
 
-        if (adminError) throw adminError;
-        if (!adminUserData || adminUserData.admin_type === null) {
-          throw new Error("Not an admin");
+        // Check if current user is a creator
+        const { data: creatorData, error: creatorError } = await supabase
+          .from('creators')
+          .select('*')
+          .eq('user_id', session.user.id)
+          .eq('is_active', true)
+          .not('is_blocked', 'eq', true)
+          .maybeSingle();
+
+        if (adminUserData) {
+          return {
+            admin_type: 'admin',
+            creator_code: null,
+            email: adminUserData.email
+          };
+        } else if (creatorData) {
+          return {
+            admin_type: 'creator',
+            creator_code: creatorData.creator_code,
+            email: creatorData.email
+          };
+        } else {
+          throw new Error("Not an admin or creator");
         }
-
-        const { data: userData, error: userError } = await supabase
-          .from('users')
-          .select('creator_code, email')
-          .eq('id', session.user.id)
-          .single();
-
-        if (userError) throw userError;
-        
-        return {
-          admin_type: adminUserData.admin_type,
-          creator_code: userData?.creator_code,
-          email: userData?.email
-        };
       }
     },
     retry: false
@@ -221,9 +238,9 @@ const AdminPanel = () => {
       if (!session) throw new Error("Not authenticated");
 
       const { error } = await supabase
-        .from('users')
+        .from('creators')
         .update({ creator_code: creatorCode.trim() })
-        .eq('id', session.user.id);
+        .eq('user_id', session.user.id);
 
       if (error) {
         if (error.code === '23505') {

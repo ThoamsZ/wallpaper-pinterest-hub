@@ -49,6 +49,30 @@ export type Database = {
           },
         ]
       }
+      admins: {
+        Row: {
+          created_at: string
+          email: string
+          id: string
+          is_active: boolean
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          email: string
+          id?: string
+          is_active?: boolean
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          email?: string
+          id?: string
+          is_active?: boolean
+          user_id?: string
+        }
+        Relationships: []
+      }
       collection_likes: {
         Row: {
           collection_id: string
@@ -135,6 +159,95 @@ export type Database = {
           id?: string
           like_count?: number
           name?: string
+        }
+        Relationships: []
+      }
+      creators: {
+        Row: {
+          approved_by: string | null
+          created_at: string
+          creator_code: string | null
+          email: string
+          id: string
+          is_active: boolean
+          is_blocked: boolean
+          user_id: string
+        }
+        Insert: {
+          approved_by?: string | null
+          created_at?: string
+          creator_code?: string | null
+          email: string
+          id?: string
+          is_active?: boolean
+          is_blocked?: boolean
+          user_id: string
+        }
+        Update: {
+          approved_by?: string | null
+          created_at?: string
+          creator_code?: string | null
+          email?: string
+          id?: string
+          is_active?: boolean
+          is_blocked?: boolean
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "creators_approved_by_fkey"
+            columns: ["approved_by"]
+            isOneToOne: false
+            referencedRelation: "admins"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      customers: {
+        Row: {
+          created_at: string
+          daily_downloads_remaining: number | null
+          download_count: number | null
+          email: string
+          favor_collections: string[] | null
+          favor_image: string[] | null
+          id: string
+          last_download_reset: string | null
+          paypal_subscription_id: string | null
+          subscription_status: string | null
+          user_id: string
+          vip_expires_at: string | null
+          vip_type: string | null
+        }
+        Insert: {
+          created_at?: string
+          daily_downloads_remaining?: number | null
+          download_count?: number | null
+          email: string
+          favor_collections?: string[] | null
+          favor_image?: string[] | null
+          id?: string
+          last_download_reset?: string | null
+          paypal_subscription_id?: string | null
+          subscription_status?: string | null
+          user_id: string
+          vip_expires_at?: string | null
+          vip_type?: string | null
+        }
+        Update: {
+          created_at?: string
+          daily_downloads_remaining?: number | null
+          download_count?: number | null
+          email?: string
+          favor_collections?: string[] | null
+          favor_image?: string[] | null
+          id?: string
+          last_download_reset?: string | null
+          paypal_subscription_id?: string | null
+          subscription_status?: string | null
+          user_id?: string
+          vip_expires_at?: string | null
+          vip_type?: string | null
         }
         Relationships: []
       }
@@ -536,7 +649,19 @@ export type Database = {
       }
     }
     Functions: {
+      is_admin: {
+        Args: Record<PropertyKey, never>
+        Returns: boolean
+      }
       is_admin_user: {
+        Args: Record<PropertyKey, never>
+        Returns: boolean
+      }
+      is_creator: {
+        Args: Record<PropertyKey, never>
+        Returns: boolean
+      }
+      is_customer: {
         Args: Record<PropertyKey, never>
         Returns: boolean
       }
@@ -554,7 +679,7 @@ export type Database = {
       }
     }
     Enums: {
-      [_ in never]: never
+      user_role: "admin" | "creator" | "customer"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -681,6 +806,8 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      user_role: ["admin", "creator", "customer"],
+    },
   },
 } as const

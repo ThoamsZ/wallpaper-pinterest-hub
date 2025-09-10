@@ -47,47 +47,35 @@ export const CreatorsList = ({ navigate }: CreatorsListProps) => {
     try {
       console.log("Fetching creators...");
       
-      // First get admin users
-      const { data: adminUsers, error: adminsError } = await supabase
-        .from('admin_users')
-        .select('*')
-        .eq('admin_type', 'admin');
+      // Get creators from new table structure
+      const { data: creatorsData, error: creatorsError } = await supabase
+        .from('creators')
+        .select('*');
 
-      if (adminsError) {
-        console.error("Error fetching admins:", adminsError);
-        throw adminsError;
+      if (creatorsError) {
+        console.error("Error fetching creators:", creatorsError);
+        throw creatorsError;
       }
 
-      console.log("Fetched admin users:", adminUsers?.length || 0);
+      console.log("Fetched creators:", creatorsData?.length || 0);
 
-      // Then get user profiles for each admin
-      const creatorsWithProfiles = [];
-      if (adminUsers && adminUsers.length > 0) {
-        for (const admin of adminUsers) {
-          const { data: userProfile, error: userError } = await supabase
-            .from('users')
-            .select('email, creator_code')
-            .eq('id', admin.user_id)
-            .single();
-
-          if (!userError && userProfile) {
-            creatorsWithProfiles.push({
-              ...admin,
-              users: userProfile
-            });
-          }
+      // Transform data to match existing format
+      const formattedCreators = creatorsData?.map(creator => ({
+        ...creator,
+        users: {
+          email: creator.email,
+          creator_code: creator.creator_code
         }
-      }
+      })) || [];
 
-      console.log("Fetched creators:", creatorsWithProfiles.length);
-      setCreators(creatorsWithProfiles);
+      setCreators(formattedCreators);
 
       console.log("Fetching all wallpapers for creators...");
-      const wallpapersPromises = adminUsers.map((admin: any) =>
+      const wallpapersPromises = formattedCreators.map((creator: any) =>
         supabase
           .from('wallpapers')
           .select('*')
-          .eq('uploaded_by', admin.user_id)
+          .eq('uploaded_by', creator.user_id)
       );
 
       const wallpapersResults = await Promise.all(wallpapersPromises);
