@@ -64,7 +64,11 @@ const AdminLogin = () => {
           return;
         }
 
-        // All admins go to admin panel
+        // Admins can choose where to go
+        toast({
+          title: "Login successful",
+          description: "Welcome back, admin!",
+        });
         navigate("/admin-panel");
       }
     } catch (error: any) {
@@ -121,6 +125,26 @@ const AdminLogin = () => {
             {isLoading ? "Processing..." : "Login"}
           </Button>
         </form>
+
+        <div className="mt-6 pt-6 border-t space-y-3">
+          <p className="text-sm text-gray-600 text-center">Quick access:</p>
+          <div className="flex flex-col space-y-2">
+            <Button 
+              variant="outline" 
+              onClick={() => navigate("/admin-panel")}
+              disabled={isLoading}
+            >
+              Admin Panel
+            </Button>
+            <Button 
+              variant="outline" 
+              onClick={() => navigate("/admin-manager")}
+              disabled={isLoading}
+            >
+              Admin Manager
+            </Button>
+          </div>
+        </div>
       </div>
     </div>
   );
