@@ -570,13 +570,29 @@ const AdminPanel = () => {
                     Set your unique creator code for users to find your profile
                   </CardDescription>
                 </CardHeader>
-                <CardContent className="space-y-4">
-                  {currentCreatorCode ? (
-                    <div className="space-y-3">
+                  <CardContent className="space-y-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="creator-code">Creator Code</Label>
+                      <Input
+                        id="creator-code"
+                        value={creatorCode}
+                        onChange={(e) => setCreatorCode(e.target.value)}
+                        placeholder={adminData.creator_code || "Enter a unique creator code"}
+                        maxLength={50}
+                      />
+                      <p className="text-sm text-muted-foreground">
+                        This code will be used for your profile URL: /creator/your-code
+                        {adminData.creator_code && (
+                          <span className="block mt-1 text-primary">
+                            Current code: {adminData.creator_code}
+                          </span>
+                        )}
+                      </p>
+                    </div>
+                    {adminData.creator_code && (
                       <div className="flex items-center gap-2">
-                        <Label>Current Code:</Label>
                         <Badge variant="secondary" className="font-mono">
-                          {currentCreatorCode}
+                          {adminData.creator_code}
                         </Badge>
                         <Button
                           size="sm"
@@ -587,30 +603,16 @@ const AdminPanel = () => {
                           Copy Profile Link
                         </Button>
                       </div>
-                      <div className="text-sm text-muted-foreground">
-                        Profile URL: {window.location.origin}/creator/{currentCreatorCode}
-                      </div>
-                    </div>
-                  ) : (
-                    <div className="text-sm text-muted-foreground">
-                      No creator code set. Create one to allow users to find your profile.
-                    </div>
-                  )}
-                  
-                  <div className="flex gap-2">
-                    <Input
-                      placeholder="Enter new creator code"
-                      value={creatorCode}
-                      onChange={(e) => setCreatorCode(e.target.value)}
-                      className="max-w-xs"
-                    />
-                    <Button onClick={handleUpdateCreatorCode}>
-                      {currentCreatorCode ? "Update Code" : "Set Code"}
+                    )}
+                    <Button 
+                      onClick={handleUpdateCreatorCode}
+                      disabled={!creatorCode.trim()}
+                    >
+                      {adminData.creator_code ? "Update Creator Code" : "Save Creator Code"}
                     </Button>
-                  </div>
-                </CardContent>
-              </Card>
-            )}
+                  </CardContent>
+                </Card>
+              )}
 
             {/* Main Content Tabs */}
             <Tabs defaultValue="wallpapers" className="space-y-4">

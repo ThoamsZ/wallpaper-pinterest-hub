@@ -38,7 +38,7 @@ export const useSearch = () => {
         creatorInfo: null
       };
 
-      // 1. Search for creator by creator_code
+      // 1. Search for creator by creator_code - if found, redirect directly
       const { data: creatorData } = await supabase
         .from('creators')
         .select('creator_code, email, user_id')
@@ -48,29 +48,9 @@ export const useSearch = () => {
         .maybeSingle();
 
       if (creatorData) {
-        results.creatorInfo = creatorData;
-        
-        // Get all wallpapers by this creator
-        const { data: creatorWallpapers } = await supabase
-          .from('wallpapers')
-          .select('*')
-          .eq('uploaded_by', creatorData.user_id)
-          .order('created_at', { ascending: false });
-        
-        if (creatorWallpapers) {
-          results.wallpapers = creatorWallpapers;
-        }
-
-        // Get all collections by this creator
-        const { data: creatorCollections } = await supabase
-          .from('collections')
-          .select('*')
-          .eq('created_by', creatorData.user_id)
-          .order('created_at', { ascending: false });
-        
-        if (creatorCollections) {
-          results.collections = creatorCollections;
-        }
+        // Redirect to creator profile page instead of showing search results
+        window.location.href = `/creator/${creatorData.creator_code}`;
+        return null;
       } else {
         // 2. If no creator found, search wallpapers by tags
         const { data: tagWallpapers } = await supabase

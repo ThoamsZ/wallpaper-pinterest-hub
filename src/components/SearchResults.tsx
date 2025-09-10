@@ -93,7 +93,6 @@ export const SearchResults = ({ results, searchQuery, onClear }: SearchResultsPr
           <CardContent>
             <div className="flex flex-col sm:flex-row sm:items-center gap-4">
               <div className="flex-1">
-                <p className="text-sm text-muted-foreground">Email: {creatorInfo.email}</p>
                 <p className="text-sm text-muted-foreground mt-1">
                   Content: {wallpapers.length} wallpapers, {collections.length} collections
                 </p>

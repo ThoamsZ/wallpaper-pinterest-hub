@@ -467,6 +467,7 @@ export const CollectionManager = () => {
 
   const removeFromCollection = async (collectionId: string, wallpaperId: string) => {
     try {
+      // Only remove from collection, don't delete the wallpaper itself
       const { error } = await supabase
         .from('collection_wallpapers')
         .delete()
@@ -477,7 +478,7 @@ export const CollectionManager = () => {
 
       toast({
         title: "Success",
-        description: "Wallpaper removed from collection",
+        description: "Wallpaper removed from collection (wallpaper not deleted)",
       });
       
       refetchCollectionWallpapers();
