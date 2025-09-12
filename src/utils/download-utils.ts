@@ -87,7 +87,7 @@ export const downloadWallpaper = async (
       const a = document.createElement('a');
       a.href = downloadData.downloadUrl;
       a.download = `wallpaper-${wallpaperId}.${wallpaper.r2_key ? wallpaper.r2_key.split('.').pop() : 'jpg'}`;
-      a.target = '_blank';
+      // Remove target="_blank" to ensure download instead of opening in new tab
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
