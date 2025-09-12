@@ -256,7 +256,22 @@ export type Database = {
           status?: string
           wallpaper_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "delete_requests_requested_by_fkey"
+            columns: ["requested_by"]
+            isOneToOne: false
+            referencedRelation: "creators"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "delete_requests_wallpaper_id_fkey"
+            columns: ["wallpaper_id"]
+            isOneToOne: false
+            referencedRelation: "wallpapers"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       download_logs: {
         Row: {
@@ -614,7 +629,15 @@ export type Database = {
           type?: string
           uploaded_wallpaper_id?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "upload_requests_requested_by_fkey"
+            columns: ["requested_by"]
+            isOneToOne: false
+            referencedRelation: "creators"
+            referencedColumns: ["user_id"]
+          },
+        ]
       }
       users: {
         Row: {

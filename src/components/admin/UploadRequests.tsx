@@ -59,25 +59,14 @@ export const UploadRequests = () => {
     try {
       const { data, error } = await supabase
         .from('upload_requests')
-        .select('*')
+        .select(`
+          *,
+          creator_info:creators!upload_requests_requested_by_fkey(email)
+        `)
         .order('created_at', { ascending: false });
 
       if (error) throw error;
-
-      // Get creator emails for requests
-      const userIds = [...new Set(data?.map(req => req.requested_by) || [])];
-      const { data: creators } = await supabase
-        .from('creators')
-        .select('user_id, email')
-        .in('user_id', userIds);
-
-      // Map creator emails to requests
-      const requestsWithCreators = (data || []).map(request => ({
-        ...request,
-        creator_info: creators?.find(c => c.user_id === request.requested_by)
-      }));
-
-      setUploadRequests(requestsWithCreators as unknown as UploadRequest[]);
+      setUploadRequests((data as unknown as UploadRequest[]) || []);
     } catch (error: any) {
       toast({
         title: "Error",

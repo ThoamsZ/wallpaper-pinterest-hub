@@ -58,28 +58,15 @@ export const DeleteRequests = () => {
     try {
       const { data, error } = await supabase
         .from('delete_requests')
-        .select('*')
+        .select(`
+          *,
+          creator_info:creators!delete_requests_requested_by_fkey(email),
+          wallpapers!delete_requests_wallpaper_id_fkey(url, type, compressed_url)
+        `)
         .order('created_at', { ascending: false });
 
       if (error) throw error;
-
-      // Get creator emails and wallpaper info for requests
-      const userIds = [...new Set(data?.map(req => req.requested_by) || [])];
-      const wallpaperIds = [...new Set(data?.map(req => req.wallpaper_id) || [])];
-      
-      const [creatorsResult, wallpapersResult] = await Promise.all([
-        supabase.from('creators').select('user_id, email').in('user_id', userIds),
-        supabase.from('wallpapers').select('id, url, type, compressed_url').in('id', wallpaperIds)
-      ]);
-
-      // Map creator emails and wallpaper info to requests
-      const requestsWithInfo = (data || []).map(request => ({
-        ...request,
-        creator_info: creatorsResult.data?.find(c => c.user_id === request.requested_by),
-        wallpapers: wallpapersResult.data?.find(w => w.id === request.wallpaper_id)
-      }));
-
-      setDeleteRequests(requestsWithInfo as unknown as DeleteRequest[]);
+      setDeleteRequests((data as unknown as DeleteRequest[]) || []);
     } catch (error: any) {
       toast({
         title: "Error",
