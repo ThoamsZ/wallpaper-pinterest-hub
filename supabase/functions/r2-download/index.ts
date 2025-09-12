@@ -35,38 +35,43 @@ async function generatePresignedDownloadUrl(
   // Extract filename from key for download
   const filename = key.split('/').pop() || 'wallpaper';
   
-  const queryParams = new URLSearchParams({
+  const params: Record<string, string> = {
     'X-Amz-Algorithm': algorithm,
     'X-Amz-Credential': credential,
     'X-Amz-Date': amzDate,
     'X-Amz-Expires': expiresIn.toString(),
     'X-Amz-SignedHeaders': 'host',
     'response-content-disposition': `attachment; filename="${filename}"`,
-  });
-  
+  };
+
+  const canonicalQueryString = Object.keys(params)
+    .sort()
+    .map((k) => `${encodeURIComponent(k)}=${encodeURIComponent(params[k])}`)
+    .join('&');
+
   const canonicalRequest = [
     'GET',
     `/${key}`,
-    queryParams.toString(),
+    canonicalQueryString,
     `host:${host}`,
     '',
     'host',
     'UNSIGNED-PAYLOAD'
   ].join('\n');
-  
+
   const stringToSign = [
     algorithm,
     amzDate,
     credentialScope,
     await sha256(canonicalRequest)
   ].join('\n');
-  
+
   const signingKey = await getSigningKey(config.secretAccessKey, datestamp, region, service);
   const signature = await hmacSha256(signingKey, stringToSign);
-  
-  queryParams.set('X-Amz-Signature', signature);
-  
-  return `https://${host}/${key}?${queryParams.toString()}`;
+
+  const signedQueryString = `${canonicalQueryString}&X-Amz-Signature=${signature}`;
+
+  return `https://${host}/${key}?${signedQueryString}`;
 }
 
 async function sha256(message: string): Promise<string> {
