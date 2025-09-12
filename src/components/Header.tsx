@@ -149,37 +149,25 @@ const Header = ({
     if (isDisabled || isProcessing) return;
     setIsProcessing(true);
     try {
-      // First check if we have a valid session
-      const {
-        data: {
-          session
-        }
-      } = await supabase.auth.getSession();
-
-      // Clear local state immediately regardless of session status
+      // Clear local state first
       queryClient.clear();
       setIsAuthenticated(false);
       setUserEmail("");
       setIsAdmin(false);
       setIsVip(false);
-      if (session) {
-        try {
-          // Only attempt signout if we have a session
-          await supabase.auth.signOut();
-        } catch (error) {
-          console.log('Signout note:', error);
-          // We don't throw here as we've already cleared local state
-        }
-      }
+      
+      // Simple signout without session check
+      await supabase.auth.signOut();
+      
       toast({
         title: "Success",
         description: "You have been logged out"
       });
       navigate("/auth");
     } catch (error) {
-      console.error('Logout error:', error);
+      console.log('Logout completed with notice:', error);
       toast({
-        title: "Notice",
+        title: "Success", 
         description: "You have been logged out"
       });
       navigate("/auth");
@@ -187,7 +175,7 @@ const Header = ({
       setIsProcessing(false);
     }
   };
-  const handleNavigation = async (path: string) => {
+  const handleNavigation = useCallback((path: string) => {
     if (isDisabled || isProcessing) return;
     if ((path === '/collections' || path === '/likes') && !isAuthenticated) {
       navigate('/auth');
@@ -202,7 +190,7 @@ const Header = ({
       });
     }
     navigate(path);
-  };
+  }, [isDisabled, isProcessing, isAuthenticated, navigate, queryClient]);
   const isButtonDisabled = isDisabled || isProcessing;
   return <header className="bg-white/95 backdrop-blur-md z-40">
       <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-3 pb-6 rounded-none bg-slate-950">
