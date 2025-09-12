@@ -141,7 +141,7 @@ serve(async (req) => {
       .from('wallpapers')
       .select('file_path, r2_key')
       .eq('id', wallpaperId)
-      .single();
+      .maybeSingle();
 
     if (wallpaperError || !wallpaper) {
       return new Response(JSON.stringify({ error: 'Wallpaper not found' }), {
