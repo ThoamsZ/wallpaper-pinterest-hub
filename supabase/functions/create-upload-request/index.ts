@@ -163,14 +163,12 @@ serve(async (req) => {
     // Upload file to staging
     const uploadResponse = await fetch(presignedUrl, {
       method: 'PUT',
-      body: file,
-      headers: {
-        'Content-Type': file.type,
-      },
+      body: file
     });
 
     if (!uploadResponse.ok) {
-      throw new Error(`Failed to upload file to staging: ${uploadResponse.statusText}`);
+      const errText = await uploadResponse.text().catch(() => '');
+      throw new Error(`Failed to upload file to staging: ${uploadResponse.status} ${uploadResponse.statusText} ${errText}`);
     }
 
     // Parse tags
