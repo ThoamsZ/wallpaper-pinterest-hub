@@ -131,33 +131,33 @@ const Upload = () => {
       let completed = 0;
 
       for (const file of files) {
-        console.log(`Starting upload for: ${file.name}`);
+        console.log(`Creating upload request for: ${file.name}`);
 
-        // Upload file using server-side edge function
+        // Create upload request instead of direct upload
         const formData = new FormData();
         formData.append('file', file);
         formData.append('imageType', imageType);
         formData.append('tags', tagArray.join(','));
 
-        const { data: uploadData, error: uploadError } = await supabase.functions.invoke('r2-upload-direct', {
+        const { data: requestData, error: requestError } = await supabase.functions.invoke('create-upload-request', {
           body: formData
         });
 
-        if (uploadError || !uploadData) {
-          console.error("Upload error:", uploadError);
-          throw new Error(`Failed to upload: ${uploadError?.message || 'Unknown error'}`);
+        if (requestError || !requestData) {
+          console.error("Upload request error:", requestError);
+          throw new Error(`Failed to create upload request: ${requestError?.message || 'Unknown error'}`);
         }
 
-        console.log(`Successfully uploaded: ${uploadData.key}`);
+        console.log(`Successfully created upload request: ${requestData.requestId}`);
         
         completed++;
         setProgress((completed / files.length) * 100);
-        console.log(`Completed upload ${completed}/${files.length}`);
+        console.log(`Completed request ${completed}/${files.length}`);
       }
 
       toast({
         title: "Success",
-        description: `${files.length} wallpapers uploaded successfully to R2`,
+        description: `${files.length} upload requests submitted successfully. Awaiting admin approval.`,
       });
 
       setFiles([]);
@@ -168,10 +168,10 @@ const Upload = () => {
       
       navigate('/admin-panel');
     } catch (error: any) {
-      console.error("Upload error details:", error);
+      console.error("Upload request error details:", error);
       toast({
         title: "Error",
-        description: error.message || 'Failed to upload files',
+        description: error.message || 'Failed to create upload requests',
         variant: "destructive",
       });
     } finally {
@@ -253,7 +253,7 @@ const Upload = () => {
           </div>
           
           <Button type="submit" disabled={uploading || files.length === 0}>
-            {uploading ? "Uploading..." : "Upload"}
+            {uploading ? "Submitting Requests..." : "Submit for Approval"}
           </Button>
         </form>
       </div>

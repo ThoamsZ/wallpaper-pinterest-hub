@@ -755,18 +755,20 @@ const AdminPanel = () => {
                             <AlertDialogContent>
                               <AlertDialogHeader>
                                 <AlertDialogTitle>Delete Wallpaper</AlertDialogTitle>
-                                <AlertDialogDescription>
-                                  Are you sure you want to delete this wallpaper? This action cannot be undone.
-                                </AlertDialogDescription>
+                                 <AlertDialogDescription>
+                                   {hasFullAccess 
+                                     ? "Are you sure you want to delete this wallpaper? This action cannot be undone." 
+                                     : "Submit a delete request for this wallpaper? Admins will review and approve the deletion."}
+                                 </AlertDialogDescription>
                               </AlertDialogHeader>
                               <AlertDialogFooter>
                                 <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                <AlertDialogAction 
-                                  onClick={() => handleDelete(wallpaper.id, wallpaper.file_path)}
-                                  className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                                >
-                                  Delete
-                                </AlertDialogAction>
+                                 <AlertDialogAction 
+                                   onClick={() => handleDelete(wallpaper.id, wallpaper.file_path)}
+                                   className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                                 >
+                                   {hasFullAccess ? "Delete" : "Submit Request"}
+                                 </AlertDialogAction>
                               </AlertDialogFooter>
                             </AlertDialogContent>
                           </AlertDialog>
