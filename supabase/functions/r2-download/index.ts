@@ -32,12 +32,16 @@ async function generatePresignedDownloadUrl(
   
   const host = `${config.bucketName}.${config.accountId}.r2.cloudflarestorage.com`;
   
+  // Extract filename from key for download
+  const filename = key.split('/').pop() || 'wallpaper';
+  
   const queryParams = new URLSearchParams({
     'X-Amz-Algorithm': algorithm,
     'X-Amz-Credential': credential,
     'X-Amz-Date': amzDate,
     'X-Amz-Expires': expiresIn.toString(),
     'X-Amz-SignedHeaders': 'host',
+    'response-content-disposition': `attachment; filename="${filename}"`,
   });
   
   const canonicalRequest = [
