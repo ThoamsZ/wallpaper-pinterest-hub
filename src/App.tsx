@@ -46,36 +46,21 @@ function AuthProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     const initializeAuth = async () => {
       try {
+        // Check for existing session only
         const { data, error } = await supabase.auth.getSession();
         
         if (error) {
           console.error("Session retrieval error:", error);
-          await supabase.auth.signOut();
-        }
-        
-        if (data?.session) {
+          setSession(null);
+        } else if (data?.session) {
           console.log("Existing session found:", data.session.user.email);
           setSession(data.session);
         } else {
-          console.log("No session found, attempting guest login");
-          const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
-            email: 'guest@wallpaperhub.com',
-            password: 'guest123',
-          });
-
-          if (authError) {
-            console.error("Guest login error:", authError);
-            setSession(null);
-          } else if (authData.session) {
-            console.log("Successfully logged in as guest");
-            setSession(authData.session);
-            toast({
-              title: "Welcome to xxWallpaper",
-              description: "You're browsing as a guest. Sign up to like and collect wallpapers!",
-            });
-          }
+          console.log("No session found, browsing anonymously");
+          setSession(null);
         }
 
+        // Set up auth state listener
         const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, newSession) => {
           console.log("Auth state changed:", event, newSession?.user?.email);
           setSession(newSession);
