@@ -21,8 +21,6 @@ import {
   Search,
   Check,
   UserX,
-  Upload,
-  Trash2,
 } from "lucide-react";
 import {
   Table,
@@ -46,8 +44,6 @@ import { AdminManagerAuth } from "@/components/admin/AdminManagerAuth";
 import { CreatorsList } from "@/components/admin/CreatorsList";
 import { CreatorApplications } from "@/components/admin/CreatorApplications";
 import { DashboardStats } from "@/components/admin/DashboardStats";
-import { UploadRequests } from "@/components/admin/UploadRequests";
-import { DeleteRequests } from "@/components/admin/DeleteRequests";
 
 const AdminManager = () => {
   const navigate = useNavigate();
@@ -147,24 +143,6 @@ const AdminManager = () => {
                   <span>Creator Applications</span>
                 </SidebarMenuButton>
               </SidebarMenuItem>
-              <SidebarMenuItem>
-                <SidebarMenuButton 
-                  isActive={activeTab === 'uploads'} 
-                  onClick={() => setActiveTab('uploads')}
-                >
-                  <Upload className="w-4 h-4 mr-2" />
-                  <span>Upload Requests</span>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
-              <SidebarMenuItem>
-                <SidebarMenuButton 
-                  isActive={activeTab === 'deletes'} 
-                  onClick={() => setActiveTab('deletes')}
-                >
-                  <Trash2 className="w-4 h-4 mr-2" />
-                  <span>Delete Requests</span>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
             </SidebarMenu>
           </SidebarContent>
         </Sidebar>
@@ -175,8 +153,6 @@ const AdminManager = () => {
               {activeTab === 'stats' && 'Website Statistics'}
               {activeTab === 'creators' && 'Creator Management'}
               {activeTab === 'applications' && 'Creator Applications'}
-              {activeTab === 'uploads' && 'Upload Requests'}
-              {activeTab === 'deletes' && 'Delete Requests'}
             </h1>
             <Button 
               variant="outline"
@@ -192,8 +168,6 @@ const AdminManager = () => {
           {activeTab === 'stats' && <DashboardStats />}
           {activeTab === 'creators' && <CreatorsList navigate={navigate} />}
           {activeTab === 'applications' && <CreatorApplications />}
-          {activeTab === 'uploads' && <UploadRequests />}
-          {activeTab === 'deletes' && <DeleteRequests />}
         </SidebarInset>
       </div>
     </SidebarProvider>

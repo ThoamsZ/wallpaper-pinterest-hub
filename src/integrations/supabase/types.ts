@@ -216,63 +216,6 @@ export type Database = {
         }
         Relationships: []
       }
-      delete_requests: {
-        Row: {
-          approved_at: string | null
-          approved_by: string | null
-          created_at: string
-          final_deleted: boolean
-          id: string
-          r2_bucket: string | null
-          r2_key: string
-          reason: string | null
-          requested_by: string
-          status: string
-          wallpaper_id: string
-        }
-        Insert: {
-          approved_at?: string | null
-          approved_by?: string | null
-          created_at?: string
-          final_deleted?: boolean
-          id?: string
-          r2_bucket?: string | null
-          r2_key: string
-          reason?: string | null
-          requested_by: string
-          status?: string
-          wallpaper_id: string
-        }
-        Update: {
-          approved_at?: string | null
-          approved_by?: string | null
-          created_at?: string
-          final_deleted?: boolean
-          id?: string
-          r2_bucket?: string | null
-          r2_key?: string
-          reason?: string | null
-          requested_by?: string
-          status?: string
-          wallpaper_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "delete_requests_requested_by_fkey"
-            columns: ["requested_by"]
-            isOneToOne: false
-            referencedRelation: "creators"
-            referencedColumns: ["user_id"]
-          },
-          {
-            foreignKeyName: "delete_requests_wallpaper_id_fkey"
-            columns: ["wallpaper_id"]
-            isOneToOne: false
-            referencedRelation: "wallpapers"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       download_logs: {
         Row: {
           downloaded_at: string
@@ -571,74 +514,6 @@ export type Database = {
         }
         Relationships: []
       }
-      upload_requests: {
-        Row: {
-          approved_at: string | null
-          approved_by: string | null
-          bytes: number | null
-          created_at: string
-          final_key: string | null
-          id: string
-          message: string | null
-          mime_type: string | null
-          original_filename: string | null
-          r2_bucket: string | null
-          reject_reason: string | null
-          requested_by: string
-          staging_key: string
-          status: string
-          tags: string[] | null
-          type: string
-          uploaded_wallpaper_id: string | null
-        }
-        Insert: {
-          approved_at?: string | null
-          approved_by?: string | null
-          bytes?: number | null
-          created_at?: string
-          final_key?: string | null
-          id?: string
-          message?: string | null
-          mime_type?: string | null
-          original_filename?: string | null
-          r2_bucket?: string | null
-          reject_reason?: string | null
-          requested_by: string
-          staging_key: string
-          status?: string
-          tags?: string[] | null
-          type: string
-          uploaded_wallpaper_id?: string | null
-        }
-        Update: {
-          approved_at?: string | null
-          approved_by?: string | null
-          bytes?: number | null
-          created_at?: string
-          final_key?: string | null
-          id?: string
-          message?: string | null
-          mime_type?: string | null
-          original_filename?: string | null
-          r2_bucket?: string | null
-          reject_reason?: string | null
-          requested_by?: string
-          staging_key?: string
-          status?: string
-          tags?: string[] | null
-          type?: string
-          uploaded_wallpaper_id?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "upload_requests_requested_by_fkey"
-            columns: ["requested_by"]
-            isOneToOne: false
-            referencedRelation: "creators"
-            referencedColumns: ["user_id"]
-          },
-        ]
-      }
       users: {
         Row: {
           created_at: string
@@ -810,14 +685,6 @@ export type Database = {
       reset_daily_downloads: {
         Args: Record<PropertyKey, never>
         Returns: undefined
-      }
-      valid_delete_request_status: {
-        Args: { _status: string }
-        Returns: boolean
-      }
-      valid_upload_request_status: {
-        Args: { _status: string }
-        Returns: boolean
       }
     }
     Enums: {
