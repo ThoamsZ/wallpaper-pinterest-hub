@@ -587,7 +587,14 @@ const AdminPanel = () => {
                     Creator Code Management
                   </CardTitle>
                   <CardDescription>
-                    Set your unique creator code for users to find your profile
+                    {adminData.creator_code ? (
+                      <div className="space-y-2">
+                        <div>Your creator code is set to: <span className="font-mono text-primary font-semibold">@{adminData.creator_code}</span></div>
+                        <div className="text-sm">Update it below or copy your profile link</div>
+                      </div>
+                    ) : (
+                      "Set your unique creator code for users to find your profile"
+                    )}
                   </CardDescription>
                 </CardHeader>
                   <CardContent className="space-y-4">
