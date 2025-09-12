@@ -678,7 +678,14 @@ const AdminPanel = () => {
                     <Card key={wallpaper.id} className="overflow-hidden">
                       <div className="aspect-square relative">
                         <img
-                          src={wallpaper.url}
+                          src={(() => {
+                            const anyWallpaper: any = wallpaper as any;
+                            const r2Key = anyWallpaper.r2_key as string | null;
+                            const r2PublicUrl = r2Key ? `https://pub-a16d17b142a64b8cb94ff08966efe9ca.r2.dev/${r2Key}` : null;
+                            const imageUrl = r2PublicUrl || wallpaper.url;
+                            console.log(`AdminPanel image for ${wallpaper.id}:`, { r2_key: r2Key, r2PublicUrl, imageUrl, url: wallpaper.url });
+                            return imageUrl;
+                          })()}
                           alt={`Wallpaper ${wallpaper.id}`}
                           className="w-full h-full object-cover"
                         />
