@@ -196,11 +196,12 @@ const AdminPanel = () => {
   });
 
   const { data: wallpapers = [], refetch: refetchWallpapers } = useQuery({
-    queryKey: ['admin-wallpapers', viewingCreator?.id],
+    queryKey: ['admin-wallpapers', viewingCreator?.id, adminData?.admin_type],
     queryFn: async () => {
       const userId = viewingCreator?.id;
       
       if (userId) {
+        // When viewing a specific creator, show only their wallpapers
         const { data, error } = await supabase
           .from('wallpapers')
           .select('*')
@@ -213,11 +214,17 @@ const AdminPanel = () => {
         const { data: { session } } = await supabase.auth.getSession();
         if (!session) throw new Error("Not authenticated");
 
-        const { data, error } = await supabase
+        // If user is admin, show all wallpapers. If creator, show only their wallpapers
+        let query = supabase
           .from('wallpapers')
-          .select('*')
-          .eq('uploaded_by', session.user.id)
-          .order('created_at', { ascending: false });
+          .select('*');
+
+        if (adminData?.admin_type === 'creator') {
+          query = query.eq('uploaded_by', session.user.id);
+        }
+        // Admin users get all wallpapers (no filter applied)
+
+        const { data, error } = await query.order('created_at', { ascending: false });
 
         if (error) throw error;
         return data || [];
@@ -388,11 +395,18 @@ const AdminPanel = () => {
 
       const tagArray = newTags.split(',').map(tag => tag.trim()).filter(tag => tag);
       
-      const { error } = await supabase
+      let query = supabase
         .from('wallpapers')
         .update({ tags: tagArray })
-        .eq('id', id)
-        .eq('uploaded_by', session.user.id);
+        .eq('id', id);
+
+      // If user is creator (not admin), restrict to their own wallpapers
+      if (adminData?.admin_type === 'creator' && !viewingCreator) {
+        query = query.eq('uploaded_by', session.user.id);
+      }
+      // Admin users can update any wallpaper's tags
+
+      const { error } = await query;
 
       if (error) throw error;
 
