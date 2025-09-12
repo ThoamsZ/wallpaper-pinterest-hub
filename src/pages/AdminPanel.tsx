@@ -481,6 +481,11 @@ const AdminPanel = () => {
             <div className="text-center space-y-2">
               <h2 className="text-lg font-bold">Creator Dashboard</h2>
               <p className="text-sm text-muted-foreground">{adminData.email}</p>
+              {adminData.creator_code && (
+                <div className="px-2 py-1 bg-primary/10 text-primary text-xs rounded-md font-mono">
+                  @{adminData.creator_code}
+                </div>
+              )}
               {viewingCreator && (
                 <div className="px-2 py-1 bg-warning/10 text-warning text-xs rounded-md">
                   Admin View Mode
