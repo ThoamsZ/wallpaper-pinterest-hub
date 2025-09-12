@@ -145,7 +145,9 @@ const Upload = () => {
 
         if (requestError || !requestData) {
           console.error("Upload request error:", requestError);
-          throw new Error(`Failed to create upload request: ${requestError?.message || 'Unknown error'}`);
+          // Try to surface server-provided error message from Edge Function
+          const serverMsg = (requestError as any)?.context?.error?.error || (requestError as any)?.context?.error?.message;
+          throw new Error(serverMsg || `Failed to create upload request`);
         }
 
         console.log(`Successfully created upload request: ${requestData.requestId}`);
