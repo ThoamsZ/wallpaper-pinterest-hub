@@ -123,8 +123,10 @@ serve(async (req) => {
     }
 
     // Check if user is a creator or admin
-    const { data: isCreatorData } = await supabase.rpc('is_creator');
-    const { data: isAdminData } = await supabase.rpc('is_admin');
+    const [{ data: isCreatorData }, { data: isAdminData }] = await Promise.all([
+      supabase.rpc('is_creator'),
+      supabase.rpc('is_admin')
+    ]);
     
     if (!isCreatorData && !isAdminData) {
       throw new Error('User is not authorized to create upload requests');

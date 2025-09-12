@@ -38,7 +38,7 @@ interface DeleteRequest {
   r2_key: string;
   reason?: string;
   final_deleted: boolean;
-  creators?: { email: string };
+  creator_info?: { email: string };
   wallpapers?: { url: string; type: string; compressed_url: string };
 }
 
@@ -58,15 +58,28 @@ export const DeleteRequests = () => {
     try {
       const { data, error } = await supabase
         .from('delete_requests')
-        .select(`
-          *,
-          creators!delete_requests_requested_by_fkey(email),
-          wallpapers(url, type, compressed_url)
-        `)
+        .select('*')
         .order('created_at', { ascending: false });
 
       if (error) throw error;
-      setDeleteRequests((data as unknown as DeleteRequest[]) || []);
+
+      // Get creator emails and wallpaper info for requests
+      const userIds = [...new Set(data?.map(req => req.requested_by) || [])];
+      const wallpaperIds = [...new Set(data?.map(req => req.wallpaper_id) || [])];
+      
+      const [creatorsResult, wallpapersResult] = await Promise.all([
+        supabase.from('creators').select('user_id, email').in('user_id', userIds),
+        supabase.from('wallpapers').select('id, url, type, compressed_url').in('id', wallpaperIds)
+      ]);
+
+      // Map creator emails and wallpaper info to requests
+      const requestsWithInfo = (data || []).map(request => ({
+        ...request,
+        creator_info: creatorsResult.data?.find(c => c.user_id === request.requested_by),
+        wallpapers: wallpapersResult.data?.find(w => w.id === request.wallpaper_id)
+      }));
+
+      setDeleteRequests(requestsWithInfo as unknown as DeleteRequest[]);
     } catch (error: any) {
       toast({
         title: "Error",
@@ -196,7 +209,7 @@ export const DeleteRequests = () => {
               <TableBody>
                 {pendingRequests.map((request) => (
                   <TableRow key={request.id}>
-                    <TableCell>{request.creators?.email || 'Unknown'}</TableCell>
+                    <TableCell>{request.creator_info?.email || 'Unknown'}</TableCell>
                     <TableCell>
                       <div className="flex items-center space-x-2">
                         {request.wallpapers?.compressed_url && (
@@ -235,7 +248,7 @@ export const DeleteRequests = () => {
                           </DialogHeader>
                           <div className="space-y-4">
                             <div>
-                              <strong>Creator:</strong> {request.creators?.email || 'Unknown'}
+                              <strong>Creator:</strong> {request.creator_info?.email || 'Unknown'}
                             </div>
                             <div>
                               <strong>Wallpaper ID:</strong> {request.wallpaper_id}
@@ -365,7 +378,7 @@ export const DeleteRequests = () => {
               <TableBody>
                 {processedRequests.slice(0, 10).map((request) => (
                   <TableRow key={request.id}>
-                    <TableCell>{request.creators?.email || 'Unknown'}</TableCell>
+                    <TableCell>{request.creator_info?.email || 'Unknown'}</TableCell>
                     <TableCell className="font-mono text-sm">
                       {request.r2_key}
                     </TableCell>

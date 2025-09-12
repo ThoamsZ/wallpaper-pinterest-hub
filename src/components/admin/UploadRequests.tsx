@@ -40,7 +40,7 @@ interface UploadRequest {
   staging_key: string;
   message?: string;
   reject_reason?: string;
-  creators?: { email: string };
+  creator_info?: { email: string };
 }
 
 export const UploadRequests = () => {
@@ -59,14 +59,25 @@ export const UploadRequests = () => {
     try {
       const { data, error } = await supabase
         .from('upload_requests')
-        .select(`
-          *,
-          creators!upload_requests_requested_by_fkey(email)
-        `)
+        .select('*')
         .order('created_at', { ascending: false });
 
       if (error) throw error;
-      setUploadRequests((data as unknown as UploadRequest[]) || []);
+
+      // Get creator emails for requests
+      const userIds = [...new Set(data?.map(req => req.requested_by) || [])];
+      const { data: creators } = await supabase
+        .from('creators')
+        .select('user_id, email')
+        .in('user_id', userIds);
+
+      // Map creator emails to requests
+      const requestsWithCreators = (data || []).map(request => ({
+        ...request,
+        creator_info: creators?.find(c => c.user_id === request.requested_by)
+      }));
+
+      setUploadRequests(requestsWithCreators as unknown as UploadRequest[]);
     } catch (error: any) {
       toast({
         title: "Error",
@@ -197,7 +208,7 @@ export const UploadRequests = () => {
               <TableBody>
                 {pendingRequests.map((request) => (
                   <TableRow key={request.id}>
-                    <TableCell>{request.creators?.email || 'Unknown'}</TableCell>
+                    <TableCell>{request.creator_info?.email || 'Unknown'}</TableCell>
                     <TableCell className="font-mono text-sm">
                       {request.original_filename}
                     </TableCell>
@@ -228,7 +239,7 @@ export const UploadRequests = () => {
                           </DialogHeader>
                           <div className="space-y-4">
                             <div>
-                              <strong>Creator:</strong> {request.creators?.email || 'Unknown'}
+                              <strong>Creator:</strong> {request.creator_info?.email || 'Unknown'}
                             </div>
                             <div>
                               <strong>Filename:</strong> {request.original_filename}
@@ -348,7 +359,7 @@ export const UploadRequests = () => {
               <TableBody>
                 {processedRequests.slice(0, 10).map((request) => (
                   <TableRow key={request.id}>
-                    <TableCell>{request.creators?.email || 'Unknown'}</TableCell>
+                    <TableCell>{request.creator_info?.email || 'Unknown'}</TableCell>
                     <TableCell className="font-mono text-sm">
                       {request.original_filename}
                     </TableCell>

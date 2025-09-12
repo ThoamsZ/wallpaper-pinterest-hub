@@ -19,6 +19,7 @@ import { Download, Heart, Trash, Upload, Grid, Plus, LayoutGrid, Link, User, Cod
 import Header from "@/components/Header";
 import DashboardStats from "@/components/admin/DashboardStats";
 import { CollectionManager } from "@/components/admin/CollectionManager";
+import { PendingRequests } from "@/components/admin/PendingRequests";
 import R2Migration from "@/components/admin/R2Migration";
 import {
   Tabs,
@@ -614,6 +615,9 @@ const AdminPanel = () => {
                   </CardContent>
                 </Card>
               )}
+
+            {/* Pending Requests */}
+            <PendingRequests />
 
             {/* Main Content Tabs */}
             <Tabs defaultValue="wallpapers" className="space-y-4">
