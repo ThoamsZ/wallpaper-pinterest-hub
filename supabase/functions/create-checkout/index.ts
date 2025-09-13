@@ -33,12 +33,30 @@ serve(async (req) => {
     const { priceId } = await req.json();
     if (!priceId) throw new Error("Price ID is required");
 
-    console.log("Price ID:", priceId);
+    console.log("Received ID:", priceId);
 
     // Initialize Stripe
     const stripe = new Stripe(Deno.env.get("STRIPE_SECRET_KEY") || "", {
       apiVersion: "2024-06-20",
     });
+
+    // Check if this is a product ID and convert to price ID
+    let actualPriceId = priceId;
+    if (priceId.startsWith("prod_")) {
+      console.log("Converting product ID to price ID");
+      const prices = await stripe.prices.list({
+        product: priceId,
+        active: true,
+        limit: 1,
+      });
+      
+      if (prices.data.length === 0) {
+        throw new Error(`No active price found for product ${priceId}`);
+      }
+      
+      actualPriceId = prices.data[0].id;
+      console.log("Found price ID:", actualPriceId);
+    }
 
     // Check if a Stripe customer record exists for this user
     const customers = await stripe.customers.list({ email: user.email, limit: 1 });
@@ -54,7 +72,7 @@ serve(async (req) => {
       customer_email: customerId ? undefined : user.email,
       line_items: [
         {
-          price: priceId,
+          price: actualPriceId,
           quantity: 1,
         },
       ],
