@@ -13,19 +13,19 @@ import { Button } from "@/components/ui/button";
 // Stripe plan configuration (TEST MODE)
 const STRIPE_PLANS = {
   monthly: {
-    priceId: 'price_1S70N2DyH0oFIA7xwd6PO02V', // Test price ID
+    priceId: 'price_1S70SEDyH0oFIA7xzvFkV9Rg', // Test price ID
     price: 4.99,
-    name: 'Monthly VIP Test'
+    name: 'Monthly VIP'
   },
   yearly: {
-    priceId: 'price_1S70NDDyH0oFIA7xTifSbAnz', // Test price ID
+    priceId: 'price_1S70SQDyH0oFIA7xJhNKwJZu', // Test price ID
     price: 39.99,
-    name: 'Yearly VIP Test'
+    name: 'Yearly VIP'
   },
   lifetime: {
-    priceId: 'price_1S70NMDyH0oFIA7xhKGl7Q3k', // Test price ID
+    priceId: 'price_1S70SbDyH0oFIA7xLAgA3faX', // Test price ID
     price: 59.99,
-    name: 'Lifetime VIP Test'
+    name: 'Lifetime VIP'
   }
 };
 
