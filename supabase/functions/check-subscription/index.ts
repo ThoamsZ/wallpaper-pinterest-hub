@@ -81,11 +81,11 @@ serve(async (req) => {
       subscriptionEnd = new Date(subscription.current_period_end * 1000).toISOString();
       isActive = true;
       
-      // Determine VIP type based on price
+      // Determine VIP type based on price - updated for test environment
       const priceId = subscription.items.data[0].price.id;
-      if (priceId === 'price_1S7000DyH0oFIA7xN0wFBHN2') {
+      if (priceId === 'price_1S70IWD4StWDh7sZUWXlE3SV') {
         vipType = 'monthly';
-      } else if (priceId === 'price_1S700tDyH0oFIA7xrzyClVvk') {
+      } else if (priceId === 'price_1S70IsD4StWDh7sZ7Xu0o461') {
         vipType = 'yearly';
       }
       
