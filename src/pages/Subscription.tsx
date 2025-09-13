@@ -119,7 +119,11 @@ const Subscription = () => {
       }
 
       const priceId = prices[plan];
+      console.log('Current prices object:', prices);
+      console.log(`Looking for ${plan} plan price:`, priceId);
+      
       if (!priceId) {
+        console.error(`Price ID not found for ${plan} plan. Available prices:`, prices);
         throw new Error(`Price ID not found for ${plan} plan`);
       }
 

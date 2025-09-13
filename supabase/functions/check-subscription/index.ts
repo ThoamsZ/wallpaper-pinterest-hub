@@ -122,7 +122,10 @@ serve(async (req) => {
 
     if (subscriptions.data.length > 0) {
       const subscription = subscriptions.data[0];
-      subscriptionEnd = new Date(subscription.current_period_end * 1000).toISOString();
+      // Fix: Check if current_period_end exists and is valid before creating date
+      if (subscription.current_period_end && subscription.current_period_end > 0) {
+        subscriptionEnd = new Date(subscription.current_period_end * 1000).toISOString();
+      }
       isActive = true;
       
       // Determine VIP type based on current payment mode and price IDs

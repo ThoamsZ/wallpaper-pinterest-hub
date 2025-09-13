@@ -40,7 +40,7 @@ serve(async (req) => {
 
     const { priceId } = await req.json();
     if (!priceId) throw new Error("Price ID is required");
-    logStep("Request body parsed", { priceId });
+    logStep("Request body parsed", { priceId, priceIdType: typeof priceId, priceIdStartsWith: priceId.substring(0, 5) });
 
     const stripeKey = await getStripeKey(supabaseClient);
     if (!stripeKey) throw new Error("Stripe secret key is not set");
