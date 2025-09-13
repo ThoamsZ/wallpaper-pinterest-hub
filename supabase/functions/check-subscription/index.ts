@@ -74,20 +74,42 @@ serve(async (req) => {
         paymentSettings.test_lifetime_price_id : 
         paymentSettings.live_lifetime_price_id;
       
+      console.log("Checking for lifetime payments, product ID:", lifetimeProductId);
+      
       // Check checkout sessions for lifetime purchases
       const checkoutSessions = await stripe.checkout.sessions.list({
         customer: customerId,
         limit: 20,
       });
       
-      hasLifetimePayment = checkoutSessions.data.some(session => 
-        session.status === 'complete' && 
-        session.metadata?.plan_type === 'lifetime'
-      );
+      console.log("Found checkout sessions:", checkoutSessions.data.length);
       
-      if (hasLifetimePayment) {
-        vipType = "lifetime";
-        console.log("Found completed lifetime checkout session");
+      for (const session of checkoutSessions.data) {
+        console.log("Session:", {
+          id: session.id,
+          status: session.status,
+          mode: session.mode,
+          metadata: session.metadata
+        });
+        
+        // Check both metadata and line items for lifetime purchases
+        const isLifetimeByMetadata = session.metadata?.plan_type === 'lifetime';
+        
+        // Also expand and check line items
+        const expandedSession = await stripe.checkout.sessions.retrieve(session.id, {
+          expand: ['line_items.data.price.product']
+        });
+        
+        const isLifetimeByProduct = expandedSession.line_items?.data.some(item => 
+          item.price?.product === lifetimeProductId
+        );
+        
+        if (session.status === 'complete' && (isLifetimeByMetadata || isLifetimeByProduct)) {
+          hasLifetimePayment = true;
+          vipType = "lifetime";
+          console.log("Found completed lifetime checkout session:", session.id);
+          break;
+        }
       }
     }
 
