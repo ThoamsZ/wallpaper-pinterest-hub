@@ -23,7 +23,7 @@ interface WallpaperModalProps {
 const WallpaperModal = ({ wallpaper, isOpen, onClose, onLike, isLiked }: WallpaperModalProps) => {
   const [isDownloading, setIsDownloading] = useState(false);
   const navigate = useNavigate();
-  const { downloadsRemaining, decrementDownloads } = useDownloadLimits();
+  const { downloadsRemaining, decrementDownloads, hasUnlimitedDownloads } = useDownloadLimits();
 
   // Disable F12 and other keyboard shortcuts
   useEffect(() => {
@@ -70,7 +70,7 @@ const WallpaperModal = ({ wallpaper, isOpen, onClose, onLike, isLiked }: Wallpap
     
     setIsDownloading(true);
     
-    const result = await downloadWallpaper(wallpaper.id, decrementDownloads, downloadsRemaining);
+    const result = await downloadWallpaper(wallpaper.id, decrementDownloads, downloadsRemaining, hasUnlimitedDownloads);
     
     if (!result.success && (result.message === "Authentication required" || result.message === "Guest account")) {
       navigate('/auth');

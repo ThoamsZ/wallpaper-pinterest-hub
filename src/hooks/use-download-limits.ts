@@ -5,6 +5,7 @@ import { toast } from "@/hooks/use-toast";
 export const useDownloadLimits = () => {
   const [downloadsRemaining, setDownloadsRemaining] = useState<number | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [hasUnlimitedDownloads, setHasUnlimitedDownloads] = useState(false);
 
   useEffect(() => {
     const fetchDownloadLimits = async () => {
@@ -16,7 +17,7 @@ export const useDownloadLimits = () => {
         // Then fetch the current download limits from customers table
         const { data: userData, error } = await supabase
           .from('customers')
-          .select('daily_downloads_remaining')
+          .select('daily_downloads_remaining, unlimited_downloads, vip_type')
           .eq('user_id', session.user.id)
           .maybeSingle();
 
@@ -27,6 +28,7 @@ export const useDownloadLimits = () => {
 
         if (userData) {
           setDownloadsRemaining(userData.daily_downloads_remaining);
+          setHasUnlimitedDownloads(userData.unlimited_downloads || userData.vip_type === 'lifetime');
         }
       }
       setIsLoading(false);
@@ -159,6 +161,7 @@ export const useDownloadLimits = () => {
   return {
     downloadsRemaining,
     isLoading,
-    decrementDownloads
+    decrementDownloads,
+    hasUnlimitedDownloads
   };
 };

@@ -25,7 +25,7 @@ const WallpaperPage = () => {
   const { session } = useAuth();
   const [isDownloading, setIsDownloading] = useState(false);
   const { likedWallpapers, handleLike } = useWallpaperLikes();
-  const { downloadsRemaining, decrementDownloads } = useDownloadLimits();
+  const { downloadsRemaining, decrementDownloads, hasUnlimitedDownloads } = useDownloadLimits();
   const [creatorInfo, setCreatorInfo] = useState<{ creator_code: string | null } | null>(null);
   
   const { 
@@ -110,7 +110,7 @@ const WallpaperPage = () => {
     
     setIsDownloading(true);
     
-    const result = await downloadWallpaper(wallpaper.id, decrementDownloads, downloadsRemaining);
+    const result = await downloadWallpaper(wallpaper.id, decrementDownloads, downloadsRemaining, hasUnlimitedDownloads);
     
     if (!result.success && (result.message === "Authentication required" || result.message === "Guest account")) {
       navigate('/auth');

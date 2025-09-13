@@ -16,7 +16,8 @@ interface DownloadResult {
 export const downloadWallpaper = async (
   wallpaperId: string,
   decrementDownloads: () => Promise<void>,
-  downloadsRemaining: number | null
+  downloadsRemaining: number | null,
+  hasUnlimitedDownloads: boolean = false
 ): Promise<DownloadResult> => {
   try {
     const { data: { session } } = await supabase.auth.getSession();
@@ -40,8 +41,8 @@ export const downloadWallpaper = async (
       return { success: false, message: "Guest account" };
     }
 
-    // Check download limits
-    if (downloadsRemaining !== null && downloadsRemaining <= 0) {
+    // Check download limits (skip for unlimited downloads)
+    if (!hasUnlimitedDownloads && downloadsRemaining !== null && downloadsRemaining <= 0) {
       toast({
         title: "Daily download limit reached",
         description: "Please wait until tomorrow or upgrade your subscription for more downloads",
@@ -105,17 +106,26 @@ export const downloadWallpaper = async (
       console.error('Failed to update download count:', updateError);
     }
 
-    // Decrement user's remaining downloads
-    await decrementDownloads();
+    // Decrement user's remaining downloads (only if not unlimited)
+    if (!hasUnlimitedDownloads) {
+      await decrementDownloads();
+    }
 
-    const remainingAfterDownload = downloadsRemaining !== null ? downloadsRemaining - 1 : null;
-    
-    toast({
-      title: "Download started",
-      description: remainingAfterDownload !== null ? 
-        `You have ${remainingAfterDownload} downloads remaining today` : 
-        "Your wallpaper is being downloaded",
-    });
+    // Show appropriate success message
+    if (hasUnlimitedDownloads) {
+      toast({
+        title: "Download started",
+        description: "Your wallpaper is being downloaded",
+      });
+    } else {
+      const remainingAfterDownload = downloadsRemaining !== null ? downloadsRemaining - 1 : null;
+      toast({
+        title: "Download started",
+        description: remainingAfterDownload !== null ? 
+          `You have ${remainingAfterDownload} downloads remaining today` : 
+          "Your wallpaper is being downloaded",
+      });
+    }
 
     return { success: true };
 
