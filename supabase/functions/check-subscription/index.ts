@@ -72,28 +72,17 @@ serve(async (req) => {
     if (customers.data.length === 0) {
       logStep("No customer found, updating unsubscribed state");
       
-      // Update both users and customers tables
-      await Promise.all([
-        supabaseClient
-          .from('users')
-          .update({
-            vip_type: 'none',
-            subscription_status: 'inactive',
-            vip_expires_at: null,
-            daily_downloads_remaining: 5,
-            unlimited_downloads: false
-          })
-          .eq('id', user.id),
-        supabaseClient
-          .from('customers')
-          .update({
-            vip_type: 'none',
-            subscription_status: 'inactive',
-            vip_expires_at: null,
-            daily_downloads_remaining: 5
-          })
-          .eq('user_id', user.id)
-      ]);
+      // Update only customers table
+      await supabaseClient
+        .from('customers')
+        .update({
+          vip_type: 'none',
+          subscription_status: 'inactive',
+          vip_expires_at: null,
+          daily_downloads_remaining: 5,
+          unlimited_downloads: false
+        })
+        .eq('user_id', user.id);
 
       return new Response(JSON.stringify({ 
         subscribed: false,
@@ -197,28 +186,17 @@ serve(async (req) => {
       }
     }
 
-    // Update both users and customers tables with VIP status
-    await Promise.all([
-      supabaseClient
-        .from('users')
-        .update({
-          vip_type: vipType,
-          subscription_status: isActive ? 'active' : 'inactive',
-          vip_expires_at: subscriptionEnd,
-          daily_downloads_remaining: dailyDownloads,
-          unlimited_downloads: unlimitedDownloads
-        })
-        .eq('id', user.id),
-      supabaseClient
-        .from('customers')
-        .update({
-          vip_type: vipType,
-          subscription_status: isActive ? 'active' : 'inactive',
-          vip_expires_at: subscriptionEnd,
-          daily_downloads_remaining: dailyDownloads
-        })
-        .eq('user_id', user.id)
-    ]);
+    // Update only customers table
+    await supabaseClient
+      .from('customers')
+      .update({
+        vip_type: vipType,
+        subscription_status: isActive ? 'active' : 'inactive',
+        vip_expires_at: subscriptionEnd,
+        daily_downloads_remaining: dailyDownloads,
+        unlimited_downloads: unlimitedDownloads
+      })
+      .eq('user_id', user.id);
 
     return new Response(JSON.stringify({
       subscribed: isActive,

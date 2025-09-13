@@ -26,24 +26,26 @@ const PaymentModeManager = () => {
       setCurrentMode(data.mode);
       setPrices(data.prices);
       
-      // Load all price settings
-      const { data: settings } = await supabase
-        .from('payment_settings')
-        .select('*')
-        .limit(1)
-        .single();
+      // Load all price settings using RPC call since we need to bypass RLS
+      const { data: settings, error: settingsError } = await supabase.rpc('get_payment_settings');
       
-      if (settings) {
+      if (settingsError) {
+        console.error('Error loading payment settings:', settingsError);
+        return;
+      }
+      
+      if (settings && settings.length > 0) {
+        const setting = settings[0];
         setNewPrices({
           test: {
-            monthly: settings.test_monthly_price_id || '',
-            yearly: settings.test_yearly_price_id || '',
-            lifetime: settings.test_lifetime_price_id || ''
+            monthly: setting.test_monthly_price_id || '',
+            yearly: setting.test_yearly_price_id || '',
+            lifetime: setting.test_lifetime_price_id || ''
           },
           live: {
-            monthly: settings.live_monthly_price_id || '',
-            yearly: settings.live_yearly_price_id || '',
-            lifetime: settings.live_lifetime_price_id || ''
+            monthly: setting.live_monthly_price_id || '',
+            yearly: setting.live_yearly_price_id || '',
+            lifetime: setting.live_lifetime_price_id || ''
           }
         });
       }

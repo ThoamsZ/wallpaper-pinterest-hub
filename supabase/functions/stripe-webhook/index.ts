@@ -66,15 +66,15 @@ serve(async (req) => {
 
       logStep("Payment successful", { customerEmail, sessionId: session.id });
 
-      // Find user by email
-      const { data: user, error: userError } = await supabaseClient
-        .from('users')
-        .select('id')
+      // Find customer by email (using customers table only)
+      const { data: customer, error: customerError } = await supabaseClient
+        .from('customers')
+        .select('user_id')
         .eq('email', customerEmail)
         .single();
 
-      if (userError || !user) {
-        logStep("User not found", { email: customerEmail });
+      if (customerError || !customer) {
+        logStep("Customer not found", { email: customerEmail });
         return new Response("OK", { status: 200 });
       }
 
@@ -103,30 +103,19 @@ serve(async (req) => {
         }
       }
 
-      // Update both users and customers tables
-      await Promise.all([
-        supabaseClient
-          .from('users')
-          .update({
-            vip_type: vipType,
-            subscription_status: 'active',
-            vip_expires_at: vipExpiresAt,
-            daily_downloads_remaining: dailyDownloads,
-            unlimited_downloads: unlimitedDownloads
-          })
-          .eq('id', user.id),
-        supabaseClient
-          .from('customers')
-          .update({
-            vip_type: vipType,
-            subscription_status: 'active',
-            vip_expires_at: vipExpiresAt,
-            daily_downloads_remaining: dailyDownloads
-          })
-          .eq('user_id', user.id)
-      ]);
+      // Update only customers table
+      await supabaseClient
+        .from('customers')
+        .update({
+          vip_type: vipType,
+          subscription_status: 'active',
+          vip_expires_at: vipExpiresAt,
+          daily_downloads_remaining: dailyDownloads,
+          unlimited_downloads: unlimitedDownloads
+        })
+        .eq('user_id', customer.user_id);
 
-      logStep("VIP status updated", { userId: user.id, vipType, vipExpiresAt });
+      logStep("VIP status updated", { userId: customer.user_id, vipType, vipExpiresAt });
     }
 
     return new Response("OK", { status: 200 });

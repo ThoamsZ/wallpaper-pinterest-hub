@@ -180,6 +180,7 @@ export type Database = {
           last_download_reset: string | null
           paypal_subscription_id: string | null
           subscription_status: string | null
+          unlimited_downloads: boolean | null
           user_id: string
           vip_expires_at: string | null
           vip_type: string | null
@@ -195,6 +196,7 @@ export type Database = {
           last_download_reset?: string | null
           paypal_subscription_id?: string | null
           subscription_status?: string | null
+          unlimited_downloads?: boolean | null
           user_id: string
           vip_expires_at?: string | null
           vip_type?: string | null
@@ -210,6 +212,7 @@ export type Database = {
           last_download_reset?: string | null
           paypal_subscription_id?: string | null
           subscription_status?: string | null
+          unlimited_downloads?: boolean | null
           user_id?: string
           vip_expires_at?: string | null
           vip_type?: string | null
@@ -274,218 +277,6 @@ export type Database = {
           message?: string
           read?: boolean | null
           type?: string
-          user_id?: string
-        }
-        Relationships: []
-      }
-      payment_links: {
-        Row: {
-          created_at: string
-          id: string
-          is_active: boolean | null
-          name: string
-          url: string
-        }
-        Insert: {
-          created_at?: string
-          id?: string
-          is_active?: boolean | null
-          name: string
-          url: string
-        }
-        Update: {
-          created_at?: string
-          id?: string
-          is_active?: boolean | null
-          name?: string
-          url?: string
-        }
-        Relationships: []
-      }
-      payment_settings: {
-        Row: {
-          created_at: string
-          id: string
-          live_lifetime_price_id: string | null
-          live_monthly_price_id: string | null
-          live_yearly_price_id: string | null
-          mode: string
-          test_lifetime_price_id: string | null
-          test_monthly_price_id: string | null
-          test_yearly_price_id: string | null
-          updated_at: string
-        }
-        Insert: {
-          created_at?: string
-          id?: string
-          live_lifetime_price_id?: string | null
-          live_monthly_price_id?: string | null
-          live_yearly_price_id?: string | null
-          mode?: string
-          test_lifetime_price_id?: string | null
-          test_monthly_price_id?: string | null
-          test_yearly_price_id?: string | null
-          updated_at?: string
-        }
-        Update: {
-          created_at?: string
-          id?: string
-          live_lifetime_price_id?: string | null
-          live_monthly_price_id?: string | null
-          live_yearly_price_id?: string | null
-          mode?: string
-          test_lifetime_price_id?: string | null
-          test_monthly_price_id?: string | null
-          test_yearly_price_id?: string | null
-          updated_at?: string
-        }
-        Relationships: []
-      }
-      paypal_one_time_payments: {
-        Row: {
-          amount: number
-          created_at: string
-          currency: string
-          id: string
-          paypal_order_id: string | null
-          status: string
-          user_id: string
-        }
-        Insert: {
-          amount: number
-          created_at?: string
-          currency: string
-          id?: string
-          paypal_order_id?: string | null
-          status?: string
-          user_id: string
-        }
-        Update: {
-          amount?: number
-          created_at?: string
-          currency?: string
-          id?: string
-          paypal_order_id?: string | null
-          status?: string
-          user_id?: string
-        }
-        Relationships: []
-      }
-      paypal_orders: {
-        Row: {
-          amount: number
-          created_at: string
-          id: number
-          order_id: string
-          status: string
-          transaction_id: string | null
-          updated_at: string
-          user_id: string | null
-          webhook_data: Json | null
-        }
-        Insert: {
-          amount: number
-          created_at?: string
-          id?: number
-          order_id: string
-          status?: string
-          transaction_id?: string | null
-          updated_at?: string
-          user_id?: string | null
-          webhook_data?: Json | null
-        }
-        Update: {
-          amount?: number
-          created_at?: string
-          id?: number
-          order_id?: string
-          status?: string
-          transaction_id?: string | null
-          updated_at?: string
-          user_id?: string | null
-          webhook_data?: Json | null
-        }
-        Relationships: []
-      }
-      paypal_subscription_logs: {
-        Row: {
-          amount: number
-          created_at: string
-          currency: string
-          id: string
-          paypal_order_id: string
-          paypal_subscription_id: string
-          status: string
-          subscription_type: string
-          user_id: string
-        }
-        Insert: {
-          amount: number
-          created_at?: string
-          currency: string
-          id?: string
-          paypal_order_id: string
-          paypal_subscription_id: string
-          status: string
-          subscription_type: string
-          user_id: string
-        }
-        Update: {
-          amount?: number
-          created_at?: string
-          currency?: string
-          id?: string
-          paypal_order_id?: string
-          paypal_subscription_id?: string
-          status?: string
-          subscription_type?: string
-          user_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "paypal_subscription_logs_user_id_fkey"
-            columns: ["user_id"]
-            isOneToOne: false
-            referencedRelation: "users"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      paypal_subscriptions: {
-        Row: {
-          amount: number
-          created_at: string
-          currency: string
-          id: string
-          paypal_order_id: string | null
-          paypal_subscription_id: string | null
-          status: string
-          subscription_type: string
-          updated_at: string
-          user_id: string
-        }
-        Insert: {
-          amount: number
-          created_at?: string
-          currency: string
-          id?: string
-          paypal_order_id?: string | null
-          paypal_subscription_id?: string | null
-          status?: string
-          subscription_type: string
-          updated_at?: string
-          user_id: string
-        }
-        Update: {
-          amount?: number
-          created_at?: string
-          currency?: string
-          id?: string
-          paypal_order_id?: string | null
-          paypal_subscription_id?: string | null
-          status?: string
-          subscription_type?: string
-          updated_at?: string
           user_id?: string
         }
         Relationships: []
@@ -700,6 +491,16 @@ export type Database = {
       }
     }
     Functions: {
+      get_customer_vip_status: {
+        Args: { customer_user_id: string }
+        Returns: {
+          daily_downloads_remaining: number
+          subscription_status: string
+          unlimited_downloads: boolean
+          vip_expires_at: string
+          vip_type: string
+        }[]
+      }
       is_admin: {
         Args: Record<PropertyKey, never>
         Returns: boolean
