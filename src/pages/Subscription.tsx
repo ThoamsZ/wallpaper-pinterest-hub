@@ -6,8 +6,8 @@ import { Badge } from "@/components/ui/badge";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import Header from "@/components/Header";
-import SubscriptionPlanCard from "@/components/subscription/SubscriptionPlanCard";
-import VIPBenefits from "@/components/subscription/VIPBenefits";
+import { SubscriptionPlanCard } from '@/components/subscription/SubscriptionPlanCard';
+import { VIPBenefits } from '@/components/subscription/VIPBenefits';
 
 const Subscription = () => {
   const [searchParams] = useSearchParams();
@@ -108,26 +108,6 @@ const Subscription = () => {
     }
   }, [searchParams]);
 
-  const debugStripeProducts = async () => {
-    try {
-      console.log('Fetching Stripe products and prices...');
-      const { data, error } = await supabase.functions.invoke('stripe-products');
-      if (error) throw error;
-      console.log('STRIPE PRODUCTS AND PRICES:', data);
-      toast({
-        title: "Stripe Data Fetched",
-        description: "Check console for products and prices",
-      });
-    } catch (error) {
-      console.error('Error fetching Stripe data:', error);
-      toast({
-        title: "Error",
-        description: "Failed to fetch Stripe data",
-        variant: "destructive",
-      });
-    }
-  };
-
   const handleSubscribe = async (plan: 'monthly' | 'yearly' | 'lifetime') => {
     setIsProcessing(true);
     try {
@@ -212,10 +192,6 @@ const Subscription = () => {
     }
   };
 
-  const handleLifetimePayment = () => {
-    handleSubscribe('lifetime');
-  };
-
   if (loadError) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-background to-secondary/20">
@@ -247,14 +223,6 @@ const Subscription = () => {
           <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
             Unlock unlimited downloads and exclusive features with our VIP membership
           </p>
-          <Button 
-            onClick={debugStripeProducts} 
-            variant="outline" 
-            className="mt-4"
-            size="sm"
-          >
-            Debug: Fetch Stripe Products
-          </Button>
         </div>
 
         {isVip && (
@@ -298,44 +266,33 @@ const Subscription = () => {
         <div className="grid md:grid-cols-3 gap-8 mb-12">
           <SubscriptionPlanCard
             title="Monthly VIP"
+            price="$4.99"
             description="Perfect for trying out VIP features"
-            price={4.99}
-            interval="/month"
-            planType="monthly"
-            onSubscribe={handleSubscribe}
-            onLifetimePayment={handleLifetimePayment}
-            isProcessing={isProcessing}
-            loadError={loadError}
-            buttonContainerRef={() => {}}
-            isHighlighted={vipType === 'monthly'}
+            features={["Unlimited downloads", "No ads", "High quality images"]}
+            isActive={vipType === 'monthly'}
+            onSubscribe={() => handleSubscribe('monthly')}
+            loading={isProcessing}
           />
           
           <SubscriptionPlanCard
             title="Yearly VIP"
+            price="$39.99"
             description="Best value with maximum downloads"
-            price={39.99}
-            interval="/year"
-            planType="yearly"
-            onSubscribe={handleSubscribe}
-            onLifetimePayment={handleLifetimePayment}
-            isProcessing={isProcessing}
-            loadError={loadError}
-            buttonContainerRef={() => {}}
-            isHighlighted={vipType === 'yearly'}
+            features={["Unlimited downloads", "No ads", "High quality images", "Priority support"]}
+            isActive={vipType === 'yearly'}
+            isRecommended={true}
+            onSubscribe={() => handleSubscribe('yearly')}
+            loading={isProcessing}
           />
           
           <SubscriptionPlanCard
             title="Lifetime VIP"
+            price="$59.99"
             description="One-time payment for unlimited access"
-            price={59.99}
-            interval="forever"
-            planType="lifetime"
-            onSubscribe={handleSubscribe}
-            onLifetimePayment={handleLifetimePayment}
-            isProcessing={isProcessing}
-            loadError={loadError}
-            buttonContainerRef={() => {}}
-            isHighlighted={vipType === 'lifetime'}
+            features={["Unlimited downloads", "No ads", "High quality images", "Priority support", "Exclusive content"]}
+            isActive={vipType === 'lifetime'}
+            onSubscribe={() => handleSubscribe('lifetime')}
+            loading={isProcessing}
           />
         </div>
 
