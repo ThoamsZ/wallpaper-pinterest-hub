@@ -44,40 +44,84 @@ function AuthProvider({ children }: { children: React.ReactNode }) {
   const [isInitializing, setIsInitializing] = useState(true);
 
   useEffect(() => {
+    let mounted = true;
+    let subscription: any = null;
+    
     const initializeAuth = async () => {
       try {
-        // Check for existing session only
+        // Clear any invalid guest sessions first
+        const { data: currentSession } = await supabase.auth.getSession();
+        if (currentSession?.session?.user?.email === 'guest@wallpaperhub.com') {
+          console.log("Clearing guest session");
+          await supabase.auth.signOut();
+        }
+
+        // Set up auth state listener
+        const { data: { subscription: authSubscription } } = supabase.auth.onAuthStateChange((event, newSession) => {
+          if (!mounted) return;
+          
+          console.log("Auth state changed:", event, newSession?.user?.email);
+          
+          // Ignore guest sessions
+          if (newSession?.user?.email === 'guest@wallpaperhub.com') {
+            console.log("Ignoring guest session, signing out");
+            supabase.auth.signOut();
+            return;
+          }
+          
+          setSession(newSession);
+          
+          // Only set initializing to false after we've processed the auth state
+          if (event === 'INITIAL_SESSION' || event === 'SIGNED_IN' || event === 'SIGNED_OUT') {
+            setIsInitializing(false);
+          }
+        });
+        
+        subscription = authSubscription;
+
+        // Get current session
         const { data, error } = await supabase.auth.getSession();
+        
+        if (!mounted) return;
         
         if (error) {
           console.error("Session retrieval error:", error);
           setSession(null);
+          setIsInitializing(false);
         } else if (data?.session) {
-          console.log("Existing session found:", data.session.user.email);
-          setSession(data.session);
+          // Skip guest sessions
+          if (data.session.user.email === 'guest@wallpaperhub.com') {
+            console.log("Found guest session, signing out");
+            await supabase.auth.signOut();
+            setSession(null);
+          } else {
+            console.log("Existing session found:", data.session.user.email);
+            setSession(data.session);
+          }
+          setIsInitializing(false);
         } else {
           console.log("No session found, browsing anonymously");
           setSession(null);
+          setIsInitializing(false);
         }
 
-        // Set up auth state listener
-        const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, newSession) => {
-          console.log("Auth state changed:", event, newSession?.user?.email);
-          setSession(newSession);
-        });
-
-        return () => {
-          subscription.unsubscribe();
-        };
       } catch (error) {
         console.error("Auth initialization error:", error);
-        setSession(null);
-      } finally {
-        setIsInitializing(false);
+        if (mounted) {
+          setSession(null);
+          setIsInitializing(false);
+        }
       }
     };
 
     initializeAuth();
+    
+    return () => {
+      mounted = false;
+      if (subscription) {
+        subscription.unsubscribe();
+      }
+    };
   }, []);
 
   if (isInitializing) {
