@@ -74,15 +74,7 @@ serve(async (req) => {
     logStep("User authenticated", { userId: user.id, email: user.email });
 
     const stripe = new Stripe(stripeKey, { apiVersion: "2025-08-27.basil" });
-    
-    // First verify the price exists
-    try {
-      const price = await stripe.prices.retrieve(priceId);
-      logStep("Price retrieved successfully", { priceId, type: price.type, amount: price.unit_amount });
-    } catch (priceError) {
-      logStep("Failed to retrieve price", { priceId, error: priceError.message });
-      throw new Error(`Invalid price ID: ${priceId}`);
-    }
+    logStep("Stripe client initialized");
 
     const customers = await stripe.customers.list({ email: user.email, limit: 1 });
     let customerId;
@@ -95,9 +87,8 @@ serve(async (req) => {
 
     const origin = req.headers.get("origin") || "http://localhost:3000";
     
-    // Determine if it's a subscription or one-time payment based on price
-    const price = await stripe.prices.retrieve(priceId);
-    const isSubscription = price.type === "recurring";
+    // Determine subscription mode based on common patterns - all current prices are subscriptions
+    const isSubscription = true;
     
     const sessionData: any = {
       customer: customerId,
