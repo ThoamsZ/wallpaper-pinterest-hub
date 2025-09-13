@@ -108,7 +108,8 @@ serve(async (req) => {
       
       // Update user's VIP status in database
       if (vipType !== "none") {
-        const dailyDownloads = vipType === 'yearly' || vipType === 'lifetime' ? 30 : 20;
+        const isLifetime = vipType === 'lifetime';
+        const dailyDownloads = isLifetime ? 999999 : (vipType === 'yearly' ? 30 : 20);
         
         await supabaseService
           .from('customers')
@@ -116,7 +117,8 @@ serve(async (req) => {
             vip_type: vipType,
             vip_expires_at: vipType === 'lifetime' ? null : subscriptionEnd,
             subscription_status: 'active',
-            daily_downloads_remaining: dailyDownloads
+            daily_downloads_remaining: dailyDownloads,
+            unlimited_downloads: isLifetime
           })
           .eq('user_id', user.id);
         
