@@ -106,4 +106,5 @@ const DashboardStats = () => {
   );
 };
 
+export { DashboardStats };
 export default DashboardStats;

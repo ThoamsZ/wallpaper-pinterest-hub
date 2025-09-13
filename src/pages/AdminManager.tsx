@@ -43,7 +43,7 @@ import {
 import { AdminManagerAuth } from "@/components/admin/AdminManagerAuth";
 import { CreatorsList } from "@/components/admin/CreatorsList";
 import { CreatorApplications } from "@/components/admin/CreatorApplications";
-import DashboardStats from "@/components/admin/DashboardStats";
+import { DashboardStats } from "@/components/admin/DashboardStats";
 
 const AdminManager = () => {
   const navigate = useNavigate();
