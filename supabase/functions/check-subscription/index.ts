@@ -34,6 +34,18 @@ serve(async (req) => {
       apiVersion: "2024-06-20",
     });
 
+    // Get payment settings first
+    const supabaseService = createClient(
+      Deno.env.get("SUPABASE_URL") ?? "",
+      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? ""
+    );
+    
+    const { data: paymentSettings } = await supabaseService
+      .from('payment_settings')
+      .select('*')
+      .limit(1)
+      .single();
+
     // Check if a Stripe customer record exists for this user
     const customers = await stripe.customers.list({ email: user.email, limit: 1 });
     
@@ -52,84 +64,99 @@ serve(async (req) => {
     const customerId = customers.data[0].id;
     console.log("Found Stripe customer:", customerId);
 
-    // Check for active subscriptions
-    const subscriptions = await stripe.subscriptions.list({
-      customer: customerId,
-      status: "active",
-      limit: 1,
-    });
-
-    const hasActiveSub = subscriptions.data.length > 0;
     let vipType = "none";
     let subscriptionEnd = null;
+    let hasLifetimePayment = false;
 
-    if (hasActiveSub) {
-      const subscription = subscriptions.data[0];
-      subscriptionEnd = new Date(subscription.current_period_end * 1000).toISOString();
+    // First check for completed lifetime payments (highest priority)
+    if (paymentSettings) {
+      const lifetimeProductId = paymentSettings.mode === 'test' ? 
+        paymentSettings.test_lifetime_price_id : 
+        paymentSettings.live_lifetime_price_id;
       
-      // Get price to determine VIP type
-      const priceId = subscription.items.data[0].price.id;
-      const productId = subscription.items.data[0].price.product;
-      console.log("Active subscription price ID:", priceId);
-      console.log("Active subscription product ID:", productId);
+      // Check payment intents for lifetime purchases
+      const paymentIntents = await stripe.paymentIntents.list({
+        customer: customerId,
+        limit: 10,
+      });
       
-      // Get payment settings to map product IDs to VIP types
-      const supabaseService = createClient(
-        Deno.env.get("SUPABASE_URL") ?? "",
-        Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? ""
+      hasLifetimePayment = paymentIntents.data.some(payment => 
+        payment.status === 'succeeded' && 
+        payment.metadata?.plan_type === 'lifetime'
       );
       
-      const { data: paymentSettings } = await supabaseService
-        .from('payment_settings')
-        .select('*')
-        .limit(1)
-        .single();
-      
-      if (paymentSettings) {
-        const { mode } = paymentSettings;
-        const monthlyId = mode === 'test' ? paymentSettings.test_monthly_price_id : paymentSettings.live_monthly_price_id;
-        const yearlyId = mode === 'test' ? paymentSettings.test_yearly_price_id : paymentSettings.live_yearly_price_id;
-        const lifetimeId = mode === 'test' ? paymentSettings.test_lifetime_price_id : paymentSettings.live_lifetime_price_id;
+      if (hasLifetimePayment) {
+        vipType = "lifetime";
+        console.log("Found completed lifetime payment");
+      }
+    }
+
+    // Only check subscriptions if no lifetime payment found
+    if (!hasLifetimePayment) {
+      const subscriptions = await stripe.subscriptions.list({
+        customer: customerId,
+        status: "active",
+        limit: 1,
+      });
+
+      const hasActiveSub = subscriptions.data.length > 0;
+
+      if (hasActiveSub) {
+        const subscription = subscriptions.data[0];
+        subscriptionEnd = new Date(subscription.current_period_end * 1000).toISOString();
         
-        // Map product IDs or price IDs to VIP types
-        if (productId === monthlyId || priceId.includes(monthlyId)) {
-          vipType = "monthly";
-        } else if (productId === yearlyId || priceId.includes(yearlyId)) {
-          vipType = "yearly";
-        } else if (productId === lifetimeId || priceId.includes(lifetimeId)) {
-          vipType = "lifetime";
+        // Get price to determine VIP type
+        const priceId = subscription.items.data[0].price.id;
+        const productId = subscription.items.data[0].price.product;
+        console.log("Active subscription price ID:", priceId);
+        console.log("Active subscription product ID:", productId);
+        
+        if (paymentSettings) {
+          const { mode } = paymentSettings;
+          const monthlyId = mode === 'test' ? paymentSettings.test_monthly_price_id : paymentSettings.live_monthly_price_id;
+          const yearlyId = mode === 'test' ? paymentSettings.test_yearly_price_id : paymentSettings.live_yearly_price_id;
+          const lifetimeId = mode === 'test' ? paymentSettings.test_lifetime_price_id : paymentSettings.live_lifetime_price_id;
+          
+          // Map product IDs or price IDs to VIP types
+          if (productId === monthlyId || priceId.includes(monthlyId)) {
+            vipType = "monthly";
+          } else if (productId === yearlyId || priceId.includes(yearlyId)) {
+            vipType = "yearly";
+          } else if (productId === lifetimeId || priceId.includes(lifetimeId)) {
+            vipType = "lifetime";
+          }
+          
+          console.log("Payment settings:", { mode, monthlyId, yearlyId, lifetimeId });
+          console.log("Determined VIP type:", vipType);
         }
         
-        console.log("Payment settings:", { mode, monthlyId, yearlyId, lifetimeId });
-        console.log("Determined VIP type:", vipType);
+        console.log("Subscription active until:", subscriptionEnd, "VIP type:", vipType);
+      } else {
+        console.log("No active subscription found");
       }
+    }
+
+    // Update user's VIP status in database
+    if (vipType !== "none") {
+      const isLifetime = vipType === 'lifetime';
+      const dailyDownloads = isLifetime ? 999999 : (vipType === 'yearly' ? 30 : 20);
       
-      console.log("Subscription active until:", subscriptionEnd, "VIP type:", vipType);
+      await supabaseService
+        .from('customers')
+        .update({
+          vip_type: vipType,
+          vip_expires_at: vipType === 'lifetime' ? null : subscriptionEnd,
+          subscription_status: 'active',
+          daily_downloads_remaining: dailyDownloads,
+          unlimited_downloads: isLifetime
+        })
+        .eq('user_id', user.id);
       
-      // Update user's VIP status in database
-      if (vipType !== "none") {
-        const isLifetime = vipType === 'lifetime';
-        const dailyDownloads = isLifetime ? 999999 : (vipType === 'yearly' ? 30 : 20);
-        
-        await supabaseService
-          .from('customers')
-          .update({
-            vip_type: vipType,
-            vip_expires_at: vipType === 'lifetime' ? null : subscriptionEnd,
-            subscription_status: 'active',
-            daily_downloads_remaining: dailyDownloads,
-            unlimited_downloads: isLifetime
-          })
-          .eq('user_id', user.id);
-        
-        console.log("Updated user VIP status in database");
-      }
-    } else {
-      console.log("No active subscription found");
+      console.log("Updated user VIP status in database");
     }
 
     return new Response(JSON.stringify({
-      subscribed: hasActiveSub,
+      subscribed: (vipType !== "none"),
       vip_type: vipType,
       subscription_end: subscriptionEnd
     }), {
