@@ -302,6 +302,45 @@ export type Database = {
         }
         Relationships: []
       }
+      payment_settings: {
+        Row: {
+          created_at: string
+          id: string
+          live_lifetime_price_id: string | null
+          live_monthly_price_id: string | null
+          live_yearly_price_id: string | null
+          mode: string
+          test_lifetime_price_id: string | null
+          test_monthly_price_id: string | null
+          test_yearly_price_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          live_lifetime_price_id?: string | null
+          live_monthly_price_id?: string | null
+          live_yearly_price_id?: string | null
+          mode?: string
+          test_lifetime_price_id?: string | null
+          test_monthly_price_id?: string | null
+          test_yearly_price_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          live_lifetime_price_id?: string | null
+          live_monthly_price_id?: string | null
+          live_yearly_price_id?: string | null
+          mode?: string
+          test_lifetime_price_id?: string | null
+          test_monthly_price_id?: string | null
+          test_yearly_price_id?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       paypal_one_time_payments: {
         Row: {
           amount: number
@@ -527,6 +566,7 @@ export type Database = {
           last_download_reset: string | null
           paypal_subscription_id: string | null
           subscription_status: string | null
+          unlimited_downloads: boolean | null
           vip_expires_at: string | null
           vip_type: string | null
         }
@@ -542,6 +582,7 @@ export type Database = {
           last_download_reset?: string | null
           paypal_subscription_id?: string | null
           subscription_status?: string | null
+          unlimited_downloads?: boolean | null
           vip_expires_at?: string | null
           vip_type?: string | null
         }
@@ -557,6 +598,7 @@ export type Database = {
           last_download_reset?: string | null
           paypal_subscription_id?: string | null
           subscription_status?: string | null
+          unlimited_downloads?: boolean | null
           vip_expires_at?: string | null
           vip_type?: string | null
         }

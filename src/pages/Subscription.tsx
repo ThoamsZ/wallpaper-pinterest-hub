@@ -1,140 +1,153 @@
-import Header from "@/components/Header";
-import { useNavigate } from "react-router-dom";
-import { useAuth } from "@/App";
-import { useEffect, useState } from "react";
+import { useState, useEffect } from "react";
+import { useNavigate, useSearchParams } from "react-router-dom";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
 import { supabase } from "@/integrations/supabase/client";
-import { toast } from "@/hooks/use-toast";
+import { useToast } from "@/hooks/use-toast";
+import Header from "@/components/Header";
 import SubscriptionPlanCard from "@/components/subscription/SubscriptionPlanCard";
 import VIPBenefits from "@/components/subscription/VIPBenefits";
-import { Crown, CalendarClock } from "lucide-react";
-import { format } from "date-fns";
-import { Button } from "@/components/ui/button";
-
-// Stripe plan configuration 
-const STRIPE_PLANS = {
-  monthly: {
-    priceId: 'price_1S70IWD4StWDh7sZUWXlE3SV', // Test price ID
-    price: 4.99,
-    name: 'Monthly VIP'
-  },
-  yearly: {
-    priceId: 'price_1S70IsD4StWDh7sZ7Xu0o461', // Test price ID
-    price: 39.99,
-    name: 'Yearly VIP'
-  },
-  lifetime: {
-    priceId: 'price_1S70JDD4StWDh7sZSmdNnAwt', // Test price ID
-    price: 59.99,
-    name: 'Lifetime VIP'
-  }
-};
 
 const Subscription = () => {
-  const navigate = useNavigate();
-  const { session } = useAuth();
+  const [searchParams] = useSearchParams();
   const [isProcessing, setIsProcessing] = useState(false);
   const [vipExpiresAt, setVipExpiresAt] = useState<string | null>(null);
   const [isVip, setIsVip] = useState(false);
-  const [vipType, setVipType] = useState<string | null>(null);
+  const [vipType, setVipType] = useState<string>('none');
+  const [paymentMode, setPaymentMode] = useState<'test' | 'live'>('test');
+  const [prices, setPrices] = useState<any>({});
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const { toast } = useToast();
+  const navigate = useNavigate();
 
-  useEffect(() => {
-    checkSubscriptionStatus();
-  }, [session]);
-
-  // Check subscription status on page load and after successful payments
-  useEffect(() => {
-    const urlParams = new URLSearchParams(window.location.search);
-    if (urlParams.get('success') === 'true') {
-      toast({
-        title: "Payment Successful!",
-        description: "Your subscription has been activated. Checking status...",
-      });
-      setTimeout(() => {
-        checkSubscriptionStatus();
-        // Remove URL params
-        window.history.replaceState({}, document.title, window.location.pathname);
-      }, 2000);
+  // Get payment mode and prices
+  const getPaymentSettings = async () => {
+    try {
+      const { data, error } = await supabase.functions.invoke('get-payment-mode');
+      if (error) throw error;
+      
+      setPaymentMode(data.mode);
+      setPrices(data.prices);
+      console.log('Payment settings loaded:', data);
+    } catch (error) {
+      console.error('Error getting payment settings:', error);
+      setLoadError('Failed to load payment settings');
     }
-    if (urlParams.get('canceled') === 'true') {
-      toast({
-        title: "Payment Canceled",
-        description: "Your payment was canceled. You can try again anytime.",
-      });
-      // Remove URL params
-      window.history.replaceState({}, document.title, window.location.pathname);
-    }
-  }, []);
+  };
 
   const checkSubscriptionStatus = async () => {
-    if (!session?.user?.id) return;
-
     try {
+      console.log('Checking subscription status...');
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      if (!session) {
+        console.log('No session found');
+        navigate('/auth');
+        return;
+      }
+
       const { data, error } = await supabase.functions.invoke('check-subscription', {
         headers: {
-          Authorization: `Bearer ${(await supabase.auth.getSession()).data.session?.access_token}`
-        }
+          Authorization: `Bearer ${session.access_token}`,
+        },
       });
 
       if (error) {
         console.error('Error checking subscription:', error);
-        return;
+        throw error;
       }
 
-      setIsVip(data.subscribed);
-      setVipType(data.vip_type);
-      setVipExpiresAt(data.subscription_end);
-    } catch (error) {
-      console.error('Error checking VIP status:', error);
+      console.log('Subscription check response:', data);
+      
+      if (data.subscribed) {
+        setIsVip(true);
+        setVipType(data.vip_type || 'none');
+        setVipExpiresAt(data.subscription_end);
+        
+        toast({
+          title: "VIP Status Active",
+          description: `You have ${data.vip_type} VIP access${data.subscription_end ? ` until ${new Date(data.subscription_end).toLocaleDateString()}` : ' (lifetime)'}`,
+        });
+      } else {
+        setIsVip(false);
+        setVipType('none');
+        setVipExpiresAt(null);
+      }
+    } catch (error: any) {
+      console.error('Error checking subscription:', error);
+      toast({
+        title: "Error",
+        description: "Failed to check subscription status",
+        variant: "destructive",
+      });
     }
   };
 
-  const handleSubscribe = async (plan: string) => {
-    if (!session || session.user.email === 'guest@wallpaperhub.com') {
-      toast({
-        title: "Authentication Required",
-        description: "Please register or login to subscribe.",
-      });
-      navigate("/auth");
-      return;
-    }
+  useEffect(() => {
+    getPaymentSettings();
+    checkSubscriptionStatus();
 
-    if (isProcessing) {
-      return;
-    }
-
-    setIsProcessing(true);
+    // Check for success/cancel parameters
+    const success = searchParams.get('success');
+    const canceled = searchParams.get('canceled');
     
+    if (success === 'true') {
+      toast({
+        title: "Payment Successful!",
+        description: "Your subscription has been activated. Checking status...",
+      });
+      // Check subscription status after a short delay to allow webhook processing
+      setTimeout(checkSubscriptionStatus, 2000);
+    } else if (canceled === 'true') {
+      toast({
+        title: "Payment Canceled",
+        description: "Your payment was canceled. You can try again anytime.",
+        variant: "destructive",
+      });
+    }
+  }, [searchParams]);
+
+  const handleSubscribe = async (plan: 'monthly' | 'yearly' | 'lifetime') => {
+    setIsProcessing(true);
     try {
-      const planConfig = STRIPE_PLANS[plan as keyof typeof STRIPE_PLANS];
-      if (!planConfig) {
-        throw new Error('Invalid plan type');
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      if (!session) {
+        navigate('/auth');
+        return;
       }
 
+      const priceId = prices[plan];
+      if (!priceId) {
+        throw new Error(`Price ID not found for ${plan} plan`);
+      }
+
+      console.log(`Creating checkout for ${plan} plan with price ID:`, priceId);
+
       const { data, error } = await supabase.functions.invoke('create-checkout', {
-        body: { priceId: planConfig.priceId },
+        body: { priceId },
         headers: {
-          Authorization: `Bearer ${(await supabase.auth.getSession()).data.session?.access_token}`
-        }
+          Authorization: `Bearer ${session.access_token}`,
+        },
       });
 
       if (error) {
-        throw new Error(error.message || 'Failed to create checkout session');
+        console.error('Checkout error:', error);
+        throw error;
       }
 
       if (data?.url) {
-        // Open Stripe checkout in a new tab
+        console.log('Redirecting to checkout:', data.url);
         window.open(data.url, '_blank');
-        
-        toast({
-          title: "Redirecting to Checkout",
-          description: "Opening secure Stripe checkout in a new tab...",
-        });
+      } else {
+        throw new Error('No checkout URL received');
       }
-    } catch (error) {
-      console.error('Checkout error:', error);
+    } catch (error: any) {
+      console.error('Error creating checkout:', error);
       toast({
-        title: "Checkout Error",
-        description: error instanceof Error ? error.message : 'An error occurred during checkout',
+        title: "Error",
+        description: error.message || "Failed to create checkout session",
         variant: "destructive",
       });
     } finally {
@@ -143,31 +156,35 @@ const Subscription = () => {
   };
 
   const handleManageSubscription = async () => {
+    setIsProcessing(true);
     try {
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      if (!session) {
+        navigate('/auth');
+        return;
+      }
+
       const { data, error } = await supabase.functions.invoke('customer-portal', {
         headers: {
-          Authorization: `Bearer ${(await supabase.auth.getSession()).data.session?.access_token}`
-        }
+          Authorization: `Bearer ${session.access_token}`,
+        },
       });
 
-      if (error) {
-        throw new Error(error.message || 'Failed to access customer portal');
-      }
+      if (error) throw error;
 
       if (data?.url) {
         window.open(data.url, '_blank');
-        toast({
-          title: "Opening Customer Portal",
-          description: "Manage your subscription in the new tab...",
-        });
       }
-    } catch (error) {
-      console.error('Portal error:', error);
+    } catch (error: any) {
+      console.error('Error opening customer portal:', error);
       toast({
-        title: "Portal Error",
-        description: error instanceof Error ? error.message : 'Failed to open customer portal',
+        title: "Error",
+        description: "Failed to open customer portal",
         variant: "destructive",
       });
+    } finally {
+      setIsProcessing(false);
     }
   };
 
@@ -175,105 +192,123 @@ const Subscription = () => {
     handleSubscribe('lifetime');
   };
 
-  return (
-    <div className="min-h-screen bg-background">
-      <Header />
-      <main className="container mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="max-w-4xl mx-auto">
-          {isVip && (
-            <div className="mb-12">
-              <div className="bg-gradient-to-r from-purple-500/10 via-purple-500/5 to-purple-500/10 rounded-lg p-8 text-center relative overflow-hidden">
-                <div className="absolute inset-0 bg-grid-slate-100/50 [mask-image:linear-gradient(0deg,white,rgba(255,255,255,0.6))] dark:bg-grid-slate-700/50" />
-                
-                <div className="relative space-y-4">
-                  <div className="flex items-center justify-center space-x-2 animate-fade-in">
-                    <Crown className="w-8 h-8 text-primary fill-primary animate-pulse" />
-                    <h2 className="text-4xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-primary to-purple-600">
-                      Active VIP Member
-                    </h2>
-                    <Crown className="w-8 h-8 text-primary fill-primary animate-pulse" />
-                  </div>
-                  
-                  {vipType !== 'lifetime' && vipExpiresAt && (
-                    <div className="flex items-center justify-center space-x-2 text-gray-600 animate-fade-in">
-                      <CalendarClock className="w-5 h-5" />
-                      <p className="text-sm">
-                        Subscription ends: {format(new Date(vipExpiresAt), 'MMMM dd, yyyy')}
-                      </p>
-                    </div>
-                  )}
-                  
-                  {vipType === 'lifetime' && (
-                    <p className="text-sm text-gray-600 animate-fade-in">
-                      ✨ Lifetime VIP Member ✨
-                    </p>
-                  )}
-
-                  <div className="pt-4">
-                    <Button 
-                      onClick={handleManageSubscription}
-                      variant="outline"
-                      className="bg-white/80 hover:bg-white"
-                    >
-                      Manage Subscription
-                    </Button>
-                  </div>
-                </div>
-              </div>
-            </div>
-          )}
-
-          <div className="text-center mb-8">
-            <h1 className="text-3xl font-bold mb-4">💎 xxWallpaper VIP Membership</h1>
-            <p className="text-gray-600">
-              Enjoy 25 daily downloads, exclusive content, batch downloads, and more premium features.
-              Secure payments powered by Stripe with instant activation.
-            </p>
+  if (loadError) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-background to-secondary/20">
+        <Header />
+        <div className="container mx-auto px-4 pt-24 pb-12">
+          <div className="text-center">
+            <h1 className="text-3xl font-bold text-red-600 mb-4">Error Loading Payment Settings</h1>
+            <p className="text-muted-foreground">{loadError}</p>
+            <Button onClick={() => window.location.reload()} className="mt-4">
+              Retry
+            </Button>
           </div>
-
-          <div className="grid md:grid-cols-3 gap-6 mb-12">
-            <SubscriptionPlanCard
-              title="Monthly VIP"
-              description="Perfect for short-term needs"
-              price={STRIPE_PLANS.monthly.price}
-              interval="per month"
-              planType="monthly"
-              onSubscribe={handleSubscribe}
-              onLifetimePayment={handleLifetimePayment}
-              isProcessing={isProcessing}
-              loadError={null}
-              buttonContainerRef={() => {}}
-            />
-            <SubscriptionPlanCard
-              title="Yearly VIP"
-              description="Save 33% with annual billing"
-              price={STRIPE_PLANS.yearly.price}
-              interval="per year"
-              planType="yearly"
-              isHighlighted={true}
-              onSubscribe={handleSubscribe}
-              onLifetimePayment={handleLifetimePayment}
-              isProcessing={isProcessing}
-              loadError={null}
-              buttonContainerRef={() => {}}
-            />
-            <SubscriptionPlanCard
-              title="Lifetime VIP"
-              description="One-time purchase, forever access"
-              price={STRIPE_PLANS.lifetime.price}
-              interval="one-time payment"
-              planType="lifetime"
-              onSubscribe={handleSubscribe}
-              onLifetimePayment={handleLifetimePayment}
-              isProcessing={isProcessing}
-              loadError={null}
-              buttonContainerRef={() => {}}
-            />
-          </div>
-
-          <VIPBenefits />
         </div>
-      </main>
+      </div>
+    );
+  }
+
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-background to-secondary/20">
+      <Header />
+      <div className="container mx-auto px-4 pt-24 pb-12">
+        <div className="text-center mb-12">
+          <Badge variant="outline" className="mb-4">
+            Payment Mode: {paymentMode.toUpperCase()}
+          </Badge>
+          <h1 className="text-4xl font-bold gradient-text mb-4">
+            Choose Your VIP Plan
+          </h1>
+          <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
+            Unlock unlimited downloads and exclusive features with our VIP membership
+          </p>
+        </div>
+
+        {isVip && (
+          <Card className="mb-8 border-primary/20 bg-primary/5">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Badge variant="default">Active VIP Member</Badge>
+                <span className="capitalize">{vipType} Plan</span>
+              </CardTitle>
+              <CardDescription>
+                {vipType === 'lifetime' 
+                  ? 'You have lifetime VIP access!' 
+                  : vipExpiresAt 
+                    ? `Your VIP access expires on ${new Date(vipExpiresAt).toLocaleDateString()}`
+                    : 'Your VIP access is active'
+                }
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="flex gap-4">
+                <Button 
+                  onClick={checkSubscriptionStatus}
+                  variant="outline"
+                  disabled={isProcessing}
+                >
+                  Refresh Status
+                </Button>
+                {vipType !== 'lifetime' && (
+                  <Button 
+                    onClick={handleManageSubscription}
+                    disabled={isProcessing}
+                  >
+                    Manage Subscription
+                  </Button>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        <div className="grid md:grid-cols-3 gap-8 mb-12">
+          <SubscriptionPlanCard
+            title="Monthly VIP"
+            description="Perfect for trying out VIP features"
+            price={4.99}
+            interval="/month"
+            planType="monthly"
+            onSubscribe={handleSubscribe}
+            onLifetimePayment={handleLifetimePayment}
+            isProcessing={isProcessing}
+            loadError={loadError}
+            buttonContainerRef={() => {}}
+            isHighlighted={vipType === 'monthly'}
+          />
+          
+          <SubscriptionPlanCard
+            title="Yearly VIP"
+            description="Best value with maximum downloads"
+            price={39.99}
+            interval="/year"
+            planType="yearly"
+            onSubscribe={handleSubscribe}
+            onLifetimePayment={handleLifetimePayment}
+            isProcessing={isProcessing}
+            loadError={loadError}
+            buttonContainerRef={() => {}}
+            isHighlighted={vipType === 'yearly'}
+          />
+          
+          <SubscriptionPlanCard
+            title="Lifetime VIP"
+            description="One-time payment for unlimited access"
+            price={59.99}
+            interval="forever"
+            planType="lifetime"
+            onSubscribe={handleSubscribe}
+            onLifetimePayment={handleLifetimePayment}
+            isProcessing={isProcessing}
+            loadError={loadError}
+            buttonContainerRef={() => {}}
+            isHighlighted={vipType === 'lifetime'}
+          />
+        </div>
+
+        <VIPBenefits />
+      </div>
     </div>
   );
 };

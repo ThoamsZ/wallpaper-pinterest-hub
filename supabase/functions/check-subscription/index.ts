@@ -8,6 +8,22 @@ const logStep = (step: string, details?: any) => {
   console.log(`[CHECK-SUBSCRIPTION] ${step}${detailsStr}`);
 };
 
+// Get the correct Stripe key based on payment mode
+const getStripeKey = async (supabaseClient: any) => {
+  const { data: settings } = await supabaseClient
+    .from('payment_settings')
+    .select('mode')
+    .limit(1)
+    .single();
+  
+  const mode = settings?.mode || 'test';
+  const keyName = mode === 'live' ? 'STRIPE_LIVE_SECRET_KEY' : 'STRIPE_TEST_SECRET_KEY';
+  const key = Deno.env.get(keyName);
+  
+  logStep(`Using ${mode} mode with key: ${keyName}`);
+  return key;
+};
+
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -22,8 +38,8 @@ serve(async (req) => {
   try {
     logStep("Function started");
 
-    const stripeKey = Deno.env.get("STRIPE_SECRET_KEY");
-    if (!stripeKey) throw new Error("STRIPE_SECRET_KEY is not set");
+    const stripeKey = await getStripeKey(supabaseClient);
+    if (!stripeKey) throw new Error("Stripe secret key is not set");
     logStep("Stripe key verified");
 
     const authHeader = req.headers.get("Authorization");
@@ -72,21 +88,45 @@ serve(async (req) => {
       limit: 10,
     });
 
+    // Get payment settings to determine correct price IDs
+    const { data: settings } = await supabaseClient
+      .from('payment_settings')
+      .select('*')
+      .limit(1)
+      .single();
+
     let vipType = 'none';
     let subscriptionEnd = null;
     let isActive = false;
+    let unlimitedDownloads = false;
 
     if (subscriptions.data.length > 0) {
       const subscription = subscriptions.data[0];
       subscriptionEnd = new Date(subscription.current_period_end * 1000).toISOString();
       isActive = true;
       
-      // Determine VIP type based on price - updated for test environment
+      // Determine VIP type based on current payment mode and price IDs
       const priceId = subscription.items.data[0].price.id;
-      if (priceId === 'price_1S70IWD4StWDh7sZUWXlE3SV') {
-        vipType = 'monthly';
-      } else if (priceId === 'price_1S70IsD4StWDh7sZ7Xu0o461') {
-        vipType = 'yearly';
+      const mode = settings?.mode || 'test';
+      
+      if (mode === 'test') {
+        if (priceId === settings?.test_monthly_price_id) {
+          vipType = 'monthly';
+        } else if (priceId === settings?.test_yearly_price_id) {
+          vipType = 'yearly';
+        } else if (priceId === settings?.test_lifetime_price_id) {
+          vipType = 'lifetime';
+          unlimitedDownloads = true;
+        }
+      } else {
+        if (priceId === settings?.live_monthly_price_id) {
+          vipType = 'monthly';
+        } else if (priceId === settings?.live_yearly_price_id) {
+          vipType = 'yearly';
+        } else if (priceId === settings?.live_lifetime_price_id) {
+          vipType = 'lifetime';
+          unlimitedDownloads = true;
+        }
       }
       
       logStep("Active subscription found", { subscriptionId: subscription.id, vipType, endDate: subscriptionEnd });
@@ -97,18 +137,32 @@ serve(async (req) => {
         limit: 50,
       });
 
+      // Check for successful charges that match lifetime price
       const lifetimeCharge = charges.data.find(charge => 
         charge.status === 'succeeded' && 
-        charge.amount === 5999 // $59.99 for lifetime
+        (charge.amount === 5999 || charge.amount === 59990) // Support both $59.99 formats
       );
 
       if (lifetimeCharge) {
         vipType = 'lifetime';
         isActive = true;
+        unlimitedDownloads = true;
         subscriptionEnd = null;
         logStep("Lifetime purchase found", { chargeId: lifetimeCharge.id });
       } else {
         logStep("No active subscription or lifetime purchase found");
+      }
+    }
+
+    // Determine daily downloads based on VIP type
+    let dailyDownloads = 5; // Default for non-VIP
+    if (isActive) {
+      if (vipType === 'lifetime') {
+        dailyDownloads = 999999; // Unlimited downloads
+      } else if (vipType === 'yearly') {
+        dailyDownloads = 30;
+      } else if (vipType === 'monthly') {
+        dailyDownloads = 20;
       }
     }
 
@@ -119,7 +173,8 @@ serve(async (req) => {
         vip_type: vipType,
         subscription_status: isActive ? 'active' : 'inactive',
         vip_expires_at: subscriptionEnd,
-        daily_downloads_remaining: isActive ? (vipType === 'yearly' || vipType === 'lifetime' ? 30 : 20) : 5
+        daily_downloads_remaining: dailyDownloads,
+        unlimited_downloads: unlimitedDownloads
       })
       .eq('id', user.id);
 
