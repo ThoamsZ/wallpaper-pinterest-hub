@@ -228,11 +228,11 @@ const Subscription = () => {
           </Card>}
 
         <div className="grid md:grid-cols-3 gap-8 mb-12">
-          <SubscriptionPlanCard title="Monthly VIP" price="$4.99" description="Perfect for trying out VIP features" features={["Unlimited downloads", "No ads", "High quality images"]} isActive={vipType === 'monthly'} onSubscribe={() => handleSubscribe('monthly')} loading={isProcessing} />
+          <SubscriptionPlanCard title="Monthly VIP" price="$4.99" description="Perfect for trying out VIP features" features={["20 daily downloads", "No ads", "High quality images"]} isActive={vipType === 'monthly'} onSubscribe={() => handleSubscribe('monthly')} loading={isProcessing} />
           
-          <SubscriptionPlanCard title="Yearly VIP" price="$39.99" description="Best value with maximum downloads" features={["Unlimited downloads", "No ads", "High quality images", "Priority support"]} isActive={vipType === 'yearly'} isRecommended={true} onSubscribe={() => handleSubscribe('yearly')} loading={isProcessing} />
+          <SubscriptionPlanCard title="Yearly VIP" price="$39.99" description="Best value with more downloads" features={["30 daily downloads", "No ads", "High quality images", "Priority support"]} isActive={vipType === 'yearly'} onSubscribe={() => handleSubscribe('yearly')} loading={isProcessing} />
           
-          <SubscriptionPlanCard title="Lifetime VIP" price="$59.99" description="One-time payment for unlimited access" features={["Unlimited downloads", "No ads", "High quality images", "Priority support", "Exclusive content"]} isActive={vipType === 'lifetime'} onSubscribe={() => handleSubscribe('lifetime')} loading={isProcessing} />
+          <SubscriptionPlanCard title="Lifetime VIP" price="$59.99" description="One-time payment for unlimited access" features={["Unlimited downloads", "No ads", "High quality images", "Priority support", "Exclusive content"]} isActive={vipType === 'lifetime'} isRecommended={true} onSubscribe={() => handleSubscribe('lifetime')} loading={isProcessing} />
         </div>
 
         <VIPBenefits />
