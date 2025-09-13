@@ -10,18 +10,28 @@ const logStep = (step: string, details?: any) => {
 
 // Get the correct Stripe key based on payment mode
 const getStripeKey = async (supabaseClient: any) => {
-  const { data: settings } = await supabaseClient
-    .from('payment_settings')
-    .select('mode')
-    .limit(1)
-    .single();
-  
-  const mode = settings?.mode || 'test';
-  const keyName = mode === 'live' ? 'STRIPE_LIVE_SECRET_KEY' : 'STRIPE_TEST_SECRET_KEY';
-  const key = Deno.env.get(keyName);
-  
-  logStep(`Using ${mode} mode with key: ${keyName}`);
-  return key;
+  try {
+    const { data: settings, error } = await supabaseClient
+      .from('payment_settings')
+      .select('mode')
+      .limit(1)
+      .single();
+    
+    if (error) {
+      logStep("Error fetching payment settings", { error: error.message });
+      return null;
+    }
+    
+    const mode = settings?.mode || 'test';
+    const keyName = mode === 'live' ? 'STRIPE_LIVE_SECRET_KEY' : 'STRIPE_TEST_SECRET_KEY';
+    const key = Deno.env.get(keyName);
+    
+    logStep(`Using ${mode} mode with key: ${keyName}`, { hasKey: !!key });
+    return key;
+  } catch (error) {
+    logStep("Exception in getStripeKey", { error: error.message });
+    return null;
+  }
 };
 
 serve(async (req) => {
@@ -39,7 +49,10 @@ serve(async (req) => {
     logStep("Function started");
 
     const stripeKey = await getStripeKey(supabaseClient);
-    if (!stripeKey) throw new Error("Stripe secret key is not set");
+    if (!stripeKey) {
+      logStep("Stripe key not found");
+      throw new Error("Stripe secret key is not set");
+    }
     logStep("Stripe key verified");
 
     const authHeader = req.headers.get("Authorization");
@@ -59,15 +72,28 @@ serve(async (req) => {
     if (customers.data.length === 0) {
       logStep("No customer found, updating unsubscribed state");
       
-      // Update user VIP status in database
-      await supabaseClient
-        .from('users')
-        .update({
-          vip_type: 'none',
-          subscription_status: 'inactive',
-          vip_expires_at: null
-        })
-        .eq('id', user.id);
+      // Update both users and customers tables
+      await Promise.all([
+        supabaseClient
+          .from('users')
+          .update({
+            vip_type: 'none',
+            subscription_status: 'inactive',
+            vip_expires_at: null,
+            daily_downloads_remaining: 5,
+            unlimited_downloads: false
+          })
+          .eq('id', user.id),
+        supabaseClient
+          .from('customers')
+          .update({
+            vip_type: 'none',
+            subscription_status: 'inactive',
+            vip_expires_at: null,
+            daily_downloads_remaining: 5
+          })
+          .eq('user_id', user.id)
+      ]);
 
       return new Response(JSON.stringify({ 
         subscribed: false,
@@ -89,11 +115,16 @@ serve(async (req) => {
     });
 
     // Get payment settings to determine correct price IDs
-    const { data: settings } = await supabaseClient
+    const { data: settings, error: settingsError } = await supabaseClient
       .from('payment_settings')
       .select('*')
       .limit(1)
       .single();
+
+    if (settingsError) {
+      logStep("Error fetching payment settings for price matching", { error: settingsError.message });
+      // Continue with basic VIP detection without price matching
+    }
 
     let vipType = 'none';
     let subscriptionEnd = null;
@@ -166,17 +197,28 @@ serve(async (req) => {
       }
     }
 
-    // Update user VIP status in database
-    await supabaseClient
-      .from('users')
-      .update({
-        vip_type: vipType,
-        subscription_status: isActive ? 'active' : 'inactive',
-        vip_expires_at: subscriptionEnd,
-        daily_downloads_remaining: dailyDownloads,
-        unlimited_downloads: unlimitedDownloads
-      })
-      .eq('id', user.id);
+    // Update both users and customers tables with VIP status
+    await Promise.all([
+      supabaseClient
+        .from('users')
+        .update({
+          vip_type: vipType,
+          subscription_status: isActive ? 'active' : 'inactive',
+          vip_expires_at: subscriptionEnd,
+          daily_downloads_remaining: dailyDownloads,
+          unlimited_downloads: unlimitedDownloads
+        })
+        .eq('id', user.id),
+      supabaseClient
+        .from('customers')
+        .update({
+          vip_type: vipType,
+          subscription_status: isActive ? 'active' : 'inactive',
+          vip_expires_at: subscriptionEnd,
+          daily_downloads_remaining: dailyDownloads
+        })
+        .eq('user_id', user.id)
+    ]);
 
     return new Response(JSON.stringify({
       subscribed: isActive,
