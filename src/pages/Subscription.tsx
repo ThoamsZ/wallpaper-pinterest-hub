@@ -108,6 +108,26 @@ const Subscription = () => {
     }
   }, [searchParams]);
 
+  const debugStripeProducts = async () => {
+    try {
+      console.log('Fetching Stripe products and prices...');
+      const { data, error } = await supabase.functions.invoke('stripe-products');
+      if (error) throw error;
+      console.log('STRIPE PRODUCTS AND PRICES:', data);
+      toast({
+        title: "Stripe Data Fetched",
+        description: "Check console for products and prices",
+      });
+    } catch (error) {
+      console.error('Error fetching Stripe data:', error);
+      toast({
+        title: "Error",
+        description: "Failed to fetch Stripe data",
+        variant: "destructive",
+      });
+    }
+  };
+
   const handleSubscribe = async (plan: 'monthly' | 'yearly' | 'lifetime') => {
     setIsProcessing(true);
     try {
@@ -227,6 +247,14 @@ const Subscription = () => {
           <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
             Unlock unlimited downloads and exclusive features with our VIP membership
           </p>
+          <Button 
+            onClick={debugStripeProducts} 
+            variant="outline" 
+            className="mt-4"
+            size="sm"
+          >
+            Debug: Fetch Stripe Products
+          </Button>
         </div>
 
         {isVip && (
