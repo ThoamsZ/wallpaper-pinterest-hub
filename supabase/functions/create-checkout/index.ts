@@ -93,10 +93,31 @@ serve(async (req) => {
       // Continue without existing customer
     }
 
-    // Create checkout session
-    console.log("Creating checkout session...");
-    const session = await stripe.checkout.sessions.create({
-      mode: "subscription",
+    // Get payment settings to determine if this is a lifetime plan
+    const supabaseService = createClient(
+      Deno.env.get("SUPABASE_URL") ?? "",
+      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? ""
+    );
+    
+    const { data: paymentSettings } = await supabaseService
+      .from('payment_settings')
+      .select('*')
+      .limit(1)
+      .single();
+    
+    let isLifetime = false;
+    if (paymentSettings) {
+      const lifetimeId = paymentSettings.mode === 'test' ? 
+        paymentSettings.test_lifetime_price_id : 
+        paymentSettings.live_lifetime_price_id;
+      isLifetime = priceId === lifetimeId || finalPriceId.includes(lifetimeId);
+    }
+    
+    console.log("Creating checkout session...", { isLifetime, priceId, finalPriceId });
+    
+    // Create checkout session with appropriate mode
+    const sessionConfig = {
+      mode: isLifetime ? "payment" : "subscription",
       payment_method_types: ["card"],
       line_items: [
         {
@@ -111,10 +132,13 @@ serve(async (req) => {
       metadata: {
         user_id: user.id,
         user_email: user.email,
+        plan_type: isLifetime ? "lifetime" : "subscription",
       },
       allow_promotion_codes: true,
       billing_address_collection: "auto",
-    });
+    };
+    
+    const session = await stripe.checkout.sessions.create(sessionConfig);
 
     console.log("Checkout session created successfully:", session.id);
     console.log("Checkout URL:", session.url);
