@@ -1,122 +1,109 @@
-
-import { useState, useEffect } from "react";
-import { toast } from "@/hooks/use-toast";
+import { useEffect, useState } from "react";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { supabase } from "@/integrations/supabase/client";
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { BarChart3, Users, Crown, Download } from "lucide-react";
 
-export const DashboardStats = () => {
-  const [statsData, setStatsData] = useState({
+const DashboardStats = () => {
+  const [stats, setStats] = useState({
+    totalWallpapers: 0,
+    totalUsers: 0,
+    vipUsers: 0,
     totalDownloads: 0,
-    totalPurchases: 0,
-    todayDownloads: 0,
-    todayPurchases: 0,
   });
-  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    fetchStatsData();
+    fetchStats();
   }, []);
 
-  const fetchStatsData = async () => {
-    setIsLoading(true);
+  const fetchStats = async () => {
     try {
-      const { data: downloadData, error: downloadError } = await supabase
+      // Get wallpapers count
+      const { count: wallpapersCount } = await supabase
         .from('wallpapers')
-        .select('download_count')
-        .not('download_count', 'is', null);
+        .select('*', { count: 'exact', head: true });
 
-      if (downloadError) throw downloadError;
+      // Get customers count  
+      const { count: customersCount } = await supabase
+        .from('customers')
+        .select('*', { count: 'exact', head: true });
 
-      const totalDownloads = downloadData.reduce((sum, item) => sum + (item.download_count || 0), 0);
+      // Get VIP customers count
+      const { count: vipCount } = await supabase
+        .from('customers')
+        .select('*', { count: 'exact', head: true })
+        .neq('vip_type', 'none');
 
-      const { data: purchaseData, error: purchaseError } = await supabase
-        .from('paypal_orders')
-        .select('*')
-        .eq('status', 'completed');
+      // Get total downloads from download_logs
+      const { count: downloadsCount } = await supabase
+        .from('download_logs')
+        .select('*', { count: 'exact', head: true });
 
-      if (purchaseError) throw purchaseError;
-
-      // Estimate today's downloads as 5% of total for demo purposes
-      const todayDownloads = Math.round(totalDownloads * 0.05);
-
-      const { data: todayPurchaseData, error: todayPurchaseError } = await supabase
-        .from('paypal_orders')
-        .select('*')
-        .eq('status', 'completed')
-        .gte('created_at', new Date().toISOString());
-
-      if (todayPurchaseError) throw todayPurchaseError;
-
-      setStatsData({
-        totalDownloads,
-        totalPurchases: purchaseData.length,
-        todayDownloads,
-        todayPurchases: todayPurchaseData.length,
+      setStats({
+        totalWallpapers: wallpapersCount || 0,
+        totalUsers: customersCount || 0,
+        vipUsers: vipCount || 0,
+        totalDownloads: downloadsCount || 0,
       });
-    } catch (error: any) {
-      toast({
-        title: "Error",
-        description: error.message || "Failed to fetch stats data",
-        variant: "destructive",
-      });
-    } finally {
-      setIsLoading(false);
+    } catch (error) {
+      console.error('Error fetching stats:', error);
     }
   };
 
-  if (isLoading) {
-    return (
-      <div className="flex justify-center py-10">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-      </div>
-    );
-  }
-
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+    <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
       <Card>
-        <CardHeader>
-          <CardTitle>Total Downloads</CardTitle>
+        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+          <CardTitle className="text-sm font-medium">Total Wallpapers</CardTitle>
+          <BarChart3 className="h-4 w-4 text-muted-foreground" />
         </CardHeader>
         <CardContent>
-          <p className="text-3xl font-bold">{statsData.totalDownloads}</p>
+          <div className="text-2xl font-bold">{stats.totalWallpapers}</div>
+          <p className="text-xs text-muted-foreground">
+            Total wallpapers uploaded
+          </p>
         </CardContent>
       </Card>
       
       <Card>
-        <CardHeader>
-          <CardTitle>Total Purchases</CardTitle>
+        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+          <CardTitle className="text-sm font-medium">Total Users</CardTitle>
+          <Users className="h-4 w-4 text-muted-foreground" />
         </CardHeader>
         <CardContent>
-          <p className="text-3xl font-bold">{statsData.totalPurchases}</p>
+          <div className="text-2xl font-bold">{stats.totalUsers}</div>
+          <p className="text-xs text-muted-foreground">
+            Registered customers
+          </p>
         </CardContent>
       </Card>
       
       <Card>
-        <CardHeader>
-          <CardTitle>Today's Downloads</CardTitle>
+        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+          <CardTitle className="text-sm font-medium">VIP Users</CardTitle>
+          <Crown className="h-4 w-4 text-muted-foreground" />
         </CardHeader>
         <CardContent>
-          <p className="text-3xl font-bold">{statsData.todayDownloads}</p>
+          <div className="text-2xl font-bold">{stats.vipUsers}</div>
+          <p className="text-xs text-muted-foreground">
+            Active VIP subscribers
+          </p>
         </CardContent>
       </Card>
       
       <Card>
-        <CardHeader>
-          <CardTitle>Today's Purchases</CardTitle>
+        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+          <CardTitle className="text-sm font-medium">Total Downloads</CardTitle>
+          <Download className="h-4 w-4 text-muted-foreground" />
         </CardHeader>
         <CardContent>
-          <p className="text-3xl font-bold">{statsData.todayPurchases}</p>
+          <div className="text-2xl font-bold">{stats.totalDownloads}</div>
+          <p className="text-xs text-muted-foreground">
+            All-time downloads
+          </p>
         </CardContent>
       </Card>
     </div>
   );
 };
 
-// Export as default as well to maintain compatibility with both import styles
 export default DashboardStats;

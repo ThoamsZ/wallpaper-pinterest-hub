@@ -281,6 +281,45 @@ export type Database = {
         }
         Relationships: []
       }
+      payment_settings: {
+        Row: {
+          created_at: string
+          id: string
+          live_lifetime_price_id: string | null
+          live_monthly_price_id: string | null
+          live_yearly_price_id: string | null
+          mode: string
+          test_lifetime_price_id: string | null
+          test_monthly_price_id: string | null
+          test_yearly_price_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          live_lifetime_price_id?: string | null
+          live_monthly_price_id?: string | null
+          live_yearly_price_id?: string | null
+          mode?: string
+          test_lifetime_price_id?: string | null
+          test_monthly_price_id?: string | null
+          test_yearly_price_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          live_lifetime_price_id?: string | null
+          live_monthly_price_id?: string | null
+          live_yearly_price_id?: string | null
+          mode?: string
+          test_lifetime_price_id?: string | null
+          test_monthly_price_id?: string | null
+          test_yearly_price_id?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       plans: {
         Row: {
           created_at: string
@@ -499,6 +538,21 @@ export type Database = {
           unlimited_downloads: boolean
           vip_expires_at: string
           vip_type: string
+        }[]
+      }
+      get_payment_settings: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          created_at: string
+          id: string
+          live_lifetime_price_id: string
+          live_monthly_price_id: string
+          live_yearly_price_id: string
+          mode: string
+          test_lifetime_price_id: string
+          test_monthly_price_id: string
+          test_yearly_price_id: string
+          updated_at: string
         }[]
       }
       is_admin: {

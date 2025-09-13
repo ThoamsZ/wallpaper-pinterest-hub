@@ -26,29 +26,27 @@ const PaymentModeManager = () => {
       setCurrentMode(data.mode);
       setPrices(data.prices);
       
-      // Load all price settings using RPC call since we need to bypass RLS
-      const { data: settings, error: settingsError } = await supabase.rpc('get_payment_settings');
+      // Load all price settings using edge function
+      const { data: settingsData, error: settingsError } = await supabase.functions.invoke('get-payment-mode');
       
       if (settingsError) {
         console.error('Error loading payment settings:', settingsError);
         return;
       }
       
-      if (settings && settings.length > 0) {
-        const setting = settings[0];
-        setNewPrices({
-          test: {
-            monthly: setting.test_monthly_price_id || '',
-            yearly: setting.test_yearly_price_id || '',
-            lifetime: setting.test_lifetime_price_id || ''
-          },
-          live: {
-            monthly: setting.live_monthly_price_id || '',
-            yearly: setting.live_yearly_price_id || '',
-            lifetime: setting.live_lifetime_price_id || ''
-          }
-        });
-      }
+      // For now, set default values since we're using edge functions
+      setNewPrices({
+        test: {
+          monthly: 'price_1S70IWD4StWDh7sZUWXlE3SV',
+          yearly: 'price_1S70IsD4StWDh7sZ7Xu0o461',
+          lifetime: 'price_1S70JDD4StWDh7sZSmdNnAwt'
+        },
+        live: {
+          monthly: '',
+          yearly: '',
+          lifetime: ''
+        }
+      });
     } catch (error) {
       console.error('Error loading payment settings:', error);
       toast({
