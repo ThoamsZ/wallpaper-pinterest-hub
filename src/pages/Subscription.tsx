@@ -10,22 +10,22 @@ import { Crown, CalendarClock } from "lucide-react";
 import { format } from "date-fns";
 import { Button } from "@/components/ui/button";
 
-// Stripe plan configuration
+// Stripe plan configuration (TEST MODE)
 const STRIPE_PLANS = {
   monthly: {
-    priceId: 'price_1S7000DyH0oFIA7xN0wFBHN2',
+    priceId: 'price_1S70N2DyH0oFIA7xwd6PO02V', // Test price ID
     price: 4.99,
-    name: 'Monthly VIP'
+    name: 'Monthly VIP Test'
   },
   yearly: {
-    priceId: 'price_1S700tDyH0oFIA7xrzyClVvk',
+    priceId: 'price_1S70NDDyH0oFIA7xTifSbAnz', // Test price ID
     price: 39.99,
-    name: 'Yearly VIP'
+    name: 'Yearly VIP Test'
   },
   lifetime: {
-    priceId: 'price_1S702XDyH0oFIA7x9trG4VM3',
+    priceId: 'price_1S70NMDyH0oFIA7xhKGl7Q3k', // Test price ID
     price: 59.99,
-    name: 'Lifetime VIP'
+    name: 'Lifetime VIP Test'
   }
 };
 
