@@ -68,26 +68,26 @@ serve(async (req) => {
     let subscriptionEnd = null;
     let hasLifetimePayment = false;
 
-    // First check for completed lifetime payments (highest priority)
+    // First check for completed lifetime payments (checkout sessions)
     if (paymentSettings) {
       const lifetimeProductId = paymentSettings.mode === 'test' ? 
         paymentSettings.test_lifetime_price_id : 
         paymentSettings.live_lifetime_price_id;
       
-      // Check payment intents for lifetime purchases
-      const paymentIntents = await stripe.paymentIntents.list({
+      // Check checkout sessions for lifetime purchases
+      const checkoutSessions = await stripe.checkout.sessions.list({
         customer: customerId,
-        limit: 10,
+        limit: 20,
       });
       
-      hasLifetimePayment = paymentIntents.data.some(payment => 
-        payment.status === 'succeeded' && 
-        payment.metadata?.plan_type === 'lifetime'
+      hasLifetimePayment = checkoutSessions.data.some(session => 
+        session.status === 'complete' && 
+        session.metadata?.plan_type === 'lifetime'
       );
       
       if (hasLifetimePayment) {
         vipType = "lifetime";
-        console.log("Found completed lifetime payment");
+        console.log("Found completed lifetime checkout session");
       }
     }
 
