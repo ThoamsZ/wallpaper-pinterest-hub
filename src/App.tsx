@@ -49,37 +49,39 @@ function AuthProvider({ children }: { children: React.ReactNode }) {
     
     const initializeAuth = async () => {
       try {
-        // Clear any invalid guest sessions first
+        // First, clear any existing guest sessions immediately
         const { data: currentSession } = await supabase.auth.getSession();
         if (currentSession?.session?.user?.email === 'guest@wallpaperhub.com') {
-          console.log("Clearing guest session");
+          console.log("Clearing problematic guest session");
           await supabase.auth.signOut();
+          // Clear localStorage to prevent re-authentication
+          localStorage.removeItem('sb-begjbzrzxmbwsrniirao-auth-token');
+          if (!mounted) return;
         }
 
-        // Set up auth state listener
-        const { data: { subscription: authSubscription } } = supabase.auth.onAuthStateChange((event, newSession) => {
+        // Set up auth state listener with guest session protection
+        const { data: { subscription: authSubscription } } = supabase.auth.onAuthStateChange(async (event, newSession) => {
           if (!mounted) return;
           
           console.log("Auth state changed:", event, newSession?.user?.email);
           
-          // Ignore guest sessions
+          // Block all guest sessions completely
           if (newSession?.user?.email === 'guest@wallpaperhub.com') {
-            console.log("Ignoring guest session, signing out");
-            supabase.auth.signOut();
+            console.log("Blocking guest session");
+            await supabase.auth.signOut();
+            localStorage.removeItem('sb-begjbzrzxmbwsrniirao-auth-token');
+            setSession(null);
+            setIsInitializing(false);
             return;
           }
           
           setSession(newSession);
-          
-          // Only set initializing to false after we've processed the auth state
-          if (event === 'INITIAL_SESSION' || event === 'SIGNED_IN' || event === 'SIGNED_OUT') {
-            setIsInitializing(false);
-          }
+          setIsInitializing(false);
         });
         
         subscription = authSubscription;
 
-        // Get current session
+        // Check for valid session (non-guest only)
         const { data, error } = await supabase.auth.getSession();
         
         if (!mounted) return;
@@ -87,23 +89,15 @@ function AuthProvider({ children }: { children: React.ReactNode }) {
         if (error) {
           console.error("Session retrieval error:", error);
           setSession(null);
-          setIsInitializing(false);
-        } else if (data?.session) {
-          // Skip guest sessions
-          if (data.session.user.email === 'guest@wallpaperhub.com') {
-            console.log("Found guest session, signing out");
-            await supabase.auth.signOut();
-            setSession(null);
-          } else {
-            console.log("Existing session found:", data.session.user.email);
-            setSession(data.session);
-          }
-          setIsInitializing(false);
+        } else if (data?.session && data.session.user.email !== 'guest@wallpaperhub.com') {
+          console.log("Valid session found:", data.session.user.email);
+          setSession(data.session);
         } else {
-          console.log("No session found, browsing anonymously");
+          console.log("No valid session, browsing anonymously");
           setSession(null);
-          setIsInitializing(false);
         }
+        
+        setIsInitializing(false);
 
       } catch (error) {
         console.error("Auth initialization error:", error);
