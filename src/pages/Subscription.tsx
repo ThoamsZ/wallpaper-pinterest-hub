@@ -13,17 +13,17 @@ import { Button } from "@/components/ui/button";
 // Stripe plan configuration 
 const STRIPE_PLANS = {
   monthly: {
-    priceId: 'price_1S70SEDyH0oFIA7xzvFkV9Rg', // Working price ID
+    priceId: 'price_1S70IWD4StWDh7sZUWXlE3SV', // Test price ID
     price: 4.99,
     name: 'Monthly VIP'
   },
   yearly: {
-    priceId: 'price_1S70SQDyH0oFIA7xJhNKwJZu', // Working price ID
+    priceId: 'price_1S70IsD4StWDh7sZ7Xu0o461', // Test price ID
     price: 39.99,
     name: 'Yearly VIP'
   },
   lifetime: {
-    priceId: 'price_1S70SbDyH0oFIA7xLAgA3faX', // Working price ID
+    priceId: 'price_1S70JDD4StWDh7sZSmdNnAwt', // Test price ID
     price: 59.99,
     name: 'Lifetime VIP'
   }
